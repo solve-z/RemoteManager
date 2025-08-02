@@ -4,10 +4,11 @@
  */
 
 export class Sidebar {
-  constructor(sidebarElement, groupStore, groupService) {
+  constructor(sidebarElement, groupStore, groupService, groupManager) {
     this.element = sidebarElement;
     this.groupStore = groupStore;
     this.groupService = groupService;
+    this.groupManager = groupManager;
     
     this.isCollapsed = false;
     this.isMobile = false;
@@ -305,7 +306,9 @@ export class Sidebar {
 
     switch (action) {
       case 'edit':
-        this.showEditGroupDialog(group);
+        if (this.groupManager) {
+          this.groupManager.showEditDialog(group);
+        }
         break;
 
       case 'delete':
@@ -318,21 +321,9 @@ export class Sidebar {
    * 그룹 추가 다이얼로그 표시
    */
   showAddGroupDialog() {
-    const dialog = document.getElementById('group-dialog');
-    const title = document.getElementById('group-dialog-title');
-    const input = document.getElementById('group-name-input');
-    
-    if (!dialog || !title || !input) return;
-
-    title.textContent = '그룹 추가';
-    input.value = '';
-    input.placeholder = '그룹명을 입력하세요';
-    
-    this.showDialog(dialog, (groupName) => {
-      if (groupName.trim()) {
-        this.groupService.createGroup(groupName.trim());
-      }
-    });
+    if (this.groupManager) {
+      this.groupManager.showAddDialog();
+    }
   }
 
   /**

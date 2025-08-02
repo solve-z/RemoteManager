@@ -9,8 +9,8 @@ import { dirname, join } from 'path';
 import ProcessDetector from './process-detector.js';
 import WindowManager from './window-manager.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url); // 현재 모듈의 파일 경로를 file:/// 형식으로 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main\main.js'
+const __dirname = dirname(__filename);  // 위치한 디렉터리 경로를 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main'
 
 /**
  * 메인 윈도우 인스턴스
@@ -22,7 +22,7 @@ let mainWindow = null;
  * 개발 모드 여부
  * @type {boolean}
  */
-const isDev = process.argv.includes('--dev');
+const isDev = process.argv.includes('--dev');  // process는 Node.js에서 자동으로 제공되는 전역 객체
 
 /**
  * Windows 플랫폼 확인

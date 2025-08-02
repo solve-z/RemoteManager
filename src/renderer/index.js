@@ -96,17 +96,10 @@ class RemoteManagerApp {
       this.services.notification
     );
 
-    // Sidebar 컴포넌트
-    const sidebarElement = document.getElementById('sidebar');
-    this.components.sidebar = new Sidebar(
-      sidebarElement,
+    // GroupManager 컴포넌트 먼저 생성
+    this.components.groupManager = new GroupManager(
       this.stores.group,
       this.services.group
-    );
-
-    // StatusBar 컴포넌트
-    this.components.statusBar = new StatusBar(
-      this.stores.process
     );
 
     // GroupManager 컴포넌트
@@ -114,6 +107,21 @@ class RemoteManagerApp {
       this.stores.group,
       this.services.group
     );
+
+    // Sidebar 컴포넌트
+    const sidebarElement = document.getElementById('sidebar');
+    this.components.sidebar = new Sidebar(
+      sidebarElement,
+      this.stores.group,
+      this.services.group,
+      this.components.groupManager
+    );
+
+    // StatusBar 컴포넌트
+    this.components.statusBar = new StatusBar(
+      this.stores.process
+    );
+
 
     // 스토어 변경 시 컴포넌트 업데이트
     this.stores.process.subscribe((processes) => {
@@ -164,6 +172,12 @@ class RemoteManagerApp {
       this.handleKeyboardShortcuts(e);
     });
 
+    // 그룹 선택 이벤트 (사이드바에서 그룹 클릭 시)
+    window.addEventListener('group-selected', (e) => {
+      const { groupId } = e.detail;
+      this.components.processList.setGroupFilter(groupId);
+    });
+
     // 윈도우 리사이즈
     window.addEventListener('resize', () => {
       this.components.sidebar?.handleResize();
@@ -201,22 +215,75 @@ class RemoteManagerApp {
   }
 
   /**
-   * 프로세스 새로고침
+   * 프로세스 새로고림
    */
   async refreshProcesses() {
     try {
       const loadingState = document.getElementById('loading-state');
       const emptyState = document.getElementById('empty-state');
       const processListContainer = document.getElementById('process-list-container');
+      const refreshBtn = document.getElementById('refresh-btn');
 
-      // 로딩 상태 표시
-      loadingState.style.display = 'flex';
-      emptyState.style.display = 'none';
-      processListContainer.style.display = 'none';
+      // 새로고침 버튼 비활성화 및 로딩 표시
+      if (refreshBtn) {
+        refreshBtn.disabled = true;
+        const originalText = refreshBtn.textContent;
+        refreshBtn.textContent = '새로고침 중...';
+        
+        // 3초 후 복원
+        setTimeout(() => {
+          refreshBtn.disabled = false;
+          refreshBtn.textContent = originalText;
+        }, 3000);
+      }
 
-      await this.services.process.loadProcesses();
+      // 기존 프로세스가 있는 경우 목록을 유지하고, 상단에 작은 로딩 인디케이터만 표시
+      const currentProcesses = this.stores.process.getAllProcesses();
+      if (currentProcesses.length > 0) {
+        // 기존 리스트 위에 작은 로딩 바 표시
+        let loadingBar = document.getElementById('refresh-loading-bar');
+        if (!loadingBar) {
+          loadingBar = document.createElement('div');
+          loadingBar.id = 'refresh-loading-bar';
+          loadingBar.innerHTML = '<div class="loading-progress"></div>';
+          loadingBar.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--color-background-secondary);
+            z-index: 1000;
+            overflow: hidden;
+          `;
+          loadingBar.querySelector('.loading-progress').style.cssText = `
+            height: 100%;
+            background: var(--color-primary);
+            animation: loading-progress 1s ease-in-out infinite;
+            transform: translateX(-100%);
+          `;
+          processListContainer.style.position = 'relative';
+          processListContainer.insertBefore(loadingBar, processListContainer.firstChild);
+        }
+        loadingBar.style.display = 'block';
+        
+        // 프로세스 로드
+        await this.services.process.loadProcesses();
+        
+        // 로딩 바 숨김
+        loadingBar.style.display = 'none';
+      } else {
+        // 프로세스가 없는 경우만 전체 로딩 상태 표시
+        loadingState.style.display = 'flex';
+        emptyState.style.display = 'none';
+        processListContainer.style.display = 'none';
 
-      // 프로세스가 있으면 목록 표시, 없으면 빈 상태 표시
+        await this.services.process.loadProcesses();
+
+        loadingState.style.display = 'none';
+      }
+
+      // 결과에 따라 UI 상태 업데이트
       const processes = this.stores.process.getAllProcesses();
       if (processes.length > 0) {
         processListContainer.style.display = 'block';
@@ -226,11 +293,19 @@ class RemoteManagerApp {
         emptyState.style.display = 'flex';
       }
 
-      loadingState.style.display = 'none';
     } catch (error) {
       console.error('프로세스 새로고침 실패:', error);
       const loadingState = document.getElementById('loading-state');
-      loadingState.style.display = 'none';
+      const loadingBar = document.getElementById('refresh-loading-bar');
+      if (loadingState) loadingState.style.display = 'none';
+      if (loadingBar) loadingBar.style.display = 'none';
+      
+      // 새로고침 버튼 복원
+      const refreshBtn = document.getElementById('refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = '새로고침';
+      }
     }
   }
 

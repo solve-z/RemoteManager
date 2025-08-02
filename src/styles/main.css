@@ -20,6 +20,19 @@ html, body {
   overflow: hidden;
 }
 
+/* 로딩 애니메이션 */
+@keyframes loading-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* 앱 컨테이너 */
 .app-container {
   display: flex;
