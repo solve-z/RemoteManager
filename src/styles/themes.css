@@ -1,0 +1,378 @@
+/**
+ * themes.css - 테마 및 색상 시스템
+ * 카테고리 색상, 다크모드, 접근성 등
+ */
+
+/* CSS 사용자 정의 속성 (CSS Variables) */
+:root {
+  /* 기본 색상 팔레트 */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: #e0f2fe;
+  
+  --color-secondary: #6b7280;
+  --color-secondary-hover: #4b5563;
+  
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  
+  --color-error: #ef4444;
+  --color-error-light: #fee2e2;
+  
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  
+  /* 그레이 스케일 */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  
+  /* 배경 및 텍스트 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  
+  /* 테두리 및 그림자 */
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  /* 카테고리 색상 */
+  --category-xray-bg: #e3f2fd;
+  --category-xray-border: #2196f3;
+  --category-xray-text: #0d47a1;
+  
+  --category-other-server-bg: #fff3e0;
+  --category-other-server-border: #ff9800;
+  --category-other-server-text: #e65100;
+  
+  --category-new-server-bg: #f3e5f5;
+  --category-new-server-border: #9c27b0;
+  --category-new-server-text: #4a148c;
+  
+  --category-old-server-bg: #fce4ec;
+  --category-old-server-border: #e91e63;
+  --category-old-server-text: #880e4f;
+  
+  /* 상태 색상 */
+  --status-connected: #10b981;
+  --status-disconnected: #ef4444;
+  --status-reconnected: #f59e0b;
+  --status-unknown: #6b7280;
+  
+  /* 트랜지션 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* 간격 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+}
+
+/* 다크 테마 (향후 구현) */
+[data-theme="dark"] {
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --bg-tertiary: #374151;
+  
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-tertiary: #9ca3af;
+  
+  --border-primary: #374151;
+  --border-secondary: #4b5563;
+  
+  /* 카테고리 색상 (다크 테마용) */
+  --category-xray-bg: #1e3a8a;
+  --category-xray-border: #3b82f6;
+  --category-xray-text: #93c5fd;
+  
+  --category-other-server-bg: #92400e;
+  --category-other-server-border: #f59e0b;
+  --category-other-server-text: #fbbf24;
+  
+  --category-new-server-bg: #581c87;
+  --category-new-server-border: #a855f7;
+  --category-new-server-text: #c084fc;
+  
+  --category-old-server-bg: #881337;
+  --category-old-server-border: #e11d48;
+  --category-old-server-text: #fb7185;
+}
+
+/* 고대비 테마 (접근성) */
+[data-theme="high-contrast"] {
+  --color-primary: #0000ff;
+  --color-primary-hover: #0000cc;
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  
+  --border-primary: #000000;
+  --border-secondary: #000000;
+  
+  /* 상태 색상 강화 */
+  --status-connected: #008000;
+  --status-disconnected: #ff0000;
+  --status-reconnected: #ff8000;
+}
+
+/* 카테고리별 스타일 확장 */
+.category-xray {
+  --item-bg: var(--category-xray-bg);
+  --item-border: var(--category-xray-border);
+  --item-text: var(--category-xray-text);
+}
+
+.category-other-server {
+  --item-bg: var(--category-other-server-bg);
+  --item-border: var(--category-other-server-border);
+  --item-text: var(--category-other-server-text);
+}
+
+.category-new-server {
+  --item-bg: var(--category-new-server-bg);
+  --item-border: var(--category-new-server-border);
+  --item-text: var(--category-new-server-text);
+}
+
+.category-old-server {
+  --item-bg: var(--category-old-server-bg);
+  --item-border: var(--category-old-server-border);
+  --item-text: var(--category-old-server-text);
+}
+
+/* 상태별 스타일 */
+.status-connected {
+  --status-color: var(--status-connected);
+}
+
+.status-disconnected {
+  --status-color: var(--status-disconnected);
+}
+
+.status-reconnected {
+  --status-color: var(--status-reconnected);
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    transform: translate3d(0,0,0);
+  }
+  40%, 43% {
+    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+    transform: translate3d(0, -30px, 0);
+  }
+  70% {
+    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+    transform: translate3d(0, -15px, 0);
+  }
+  90% {
+    transform: translate3d(0,-4px,0);
+  }
+}
+
+/* 유틸리티 클래스 */
+.fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.slide-in {
+  animation: slideIn var(--transition-slow) ease-out;
+}
+
+.pulse {
+  animation: pulse 1.5s infinite;
+}
+
+.bounce {
+  animation: bounce 1s infinite;
+}
+
+/* 그라데이션 */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, var(--color-warning) 0%, #d97706 100%);
+}
+
+.gradient-error {
+  background: linear-gradient(135deg, var(--color-error) 0%, #dc2626 100%);
+}
+
+/* 글래스모피즘 효과 */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .glass {
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 포커스 스타일 (접근성) */
+.focus-visible:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 커스텀 스크롤바 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-400);
+}
+
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-gray-800);
+}
+
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-gray-600);
+}
+
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+/* 프린트 스타일 */
+@media print {
+  .sidebar,
+  .main-header,
+  .process-actions,
+  .notifications-container {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .process-item {
+    border: 1px solid #000;
+    margin-bottom: 10px;
+    break-inside: avoid;
+  }
+}
+
+/* 감소된 모션 설정 (접근성) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  :root {
+    --border-primary: #000000;
+    --border-secondary: #000000;
+    --text-secondary: #000000;
+  }
+}
+
+/* 다크 모드 선호도 감지 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg-primary: #1f2937;
+    --bg-secondary: #111827;
+    --bg-tertiary: #374151;
+    
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af;
+    
+    --border-primary: #374151;
+    --border-secondary: #4b5563;
+  }
+}

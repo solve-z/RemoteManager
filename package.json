@@ -1,0 +1,45 @@
+{
+  "name": "remote-manager",
+  "version": "4.0.0",
+  "description": "원격지원 관리 도구 - ezHelp, TeamViewer 등 원격지원 프로그램을 효율적으로 관리",
+  "main": "src/main/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron src/main/main.js --dev",
+    "start": "electron src/main/main.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/ --ext .js",
+    "lint:fix": "eslint src/ --ext .js --fix"
+  },
+  "keywords": [
+    "remote",
+    "management",
+    "ezhelp",
+    "teamviewer",
+    "electron",
+    "desktop"
+  ],
+  "author": "RemoteManager Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "jest": "^29.7.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "playwright": "^1.40.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/main/main.js"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
