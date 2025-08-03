@@ -393,3 +393,68 @@ src/styles/components.css (756-972라인)과 src/styles/main.css (320-384라인)
 ```
 
 이렇게 질문하시면 정확히 문제점을 파악하고 적절한 수준으로 UI를 복원할 수 있을 것입니다.
+
+## 최신 수정 사항 (2025-08-03 오후 - 세션 2)
+
+### ✅ 프로세스 리스트 UI 스타일 완전 복원
+- **과도한 카드 스타일 수정**: 패딩, 그림자, 호버 애니메이션을 적절한 수준으로 조정
+- **버튼 스타일 복원**: 과도한 그림자와 애니메이션 제거하여 심플한 디자인으로 복원
+- **배지 스타일 적정화**: border-radius와 그라데이션 효과를 적절한 수준으로 조정
+- **카테고리 배경 정리**: 그라데이션에서 단색 배경으로 복원
+- **CSS 문법 오류 해결**: 잘못된 위치의 `}` 제거로 CSS 파싱 오류 완전 해결
+
+### ✅ 그룹 관리 input 입력 문제 해결
+- **confirm() 다이얼로그 문제 해결**: 브라우저 네이티브 confirm() 대신 커스텀 HTML 다이얼로그 구현
+- **커스텀 확인 다이얼로그 추가**: 
+  - HTML 구조 추가 (`confirm-dialog` 모달)
+  - JavaScript 로직 구현 (`showCustomConfirm` 메서드)
+  - 완전한 이벤트 리스너 관리와 키보드 지원
+- **GroupManager input 상태 관리 개선**:
+  - `resetInputElement()` 메서드로 완전한 input 상태 초기화
+  - DOM 노드 클로닝으로 이벤트 리스너 충돌 방지
+  - HTML 클래스명 불일치 해결 (`form-control` → `form-input`)
+- **Sidebar.js 확인 다이얼로그 통합**: `confirm()` → `this.groupManager.confirmDelete()` 교체
+
+### ✅ 그룹 다이얼로그 UX 개선
+- **중앙 정렬**: `.modal` 클래스 스타일 추가로 다이얼로그가 화면 정중앙에 표시
+- **배경 디밍**: `rgba(0, 0, 0, 0.4)`로 적절한 투명도 적용
+- **사이드바 보존**: 사이드바 모양은 그대로 유지하고 다이얼로그만 오버레이로 표시
+- **부드러운 애니메이션**: `modalFadeIn` 애니메이션으로 자연스러운 등장
+
+### ✅ 그룹 클릭 시 페이지 제목 업데이트
+- **동적 제목 변경**: 그룹 선택 시 `[그룹명] - 원격 프로세스`로 제목 변경
+- **Sidebar.js 메서드 추가**:
+  - `updatePageTitleForGroup()`: 그룹 선택/해제에 따른 제목 업데이트
+  - `selectGroup()` 수정: 제목 업데이트 로직 통합
+  - `clearGroupSelection()` 수정: 제목 복원 로직 추가
+
+### ✅ 프로젝트 버전 업데이트
+- **버전 변경**: `v4.0` → `v1.0.0` (index.html)
+
+### ✅ 프로세스 타입별 색상 강조 및 UI 개선
+- **process-type 색상 구분**:
+  - **EZHELP**: 초록색 테마 (연한 초록 배경 + 진한 초록 텍스트)
+  - **TEAMVIEWER**: 파란색 테마 (연한 파란 배경 + 진한 파란 텍스트)
+- **CSS 스타일 추가**: `.process-type.ezhelp`, `.process-type.teamviewer` 클래스
+- **JavaScript 동적 클래스 적용**: `process.type.toLowerCase()` 클래스 추가
+
+### ✅ 프로세스 헤더 레이아웃 개선
+- **요소 순서 변경**: `process-status` ↔ `process-badges` 위치 교체
+- **새로운 순서**: `process-badges` → `process-info` → `process-status`
+- **향상된 시각적 배치**: 배지(왼쪽) → 정보(가운데) → 상태(오른쪽)
+
+### 🔧 수정된 파일 목록
+1. **src/styles/components.css**: 프로세스 아이템 스타일, 모달 스타일, process-type 색상
+2. **src/styles/main.css**: 버튼 스타일 복원
+3. **src/renderer/components/GroupManager.js**: 커스텀 확인 다이얼로그, input 상태 관리
+4. **src/renderer/components/Sidebar.js**: 페이지 제목 업데이트, 그룹 삭제 로직
+5. **src/renderer/components/ProcessList.js**: 헤더 레이아웃, process-type 클래스
+6. **src/renderer/index.html**: 커스텀 확인 다이얼로그 HTML, 버전 정보
+
+### 🎯 달성된 개선 사항
+- ✅ **안정적인 그룹 관리**: input 입력 문제 완전 해결
+- ✅ **향상된 UX**: 중앙 정렬 다이얼로그와 적절한 배경 디밍
+- ✅ **동적 제목 표시**: 현재 선택된 그룹이 헤더에 명확히 표시
+- ✅ **시각적 구분**: 프로세스 타입별 색상으로 한눈에 구분 가능
+- ✅ **최적화된 레이아웃**: 프로세스 정보의 논리적 배치 개선
+- ✅ **일관된 디자인**: 미니멀하고 깔끔한 UI 일관성 유지

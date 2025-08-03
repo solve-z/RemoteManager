@@ -142,10 +142,9 @@ export class ProcessList {
            style="${categoryStyle}">
         
         <div class="process-header">
-          <div class="process-status">
-            <span class="status-icon" title="${this.getStatusText(process.status)}">${statusIcon}</span>
-            ${process.isMinimized ? '<span class="minimized-indicator" title="최소화됨">🔽</span>' : ''}
-            ${process.isHidden ? '<span class="hidden-indicator" title="숨김">👁️‍🗨️</span>' : ''}
+          <div class="process-badges">
+            ${groupBadge}
+            ${this.getCategoryBadge(process.category)}
           </div>
           
           <div class="process-info">
@@ -153,15 +152,16 @@ export class ProcessList {
               ${displayName}
             </div>
             <div class="process-details">
-              <span class="process-type">${process.type.toUpperCase()}</span>
+              <span class="process-type ${process.type.toLowerCase()}">${process.type.toUpperCase()}</span>
               <span class="process-pid">PID: ${process.pid}</span>
               ${connectionTime ? `<span class="connection-time">${connectionTime}</span>` : ''}
             </div>
           </div>
 
-          <div class="process-badges">
-            ${groupBadge}
-            ${this.getCategoryBadge(process.category)}
+          <div class="process-status">
+            <span class="status-icon" title="${this.getStatusText(process.status)}">${statusIcon}</span>
+            ${process.isMinimized ? '<span class="minimized-indicator" title="최소화됨">🔽</span>' : ''}
+            ${process.isHidden ? '<span class="hidden-indicator" title="숨김">👁️‍🗨️</span>' : ''}
           </div>
         </div>
 

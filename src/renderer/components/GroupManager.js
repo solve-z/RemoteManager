@@ -10,6 +10,7 @@ export class GroupManager {
     this.dialog = null;
     this.advancedDialog = null;
     this.contextMenu = null;
+    this.confirmDialog = null;
     this.selectedColor = null;
     this.currentEditingGroup = null;
     this.initialize();
@@ -20,6 +21,142 @@ export class GroupManager {
    */
   initialize() {
     this.findDialogElements();
+  }
+
+  /**
+   * Input 요소 상태 완전 초기화
+   */
+  resetInputElement() {
+    if (!this.inputElement) return;
+    
+    // 모든 속성 초기화
+    this.inputElement.value = '';
+    this.inputElement.readOnly = false;
+    this.inputElement.disabled = false;
+    this.inputElement.placeholder = '그룹명을 입력하세요';
+    
+    // 스타일 초기화
+    this.inputElement.style.backgroundColor = '';
+    this.inputElement.style.cursor = '';
+    this.inputElement.style.opacity = '';
+    this.inputElement.style.pointerEvents = '';
+    
+    // 클래스 초기화 (HTML의 원래 클래스명 사용)
+    this.inputElement.className = 'form-input';
+    
+    // 포커스 가능하도록 설정
+    this.inputElement.tabIndex = 0;
+    
+    // 강제로 DOM에서 제거하고 다시 추가
+    this.inputElement.blur();
+  }
+
+  /**
+   * 모든 다이얼로그 상태 초기화
+   */
+  resetAllDialogStates() {
+    // 모든 모달 숨기기
+    if (this.dialog) {
+      this.dialog.style.display = 'none';
+    }
+    if (this.advancedDialog) {
+      this.advancedDialog.style.display = 'none';
+    }
+    if (this.contextMenu) {
+      this.contextMenu.style.display = 'none';
+    }
+    if (this.confirmDialog) {
+      this.confirmDialog.style.display = 'none';
+    }
+    
+    // 전역 이벤트 리스너 정리
+    document.removeEventListener('keydown', this.globalKeyHandler);
+    document.removeEventListener('click', this.globalClickHandler);
+    
+    // input 상태 완전 초기화
+    this.resetInputElement();
+    
+    // 다이얼로그 요소들 재찾기
+    setTimeout(() => {
+      this.findDialogElements();
+    }, 50);
+  }
+
+  /**
+   * 커스텀 확인 다이얼로그 표시
+   * @param {string} title - 다이얼로그 제목
+   * @param {string} message - 확인 메시지
+   * @param {Function} onConfirm - 확인 버튼 클릭 시 콜백
+   * @param {Function} onCancel - 취소 버튼 클릭 시 콜백 (선택사항)
+   */
+  showCustomConfirm(title, message, onConfirm, onCancel = null) {
+    if (!this.confirmDialog) return;
+
+    // 다이얼로그 내용 설정
+    this.confirmTitle.textContent = title;
+    this.confirmMessage.innerHTML = message.replace(/\n/g, '<br>');
+
+    // 다이얼로그 표시
+    this.confirmDialog.style.display = 'flex';
+
+    // 기존 이벤트 리스너 제거 (클로닝으로)
+    const newConfirmBtn = this.confirmConfirmBtn.cloneNode(true);
+    const newCancelBtn = this.confirmCancelBtn.cloneNode(true);
+    const newCloseBtn = this.confirmCloseBtn.cloneNode(true);
+    
+    this.confirmConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.confirmConfirmBtn);
+    this.confirmCancelBtn.parentNode.replaceChild(newCancelBtn, this.confirmCancelBtn);
+    this.confirmCloseBtn.parentNode.replaceChild(newCloseBtn, this.confirmCloseBtn);
+    
+    this.confirmConfirmBtn = newConfirmBtn;
+    this.confirmCancelBtn = newCancelBtn;
+    this.confirmCloseBtn = newCloseBtn;
+
+    // 정리 함수
+    const cleanup = () => {
+      this.confirmDialog.style.display = 'none';
+      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('click', clickOutsideHandler);
+    };
+
+    // 확인 버튼
+    this.confirmConfirmBtn.addEventListener('click', () => {
+      cleanup();
+      if (onConfirm) onConfirm();
+    });
+
+    // 취소/닫기 버튼
+    const cancelHandler = () => {
+      cleanup();
+      if (onCancel) onCancel();
+    };
+    this.confirmCancelBtn.addEventListener('click', cancelHandler);
+    this.confirmCloseBtn.addEventListener('click', cancelHandler);
+
+    // 키보드 이벤트
+    const keyHandler = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup();
+        if (onConfirm) onConfirm();
+      } else if (e.key === 'Escape') {
+        cleanup();
+        if (onCancel) onCancel();
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    // 다이얼로그 외부 클릭
+    const clickOutsideHandler = (e) => {
+      if (e.target === this.confirmDialog) {
+        cleanup();
+        if (onCancel) onCancel();
+      }
+    };
+    document.addEventListener('click', clickOutsideHandler);
+
+    // 확인 버튼에 포커스
+    this.confirmConfirmBtn.focus();
   }
 
   /**
@@ -154,6 +291,14 @@ export class GroupManager {
     // 컨텍스트 메뉴
     this.contextMenu = document.getElementById('group-context-menu');
     
+    // 커스텀 확인 다이얼로그
+    this.confirmDialog = document.getElementById('confirm-dialog');
+    this.confirmTitle = document.getElementById('confirm-dialog-title');
+    this.confirmMessage = document.getElementById('confirm-dialog-message');
+    this.confirmConfirmBtn = document.getElementById('confirm-dialog-confirm');
+    this.confirmCancelBtn = document.getElementById('confirm-dialog-cancel');
+    this.confirmCloseBtn = document.getElementById('confirm-dialog-close');
+    
     this.setupEventListeners();
   }
 
@@ -229,6 +374,9 @@ export class GroupManager {
   showDialog(onSave) {
     if (!this.dialog) return;
 
+    // Input 상태 완전 초기화
+    this.resetInputElement();
+
     // 다이얼로그 표시
     this.dialog.style.display = 'flex';
     this.inputElement.focus();
@@ -238,17 +386,26 @@ export class GroupManager {
     const newSaveButton = this.saveButton.cloneNode(true);
     const newCancelButton = this.cancelButton.cloneNode(true);
     const newCloseButton = this.closeButton.cloneNode(true);
+    const newInputElement = this.inputElement.cloneNode(true);
     
     this.saveButton.parentNode.replaceChild(newSaveButton, this.saveButton);
     this.cancelButton.parentNode.replaceChild(newCancelButton, this.cancelButton);
     this.closeButton.parentNode.replaceChild(newCloseButton, this.closeButton);
+    this.inputElement.parentNode.replaceChild(newInputElement, this.inputElement);
     
     this.saveButton = newSaveButton;
     this.cancelButton = newCancelButton;
     this.closeButton = newCloseButton;
+    this.inputElement = newInputElement;
+
+    // Input 다시 초기화 및 포커스
+    this.resetInputElement();
+    this.inputElement.focus();
+    this.inputElement.select();
 
     // 정리 함수
     const cleanup = () => {
+      this.resetInputElement(); // cleanup 시에도 input 초기화
       this.dialog.style.display = 'none';
       document.removeEventListener('keydown', keyHandler);
       document.removeEventListener('click', clickOutsideHandler);
@@ -300,10 +457,24 @@ export class GroupManager {
       message += `\n\n⚠️ 이 그룹에는 ${processCount}개의 프로세스가 있습니다.\n삭제하면 프로세스들이 그룹에서 제거됩니다.`;
     }
 
-    if (confirm(message)) {
-      const force = processCount > 0;
-      this.groupService.deleteGroup(group.id, force);
-    }
+    // 커스텀 확인 다이얼로그 사용
+    this.showCustomConfirm(
+      '그룹 삭제 확인',
+      message,
+      () => {
+        // 확인 버튼 클릭 시
+        const force = processCount > 0;
+        this.groupService.deleteGroup(group.id, force);
+        
+        // 삭제 후 상태 정리
+        setTimeout(() => {
+          this.resetAllDialogStates();
+        }, 50);
+      },
+      () => {
+        // 취소 버튼 클릭 시 (아무것도 하지 않음)
+      }
+    );
   }
 
   /**
@@ -331,7 +502,7 @@ export class GroupManager {
       if (this.selectedColor && this.selectedColor !== group.color) {
         this.groupService.updateGroup(group.id, { color: this.selectedColor });
       }
-      this.inputElement.readOnly = false;
+      // readOnly 해제는 resetInputElement에서 처리됨
     });
   }
 
@@ -638,12 +809,18 @@ export class GroupManager {
     const groupNames = emptyGroups.map(g => g.name).join(', ');
     const message = `다음 빈 그룹들을 삭제하시겠습니까?\n\n${groupNames}`;
 
-    if (confirm(message)) {
-      const deletedCount = this.groupService.cleanupEmptyGroups();
-      if (deletedCount > 0) {
-        alert(`${deletedCount}개의 빈 그룹이 정리되었습니다.`);
+    // 커스텀 확인 다이얼로그 사용
+    this.showCustomConfirm(
+      '빈 그룹 정리',
+      message,
+      () => {
+        // 확인 버튼 클릭 시
+        const deletedCount = this.groupService.cleanupEmptyGroups();
+        if (deletedCount > 0) {
+          alert(`${deletedCount}개의 빈 그룹이 정리되었습니다.`);
+        }
       }
-    }
+    );
   }
 
   /**

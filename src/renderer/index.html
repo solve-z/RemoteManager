@@ -15,7 +15,7 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <h1>RemoteManager</h1>
-                    <span class="version">v4.0</span>
+                    <span class="version">v1.0.0</span>
                 </div>
                 <button id="sidebar-toggle" class="sidebar-toggle" aria-label="사이드바 토글">
                     <span class="toggle-icon">☰</span>
@@ -233,6 +233,25 @@
         <div class="context-menu-item" id="delete-group" class="danger">
             <span class="menu-icon">🗑️</span>
             <span class="menu-text">그룹 삭제</span>
+        </div>
+    </div>
+
+    <!-- 커스텀 확인 다이얼로그 -->
+    <div id="confirm-dialog" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="confirm-dialog-title">확인</h3>
+                <button id="confirm-dialog-close" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="confirm-dialog-message" style="margin-bottom: 20px; line-height: 1.5;">
+                    메시지가 여기에 표시됩니다.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-dialog-cancel" class="btn btn-secondary">취소</button>
+                <button id="confirm-dialog-confirm" class="btn btn-danger">확인</button>
+            </div>
         </div>
     </div>
 

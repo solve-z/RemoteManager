@@ -444,6 +444,9 @@ export class Sidebar {
       }
     });
 
+    // 페이지 제목 업데이트
+    this.updatePageTitleForGroup(groupId);
+
     // 그룹 선택 이벤트 발생
     const event = new CustomEvent('group-selected', {
       detail: { groupId }
@@ -453,6 +456,24 @@ export class Sidebar {
     // 모바일에서는 사이드바 자동 닫기
     if (this.isMobile) {
       this.close();
+    }
+  }
+
+  /**
+   * 그룹 선택 시 페이지 제목 업데이트
+   * @param {string} groupId - 그룹 ID
+   */
+  updatePageTitleForGroup(groupId) {
+    const pageTitle = document.getElementById('page-title');
+    if (!pageTitle) return;
+
+    if (groupId) {
+      const group = this.groupStore.getGroup(groupId);
+      if (group) {
+        pageTitle.textContent = `[${group.name}] - 원격 프로세스`;
+      }
+    } else {
+      pageTitle.textContent = '원격 프로세스';
     }
   }
 
@@ -581,17 +602,8 @@ export class Sidebar {
    * @param {Object} group - 그룹 객체
    */
   deleteGroup(group) {
-    const processCount = group.processIds.length;
-    let message = `그룹 '${group.name}'을 삭제하시겠습니까?`;
-    
-    if (processCount > 0) {
-      message += `\n\n이 그룹에는 ${processCount}개의 프로세스가 있습니다. 삭제하면 프로세스들이 그룹에서 제거됩니다.`;
-    }
-
-    if (confirm(message)) {
-      const force = processCount > 0;
-      this.groupService.deleteGroup(group.id, force);
-    }
+    // GroupManager의 커스텀 확인 다이얼로그 사용
+    this.groupManager.confirmDelete(group);
   }
 
   /**
@@ -661,6 +673,9 @@ export class Sidebar {
     groupItems.forEach(item => {
       item.classList.remove('active');
     });
+    
+    // 페이지 제목을 기본값으로 복원
+    this.updatePageTitleForGroup(null);
   }
 
   /**
