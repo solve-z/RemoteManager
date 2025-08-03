@@ -1,6 +1,6 @@
 {
   "name": "remote-manager",
-  "version": "4.0.0",
+  "version": "1.0.0",
   "description": "원격지원 관리 도구 - ezHelp, TeamViewer 등 원격지원 프로그램을 효율적으로 관리",
   "main": "src/main/main.js",
   "type": "module",
@@ -10,7 +10,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/ --ext .js",
-    "lint:fix": "eslint src/ --ext .js --fix"
+    "lint:fix": "eslint src/ --ext .js --fix",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:dir": "electron-builder --dir",
+    "dist": "npm run build"
   },
   "keywords": [
     "remote",
@@ -24,10 +28,11 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
-    "jest": "^29.7.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^8.55.0",
-    "prettier": "^3.1.0",
-    "playwright": "^1.40.0"
+    "jest": "^29.7.0",
+    "playwright": "^1.40.0",
+    "prettier": "^3.1.0"
   },
   "jest": {
     "testEnvironment": "node",
@@ -41,5 +46,54 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "build": {
+    "appId": "com.remotemanager.app",
+    "productName": "RemoteManager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!node_modules",
+      "!tests",
+      "!docs",
+      "!*.md",
+      "!test-*.html"
+    ],
+    "nodeGypRebuild": false,
+    "buildDependenciesFromSource": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RemoteManager",
+      "language": "1042"
+    },
+    "extraMetadata": {
+      "main": "src/main/main.js"
+    }
   }
 }
