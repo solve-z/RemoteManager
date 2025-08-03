@@ -141,6 +141,7 @@ export class ProcessList {
     const categoryStyle = this.getCategoryStyle(process.category);
     const groupBadge = this.getGroupBadge(process.groupId);
     const connectionTime = this.getConnectionTime(process);
+    const groupOptions = this.renderGroupOptions(process.groupId);
 
     return `
       <div class="process-item ${categoryClass} ${process.status}" 
@@ -186,8 +187,7 @@ export class ProcessList {
           
           <div class="action-row-2">
             <select class="form-select form-select-sm group-select" data-action="group-change" title="그룹 선택">
-              <option value="">그룹 없음</option>
-              <!-- 그룹 옵션들이 동적으로 추가됩니다 -->
+              ${groupOptions}
             </select>
             
             <select class="form-select form-select-sm category-select" data-action="category-change" title="카테고리 선택">
@@ -288,9 +288,11 @@ export class ProcessList {
       return '';
     }
 
-    // 그룹 정보는 실제 그룹 서비스에서 가져와야 하지만, 
-    // 여기서는 단순화하여 ID만 표시
-    return `<span class="group-badge">${groupId.slice(-8)}</span>`;
+    // 그룹 서비스에서 실제 그룹 정보 가져오기
+    const group = this.groupService.groupStore.getGroup(groupId);
+    const groupName = group ? group.name : groupId.slice(-8);
+    
+    return `<span class="group-badge">${groupName}</span>`;
   }
 
   /**
@@ -418,6 +420,24 @@ export class ProcessList {
     if (newLabel !== null && newLabel !== currentLabel) {
       this.processService.setProcessLabel(processId, newLabel);
     }
+  }
+
+  /**
+   * 그룹 옵션 렌더링
+   * @param {string} currentGroupId - 현재 선택된 그룹 ID
+   * @returns {string} HTML 옵션 문자열
+   */
+  renderGroupOptions(currentGroupId) {
+    const groups = this.groupService.groupStore.getAllGroups();
+    
+    let options = '<option value="">그룹 없음</option>';
+    
+    groups.forEach(group => {
+      const selected = group.id === currentGroupId ? 'selected' : '';
+      options += `<option value="${group.id}" ${selected}>${group.name}</option>`;
+    });
+    
+    return options;
   }
 
   /**

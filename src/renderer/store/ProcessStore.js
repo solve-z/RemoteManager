@@ -167,16 +167,32 @@ export class ProcessStore {
   /**
    * 프로세스 제거
    * @param {string} processId - 프로세스 ID
+   * @param {boolean} keepHistory - 히스토리 유지 여부 (기본: false)
    */
-  removeProcess(processId) {
+  removeProcess(processId, keepHistory = false) {
     const process = this.processes.get(processId);
     if (process) {
+      // 그룹에서도 제거
+      if (process.groupId && this.groupStore) {
+        this.groupStore.unassignProcessFromGroup(processId);
+      }
+
       // 프로세스 제거
       this.processes.delete(processId);
 
-      // 히스토리에서도 제거
-      const matchingKey = KeyManager.getMatchingKey(process);
-      this.processHistory.delete(matchingKey);
+      // 히스토리 처리
+      if (!keepHistory) {
+        const matchingKey = KeyManager.getMatchingKey(process);
+        this.processHistory.delete(matchingKey);
+      } else {
+        // 히스토리는 유지하되 상태를 disconnected로 변경
+        const matchingKey = KeyManager.getMatchingKey(process);
+        const historyEntry = this.processHistory.get(matchingKey);
+        if (historyEntry) {
+          historyEntry.status = 'disconnected';
+          historyEntry.disconnectedTime = new Date();
+        }
+      }
 
       this.notifyListeners();
       return true;
@@ -198,7 +214,8 @@ export class ProcessStore {
           process.disconnectedAt && 
           process.disconnectedAt.getTime() < fiveMinutesAgo) {
         
-        this.removeProcess(id);
+        // 히스토리는 유지하면서 프로세스만 제거 (재연결 시 복원 가능)
+        this.removeProcess(id, true);
         hasChanges = true;
       }
     }
