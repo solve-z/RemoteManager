@@ -63,6 +63,14 @@ export class Sidebar {
       });
     }
 
+    // 고급 그룹 관리 버튼
+    const advancedGroupButton = this.element.querySelector('#advanced-group-btn');
+    if (advancedGroupButton) {
+      advancedGroupButton.addEventListener('click', () => {
+        this.showAdvancedGroupDialog();
+      });
+    }
+
     // 네비게이션 링크들
     const navLinks = this.element.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
@@ -154,12 +162,18 @@ export class Sidebar {
 
     // 페이지 제목 업데이트
     const pageTitle = document.getElementById('page-title');
-    const breadcrumb = document.getElementById('breadcrumb-text');
     
-    if (pageTitle && breadcrumb) {
+    if (pageTitle) {
       const linkText = clickedLink.querySelector('.nav-text').textContent;
       pageTitle.textContent = linkText;
-      breadcrumb.textContent = `홈 > ${linkText}`;
+    }
+
+    // 그룹 선택 해제 (원격 프로세스 탭으로 이동할 때)
+    if (clickedLink.id === 'nav-processes') {
+      this.clearGroupSelection();
+      // 프로세스 필터 초기화 이벤트 발생
+      const clearFilterEvent = new CustomEvent('clear-group-filter');
+      window.dispatchEvent(clearFilterEvent);
     }
 
     // 모바일에서는 사이드바 자동 닫기
@@ -219,7 +233,7 @@ export class Sidebar {
     const colorStyle = group.color ? `style="background-color: ${group.color};"` : '';
 
     return `
-      <div class="group-item" data-group-id="${group.id}">
+      <div class="group-item" data-group-id="${group.id}" draggable="true">
         <div class="group-header">
           <div class="group-info">
             <div class="group-color" ${colorStyle}></div>
@@ -244,6 +258,7 @@ export class Sidebar {
    */
   attachGroupEventListeners() {
     const groupItems = this.element.querySelectorAll('.group-item');
+    const groupsList = this.element.querySelector('#groups-list');
     
     groupItems.forEach(item => {
       const groupId = item.dataset.groupId;
@@ -257,6 +272,15 @@ export class Sidebar {
         }
       });
 
+      // 우클릭 컨텍스트 메뉴
+      groupHeader.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const group = this.groups.find(g => g.id === groupId);
+        if (group && this.groupManager) {
+          this.groupManager.showContextMenu(group, e.clientX, e.clientY);
+        }
+      });
+
       // 액션 버튼들
       const actionButtons = item.querySelectorAll('[data-action]');
       actionButtons.forEach(button => {
@@ -265,7 +289,144 @@ export class Sidebar {
           this.handleGroupAction(groupId, button.dataset.action);
         });
       });
+
+      // 드래그 앤 드롭 이벤트
+      this.setupDragAndDrop(item);
     });
+
+    // 그룹 리스트 드롭 영역 설정
+    if (groupsList) {
+      this.setupGroupsListDropZone(groupsList);
+    }
+  }
+
+  /**
+   * 드래그 앤 드롭 설정
+   * @param {HTMLElement} item - 그룹 아이템
+   */
+  setupDragAndDrop(item) {
+    // 드래그 시작
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', item.dataset.groupId);
+      e.dataTransfer.effectAllowed = 'move';
+      item.classList.add('dragging');
+      
+      const groupsList = this.element.querySelector('#groups-list');
+      if (groupsList) {
+        groupsList.classList.add('drag-active');
+      }
+    });
+
+    // 드래그 종료
+    item.addEventListener('dragend', (e) => {
+      item.classList.remove('dragging');
+      
+      const groupsList = this.element.querySelector('#groups-list');
+      if (groupsList) {
+        groupsList.classList.remove('drag-active');
+      }
+      
+      // 모든 드롭 타겟 표시 제거
+      const allItems = this.element.querySelectorAll('.group-item');
+      allItems.forEach(i => i.classList.remove('drop-target'));
+    });
+
+    // 드래그 오버
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      const draggingItem = this.element.querySelector('.group-item.dragging');
+      if (draggingItem && draggingItem !== item) {
+        item.classList.add('drop-target');
+      }
+    });
+
+    // 드래그 리브
+    item.addEventListener('dragleave', (e) => {
+      // 자식 요소로 이동하는 경우는 제외
+      if (!item.contains(e.relatedTarget)) {
+        item.classList.remove('drop-target');
+      }
+    });
+
+    // 드롭
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const draggedGroupId = e.dataTransfer.getData('text/plain');
+      const dropTargetGroupId = item.dataset.groupId;
+      
+      if (draggedGroupId !== dropTargetGroupId) {
+        this.reorderGroups(draggedGroupId, dropTargetGroupId);
+      }
+      
+      item.classList.remove('drop-target');
+    });
+  }
+
+  /**
+   * 그룹 리스트 드롭 영역 설정
+   * @param {HTMLElement} groupsList - 그룹 리스트 요소
+   */
+  setupGroupsListDropZone(groupsList) {
+    groupsList.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    groupsList.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const draggedGroupId = e.dataTransfer.getData('text/plain');
+      
+      // 마지막 위치로 이동
+      if (draggedGroupId) {
+        this.moveGroupToEnd(draggedGroupId);
+      }
+    });
+  }
+
+  /**
+   * 그룹 순서 변경
+   * @param {string} draggedGroupId - 드래그된 그룹 ID
+   * @param {string} dropTargetGroupId - 드롭 대상 그룹 ID
+   */
+  reorderGroups(draggedGroupId, dropTargetGroupId) {
+    const draggedIndex = this.groups.findIndex(g => g.id === draggedGroupId);
+    const targetIndex = this.groups.findIndex(g => g.id === dropTargetGroupId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    // 배열에서 순서 변경
+    const [draggedGroup] = this.groups.splice(draggedIndex, 1);
+    this.groups.splice(targetIndex, 0, draggedGroup);
+    
+    // UI 업데이트
+    this.renderGroups();
+    
+    // 순서 변경 이벤트 발생
+    const event = new CustomEvent('groups-reordered', {
+      detail: { groups: this.groups }
+    });
+    window.dispatchEvent(event);
+  }
+
+  /**
+   * 그룹을 마지막 위치로 이동
+   * @param {string} groupId - 그룹 ID
+   */
+  moveGroupToEnd(groupId) {
+    const groupIndex = this.groups.findIndex(g => g.id === groupId);
+    if (groupIndex === -1 || groupIndex === this.groups.length - 1) return;
+    
+    const [group] = this.groups.splice(groupIndex, 1);
+    this.groups.push(group);
+    
+    this.renderGroups();
+    
+    const event = new CustomEvent('groups-reordered', {
+      detail: { groups: this.groups }
+    });
+    window.dispatchEvent(event);
   }
 
   /**
@@ -323,6 +484,15 @@ export class Sidebar {
   showAddGroupDialog() {
     if (this.groupManager) {
       this.groupManager.showAddDialog();
+    }
+  }
+
+  /**
+   * 고급 그룹 관리 다이얼로그 표시
+   */
+  showAdvancedGroupDialog() {
+    if (this.groupManager) {
+      this.groupManager.showAdvancedDialog();
     }
   }
 

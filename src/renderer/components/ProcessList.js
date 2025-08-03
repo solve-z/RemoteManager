@@ -17,6 +17,9 @@ export class ProcessList {
     this.sortOption = 'default';
     this.groupFilter = '';
     this.categoryFilter = '';
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.typeFilter = '';
     
     this.categories = {
       'xray': { name: '엑스레이', color: '#e3f2fd', borderColor: '#2196f3' },
@@ -44,6 +47,22 @@ export class ProcessList {
   applyFiltersAndSort() {
     let filtered = [...this.processes];
 
+    // 검색 쿼리 필터 적용
+    if (this.searchQuery.trim()) {
+      const query = this.searchQuery.toLowerCase();
+      filtered = filtered.filter(p => {
+        const displayName = this.getDisplayName(p).toLowerCase();
+        const computerName = (p.computerName || '').toLowerCase();
+        const ipAddress = (p.ipAddress || '').toLowerCase();
+        const customLabel = (p.customLabel || '').toLowerCase();
+        
+        return displayName.includes(query) || 
+               computerName.includes(query) || 
+               ipAddress.includes(query) || 
+               customLabel.includes(query);
+      });
+    }
+
     // 그룹 필터 적용
     if (this.groupFilter) {
       if (this.groupFilter === 'ungrouped') {
@@ -60,6 +79,16 @@ export class ProcessList {
       } else {
         filtered = filtered.filter(p => p.category === this.categoryFilter);
       }
+    }
+
+    // 상태 필터 적용
+    if (this.statusFilter) {
+      filtered = filtered.filter(p => p.status === this.statusFilter);
+    }
+
+    // 타입 필터 적용
+    if (this.typeFilter) {
+      filtered = filtered.filter(p => p.type === this.typeFilter);
     }
 
     // 정렬 적용
@@ -633,6 +662,173 @@ export class ProcessList {
     this.categoryFilter = categoryFilter;
     this.applyFiltersAndSort();
     this.renderProcessList();
+  }
+
+  /**
+   * 검색 쿼리 설정
+   * @param {string} query - 검색 쿼리
+   */
+  setSearchQuery(query) {
+    this.searchQuery = query;
+    this.applyFiltersAndSort();
+    this.renderProcessList();
+  }
+
+  /**
+   * 상태 필터 설정
+   * @param {string} statusFilter - 상태 필터
+   */
+  setStatusFilter(statusFilter) {
+    this.statusFilter = statusFilter;
+    this.applyFiltersAndSort();
+    this.renderProcessList();
+  }
+
+  /**
+   * 타입 필터 설정
+   * @param {string} typeFilter - 타입 필터
+   */
+  setTypeFilter(typeFilter) {
+    this.typeFilter = typeFilter;
+    this.applyFiltersAndSort();
+    this.renderProcessList();
+  }
+
+  /**
+   * 모든 필터 초기화
+   */
+  clearAllFilters() {
+    this.groupFilter = '';
+    this.categoryFilter = '';
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.typeFilter = '';
+    this.applyFiltersAndSort();
+    this.renderProcessList();
+  }
+
+  /**
+   * 복합 필터 설정
+   * @param {Object} filters - 필터 객체
+   */
+  setFilters(filters) {
+    if (filters.group !== undefined) this.groupFilter = filters.group;
+    if (filters.category !== undefined) this.categoryFilter = filters.category;
+    if (filters.search !== undefined) this.searchQuery = filters.search;
+    if (filters.status !== undefined) this.statusFilter = filters.status;
+    if (filters.type !== undefined) this.typeFilter = filters.type;
+    
+    this.applyFiltersAndSort();
+    this.renderProcessList();
+  }
+
+  /**
+   * 현재 필터 상태 가져오기
+   * @returns {Object} 필터 상태 객체
+   */
+  getCurrentFilters() {
+    return {
+      group: this.groupFilter,
+      category: this.categoryFilter,
+      search: this.searchQuery,
+      status: this.statusFilter,
+      type: this.typeFilter,
+      sort: this.sortOption
+    };
+  }
+
+  /**
+   * 그룹별 프로세스 통계
+   * @returns {Object} 그룹별 통계
+   */
+  getGroupStatistics() {
+    const stats = {};
+    
+    this.processes.forEach(process => {
+      const groupId = process.groupId || 'ungrouped';
+      
+      if (!stats[groupId]) {
+        stats[groupId] = {
+          total: 0,
+          connected: 0,
+          disconnected: 0,
+          reconnected: 0,
+          ezhelp: 0,
+          teamviewer: 0
+        };
+      }
+      
+      stats[groupId].total++;
+      stats[groupId][process.status]++;
+      stats[groupId][process.type]++;
+    });
+    
+    return stats;
+  }
+
+  /**
+   * 카테고리별 프로세스 통계
+   * @returns {Object} 카테고리별 통계
+   */
+  getCategoryStatistics() {
+    const stats = {};
+    
+    this.processes.forEach(process => {
+      const category = process.category || 'uncategorized';
+      
+      if (!stats[category]) {
+        stats[category] = {
+          total: 0,
+          connected: 0,
+          disconnected: 0,
+          reconnected: 0
+        };
+      }
+      
+      stats[category].total++;
+      stats[category][process.status]++;
+    });
+    
+    return stats;
+  }
+
+  /**
+   * 필터링 결과 요약
+   * @returns {Object} 필터링 요약 정보
+   */
+  getFilterSummary() {
+    const total = this.processes.length;
+    const filtered = this.filteredProcesses.length;
+    const hidden = total - filtered;
+    
+    const statusCounts = {};
+    const typeCounts = {};
+    
+    this.filteredProcesses.forEach(process => {
+      statusCounts[process.status] = (statusCounts[process.status] || 0) + 1;
+      typeCounts[process.type] = (typeCounts[process.type] || 0) + 1;
+    });
+    
+    return {
+      total,
+      filtered,
+      hidden,
+      statusCounts,
+      typeCounts,
+      hasActiveFilters: this.hasActiveFilters()
+    };
+  }
+
+  /**
+   * 활성 필터가 있는지 확인
+   * @returns {boolean} 활성 필터 존재 여부
+   */
+  hasActiveFilters() {
+    return !!(this.groupFilter || 
+              this.categoryFilter || 
+              this.searchQuery.trim() || 
+              this.statusFilter || 
+              this.typeFilter);
   }
 
   /**

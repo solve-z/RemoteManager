@@ -74,7 +74,8 @@ class RemoteManagerApp {
     this.services.notification = new NotificationService();
     this.services.process = new ProcessService(
       this.stores.process,
-      this.services.notification
+      this.services.notification,
+      this.stores.group // GroupStore 연결
     );
     this.services.group = new GroupService(
       this.stores.group,
@@ -167,6 +168,43 @@ class RemoteManagerApp {
       this.components.processList.setCategoryFilter(e.target.value);
     });
 
+    // 새로 추가된 필터들
+    const searchInput = document.getElementById('search-input');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const statusFilter = document.getElementById('status-filter');
+    const typeFilter = document.getElementById('type-filter');
+    const clearAllFiltersBtn = document.getElementById('clear-all-filters');
+
+    // 검색 입력 (디바운스 적용)
+    let searchTimeout;
+    searchInput?.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        this.components.processList.setSearchQuery(e.target.value);
+      }, 300);
+    });
+
+    // 검색 초기화 버튼
+    clearSearchBtn?.addEventListener('click', () => {
+      searchInput.value = '';
+      this.components.processList.setSearchQuery('');
+    });
+
+    // 상태 필터
+    statusFilter?.addEventListener('change', (e) => {
+      this.components.processList.setStatusFilter(e.target.value);
+    });
+
+    // 타입 필터
+    typeFilter?.addEventListener('change', (e) => {
+      this.components.processList.setTypeFilter(e.target.value);
+    });
+
+    // 전체 필터 초기화
+    clearAllFiltersBtn?.addEventListener('click', () => {
+      this.clearAllFilters();
+    });
+
     // 키보드 단축키
     document.addEventListener('keydown', (e) => {
       this.handleKeyboardShortcuts(e);
@@ -176,6 +214,21 @@ class RemoteManagerApp {
     window.addEventListener('group-selected', (e) => {
       const { groupId } = e.detail;
       this.components.processList.setGroupFilter(groupId);
+      // 그룹 필터 드롭다운도 업데이트
+      const groupFilterSelect = document.getElementById('group-filter');
+      if (groupFilterSelect) {
+        groupFilterSelect.value = groupId;
+      }
+    });
+
+    // 그룹 필터 초기화 이벤트 (원격 프로세스 탭으로 이동 시)
+    window.addEventListener('clear-group-filter', () => {
+      this.components.processList.setGroupFilter('');
+      // 그룹 필터 드롭다운도 초기화
+      const groupFilterSelect = document.getElementById('group-filter');
+      if (groupFilterSelect) {
+        groupFilterSelect.value = '';
+      }
     });
 
     // 윈도우 리사이즈
@@ -224,16 +277,13 @@ class RemoteManagerApp {
       const processListContainer = document.getElementById('process-list-container');
       const refreshBtn = document.getElementById('refresh-btn');
 
-      // 새로고침 버튼 비활성화 및 로딩 표시
+      // 새로고침 버튼 비활성화
       if (refreshBtn) {
         refreshBtn.disabled = true;
-        const originalText = refreshBtn.textContent;
-        refreshBtn.textContent = '새로고침 중...';
         
-        // 3초 후 복원
+        // 2초 후 복원
         setTimeout(() => {
           refreshBtn.disabled = false;
-          refreshBtn.textContent = originalText;
         }, 2000);
       }
 
@@ -365,6 +415,32 @@ class RemoteManagerApp {
   }
 
   /**
+   * 모든 필터 초기화
+   */
+  clearAllFilters() {
+    // ProcessList의 필터 초기화
+    this.components.processList.clearAllFilters();
+    
+    // UI 폼 요소들 초기화
+    const searchInput = document.getElementById('search-input');
+    const groupFilter = document.getElementById('group-filter');
+    const categoryFilter = document.getElementById('category-filter');
+    const statusFilter = document.getElementById('status-filter');
+    const typeFilter = document.getElementById('type-filter');
+    const sortSelect = document.getElementById('sort-select');
+    
+    if (searchInput) searchInput.value = '';
+    if (groupFilter) groupFilter.value = '';
+    if (categoryFilter) categoryFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (typeFilter) typeFilter.value = '';
+    if (sortSelect) sortSelect.value = 'default';
+    
+    // 사이드바 그룹 선택도 해제
+    this.components.sidebar?.clearGroupSelection();
+  }
+
+  /**
    * 키보드 단축키 처리
    * @param {KeyboardEvent} event - 키보드 이벤트
    */
@@ -385,6 +461,12 @@ class RemoteManagerApp {
     if (event.ctrlKey && event.key === 'r') {
       event.preventDefault();
       this.refreshProcesses();
+    }
+
+    // Ctrl+Shift+X: 모든 필터 초기화
+    if (event.ctrlKey && event.shiftKey && event.key === 'X') {
+      event.preventDefault();
+      this.clearAllFilters();
     }
   }
 

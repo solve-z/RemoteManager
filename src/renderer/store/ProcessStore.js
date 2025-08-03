@@ -4,6 +4,7 @@
  */
 
 import { KeyManager } from '../services/KeyManager.js';
+import { ConflictDialog } from '../components/ConflictDialog.js';
 
 /**
  * 프로세스 스토어 클래스
@@ -12,8 +13,11 @@ export class ProcessStore {
   constructor() {
     this.processes = new Map(); // id -> RemoteProcess
     this.processHistory = new Map(); // matchingKey -> HistoryEntry
+    this.stableKeyMap = new Map(); // stableKey -> processId (충돌 해결용)
+    this.userPreferences = new Map(); // stableKey -> preference ('same', 'different', 'always_new')
     this.listeners = new Set();
     this.groupStore = null;
+    this.conflictDialog = new ConflictDialog();
   }
 
   /**
@@ -25,21 +29,153 @@ export class ProcessStore {
   }
 
   /**
-   * 프로세스 추가/업데이트
+   * 프로세스 추가/업데이트 (충돌 감지 포함)
    * @param {Object} processInfo - 프로세스 정보
-   * @returns {Object} 추가/업데이트된 프로세스
+   * @returns {Object|Promise<Object>} 추가/업데이트된 프로세스 (충돌 시 Promise)
    */
-  updateProcess(processInfo) {
+  async updateProcess(processInfo) {
+    const stableKey = KeyManager.getStableIdentifier(processInfo);
     const matchingKey = KeyManager.getMatchingKey(processInfo);
+    
+    // 1. 기존 프로세스 재연결 확인
     const existingHistory = this.processHistory.get(matchingKey);
-
     if (existingHistory) {
-      // 기존 프로세스 재연결
       return this.handleReconnection(existingHistory, processInfo);
-    } else {
-      // 새 프로세스 추가
-      return this.addNewProcess(processInfo);
     }
+
+    // 2. 충돌 감지 및 처리
+    const conflictResult = await this.handlePotentialConflict(stableKey, processInfo);
+    if (conflictResult) {
+      return conflictResult;
+    }
+
+    // 3. 새 프로세스 추가
+    return this.addNewProcess(processInfo);
+  }
+
+  /**
+   * 잠재적 충돌 처리
+   * @param {string} stableKey - 안정적 식별자
+   * @param {Object} processInfo - 새 프로세스 정보
+   * @returns {Object|null} 기존 프로세스 또는 null
+   */
+  async handlePotentialConflict(stableKey, processInfo) {
+    const existingProcessId = this.stableKeyMap.get(stableKey);
+    if (!existingProcessId) {
+      return null; // 충돌 없음
+    }
+
+    const existingProcess = this.processes.get(existingProcessId);
+    if (!existingProcess) {
+      // 맵에는 있지만 프로세스가 없음 (정리 필요)
+      this.stableKeyMap.delete(stableKey);
+      return null;
+    }
+
+    // 사용자 기본 설정 확인
+    const userPref = this.userPreferences.get(stableKey);
+    if (userPref === 'always_new') {
+      return this.createNewProcessWithSuffix(processInfo, stableKey);
+    }
+
+    // IP 변경 감지
+    const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);
+    if (!comparison.ipChanged && !comparison.sameComputer) {
+      return null; // 실제로는 다른 프로세스
+    }
+
+    if (comparison.ipChanged) {
+      // IP가 변경된 경우 사용자 확인 필요
+      const choice = await this.conflictDialog.showConflictDialog(comparison);
+      return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
+    }
+
+    // 동일한 프로세스로 판단 (기존 프로세스 업데이트)
+    return this.updateExistingProcess(existingProcess, processInfo);
+  }
+
+  /**
+   * 사용자 선택 처리
+   * @param {string} choice - 사용자 선택
+   * @param {Object} existingProcess - 기존 프로세스
+   * @param {Object} newProcessInfo - 새 프로세스 정보
+   * @param {string} stableKey - 안정적 식별자
+   * @returns {Object} 처리된 프로세스
+   */
+  handleUserChoice(choice, existingProcess, newProcessInfo, stableKey) {
+    switch (choice) {
+      case 'same':
+        // 같은 컴퓨터 - 기존 프로세스 업데이트
+        return this.updateExistingProcess(existingProcess, newProcessInfo);
+      
+      case 'different':
+        // 다른 컴퓨터 - 새 프로세스 생성
+        return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
+      
+      case 'always_new':
+        // 항상 새로 등록 - 설정 저장 후 새 프로세스 생성
+        this.userPreferences.set(stableKey, 'always_new');
+        return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
+      
+      default:
+        return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
+    }
+  }
+
+  /**
+   * 기존 프로세스 업데이트 (IP 변경 등)
+   * @param {Object} existingProcess - 기존 프로세스
+   * @param {Object} newProcessInfo - 새 프로세스 정보
+   * @returns {Object} 업데이트된 프로세스
+   */
+  updateExistingProcess(existingProcess, newProcessInfo) {
+    // 기존 프로세스 정보 업데이트
+    existingProcess.pid = newProcessInfo.pid;
+    existingProcess.windowTitle = newProcessInfo.windowTitle;
+    existingProcess.windowHandle = newProcessInfo.windowHandle;
+    existingProcess.ipAddress = newProcessInfo.ipAddress; // IP 업데이트
+    existingProcess.status = 'connected';
+    existingProcess.isMinimized = newProcessInfo.isMinimized || false;
+    existingProcess.isHidden = newProcessInfo.isHidden || false;
+    existingProcess.lastSeen = new Date();
+    existingProcess.disconnectedAt = null;
+
+    // 히스토리 업데이트
+    const matchingKey = KeyManager.getMatchingKey(newProcessInfo);
+    const historyEntry = this.processHistory.get(matchingKey);
+    if (historyEntry) {
+      historyEntry.currentPid = newProcessInfo.pid;
+      historyEntry.status = 'connected';
+      historyEntry.lastSeen = new Date();
+      historyEntry.disconnectedTime = null;
+    }
+
+    this.notifyListeners();
+    return existingProcess;
+  }
+
+  /**
+   * 접미사를 붙여 새 프로세스 생성
+   * @param {Object} processInfo - 프로세스 정보
+   * @param {string} baseStableKey - 기본 안정적 식별자
+   * @returns {Object} 새로 생성된 프로세스
+   */
+  createNewProcessWithSuffix(processInfo, baseStableKey) {
+    // 고유한 stableKey 생성
+    let suffix = 1;
+    let uniqueStableKey = baseStableKey;
+    while (this.stableKeyMap.has(uniqueStableKey)) {
+      uniqueStableKey = `${baseStableKey}_${suffix}`;
+      suffix++;
+    }
+
+    // 새 프로세스 생성
+    const process = this.addNewProcess(processInfo);
+    
+    // 고유한 안정적 키로 맵핑
+    this.stableKeyMap.set(uniqueStableKey, process.id);
+    
+    return process;
   }
 
   /**
@@ -50,6 +186,25 @@ export class ProcessStore {
   addNewProcess(processInfo) {
     const processId = KeyManager.generateProcessId();
     const matchingKey = KeyManager.getMatchingKey(processInfo);
+    const stableKey = KeyManager.getStableIdentifier(processInfo);
+
+    // 프로세스 생성 **전에** 저장된 그룹/카테고리 정보 확인
+    let savedGroupId = null;
+    let savedCategory = null;
+    
+    if (this.groupStore) {
+      savedGroupId = this.groupStore.getGroupByStableKey(processInfo);
+      savedCategory = this.groupStore.getCategoryByStableKey(processInfo);
+      
+      console.log('🎯 프로세스 생성 시 그룹 정보 미리 확인:', {
+        processId: processId,
+        stableKey: stableKey,
+        computerName: processInfo.computerName,
+        savedGroupId: savedGroupId,
+        savedCategory: savedCategory,
+        groupExists: savedGroupId ? this.groupStore.groups.has(savedGroupId) : false
+      });
+    }
 
     const process = {
       id: processId,
@@ -68,12 +223,28 @@ export class ProcessStore {
       lastSeen: new Date(),
       disconnectedAt: null,
       customLabel: null,
-      category: null,
-      groupId: null,
+      category: savedCategory, // 생성 시점에 바로 설정
+      groupId: savedGroupId && this.groupStore?.groups.has(savedGroupId) ? savedGroupId : null, // 생성 시점에 바로 설정
     };
 
     // 프로세스 맵에 추가
     this.processes.set(processId, process);
+
+    // 안정적 키 매핑 추가
+    this.stableKeyMap.set(stableKey, processId);
+
+    // 그룹이 할당된 경우 그룹의 processIds 배열에도 추가
+    if (savedGroupId && this.groupStore?.groups.has(savedGroupId)) {
+      const group = this.groupStore.groups.get(savedGroupId);
+      if (!group.processIds.includes(processId)) {
+        group.processIds.push(processId);
+        console.log('✅ 프로세스 생성 시 그룹에 즉시 추가:', {
+          groupName: group.name,
+          processId: processId,
+          groupProcessCount: group.processIds.length
+        });
+      }
+    }
 
     // 히스토리에 추가
     this.processHistory.set(matchingKey, {
@@ -172,9 +343,9 @@ export class ProcessStore {
   removeProcess(processId, keepHistory = false) {
     const process = this.processes.get(processId);
     if (process) {
-      // 그룹에서도 제거
+      // 그룹에서도 제거 (안정적 키 저장을 위해 processInfo 전달)
       if (process.groupId && this.groupStore) {
-        this.groupStore.unassignProcessFromGroup(processId);
+        this.groupStore.unassignProcessFromGroup(processId, process);
       }
 
       // 프로세스 제거

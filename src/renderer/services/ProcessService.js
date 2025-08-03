@@ -6,11 +6,20 @@
 import { KeyManager } from './KeyManager.js';
 
 export class ProcessService {
-  constructor(processStore, notificationService) {
+  constructor(processStore, notificationService, groupStore = null) {
     this.processStore = processStore;
     this.notificationService = notificationService;
+    this.groupStore = groupStore;
     this.isLoading = false;
     this.lastLoadTime = null;
+  }
+
+  /**
+   * GroupStore 설정
+   * @param {GroupStore} groupStore - 그룹 스토어 인스턴스
+   */
+  setGroupStore(groupStore) {
+    this.groupStore = groupStore;
   }
 
   /**
@@ -41,10 +50,10 @@ export class ProcessService {
   }
 
   /**
-   * 프로세스 상태 업데이트
+   * 프로세스 상태 업데이트 (안정적 키 기반 그룹 정보 복원 포함)
    * @param {Array} currentProcesses - 현재 감지된 프로세스 목록
    */
-  updateProcessStatuses(currentProcesses) {
+  async updateProcessStatuses(currentProcesses) {
     const normalizedProcesses = currentProcesses.map(p => 
       KeyManager.normalizeProcessInfo(p)
     );
@@ -60,8 +69,11 @@ export class ProcessService {
     // 현재 프로세스들 처리
     for (const processInfo of remoteProcesses) {
       try {
-        const process = this.processStore.updateProcess(processInfo);
+        const process = await this.processStore.updateProcess(processInfo);
         currentProcessIds.add(process.id);
+
+        // 그룹/카테고리 정보는 이미 프로세스 생성 시점에 설정됨 (중복 방지)
+        // this.restoreProcessMetadata(process);
 
         // 연결 상태 변경 감지
         if (process.status === 'reconnected') {
@@ -127,6 +139,32 @@ export class ProcessService {
     }
 
     return false;
+  }
+
+  /**
+   * 프로세스 메타데이터 복원 (그룹/카테고리 정보)
+   * @param {Object} process - 프로세스 객체
+   */
+  restoreProcessMetadata(process) {
+    if (!this.groupStore) {
+      return;
+    }
+
+    try {
+      // 안정적 키 기반으로 그룹/카테고리 정보 복원
+      const restored = this.groupStore.restoreProcessGroupInfo(process);
+      
+      if (restored.groupId || restored.category) {
+        console.log(`프로세스 ${process.id} 메타데이터 복원:`, {
+          groupId: restored.groupId,
+          category: restored.category,
+          computerName: process.computerName,
+          stableKey: KeyManager.getStableIdentifier(process)
+        });
+      }
+    } catch (error) {
+      console.error('프로세스 메타데이터 복원 실패:', error);
+    }
   }
 
   /**

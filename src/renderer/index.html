@@ -37,12 +37,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" id="nav-groups" class="nav-link">
-                            <span class="nav-icon">📁</span>
-                            <span class="nav-text">그룹 관리</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a href="#" id="nav-settings" class="nav-link">
                             <span class="nav-icon">⚙️</span>
                             <span class="nav-text">설정</span>
@@ -55,9 +49,14 @@
             <div class="groups-section">
                 <div class="groups-header">
                     <h3>그룹</h3>
-                    <button id="add-group-btn" class="btn-icon" title="그룹 추가">
-                        <span>+</span>
-                    </button>
+                    <div class="group-header-actions">
+                        <button id="add-group-btn" class="btn-icon" title="그룹 추가">
+                            <span>+</span>
+                        </button>
+                        <button id="advanced-group-btn" class="btn-icon" title="고급 그룹 관리">
+                            <span>⚙️</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="groups-list" class="groups-list">
                     <!-- 그룹 목록이 여기에 표시됩니다 -->
@@ -85,9 +84,6 @@
             <header class="main-header">
                 <div class="header-left">
                     <h2 id="page-title">대시보드</h2>
-                    <div class="breadcrumb">
-                        <span id="breadcrumb-text">홈 > 대시보드</span>
-                    </div>
                 </div>
                 <div class="header-right">
                     <div class="header-controls">
@@ -107,6 +103,12 @@
             <div class="content-area">
                 <!-- 필터 및 정렬 옵션 -->
                 <div class="filters-bar">
+                    <div class="filter-group search-group">
+                        <label for="search-input">검색:</label>
+                        <input type="text" id="search-input" class="form-input" placeholder="IP, 컴퓨터명, 라벨 검색...">
+                        <button id="clear-search" class="btn-icon" title="검색 초기화">✕</button>
+                    </div>
+                    
                     <div class="filter-group">
                         <label for="sort-select">정렬:</label>
                         <select id="sort-select" class="form-select">
@@ -117,15 +119,17 @@
                             <option value="category">카테고리순</option>
                         </select>
                     </div>
+                    
                     <div class="filter-group">
-                        <label for="group-filter">그룹 필터:</label>
+                        <label for="group-filter">그룹:</label>
                         <select id="group-filter" class="form-select">
                             <option value="">전체</option>
                             <option value="ungrouped">그룹 없음</option>
                         </select>
                     </div>
+                    
                     <div class="filter-group">
-                        <label for="category-filter">카테고리 필터:</label>
+                        <label for="category-filter">카테고리:</label>
                         <select id="category-filter" class="form-select">
                             <option value="">전체</option>
                             <option value="xray">엑스레이</option>
@@ -134,6 +138,30 @@
                             <option value="old-server">구서버</option>
                             <option value="uncategorized">카테고리 없음</option>
                         </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="status-filter">상태:</label>
+                        <select id="status-filter" class="form-select">
+                            <option value="">전체</option>
+                            <option value="connected">연결됨</option>
+                            <option value="reconnected">재연결됨</option>
+                            <option value="disconnected">연결 끊김</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="type-filter">타입:</label>
+                        <select id="type-filter" class="form-select">
+                            <option value="">전체</option>
+                            <option value="ezhelp">ezHelp</option>
+                            <option value="teamviewer">TeamViewer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button id="clear-all-filters" class="btn btn-outline btn-sm">전체 초기화</button>
+                        <span id="filter-summary" class="filter-summary"></span>
                     </div>
                 </div>
 
@@ -171,10 +199,103 @@
                     <label for="group-name-input">그룹명</label>
                     <input type="text" id="group-name-input" class="form-input" placeholder="그룹명을 입력하세요">
                 </div>
+                <div class="form-group">
+                    <label>그룹 색상</label>
+                    <div id="color-picker" class="color-picker">
+                        <div class="color-option" data-color="#3b82f6" style="background-color: #3b82f6;" title="파란색"></div>
+                        <div class="color-option" data-color="#10b981" style="background-color: #10b981;" title="녹색"></div>
+                        <div class="color-option" data-color="#f59e0b" style="background-color: #f59e0b;" title="주황색"></div>
+                        <div class="color-option" data-color="#ef4444" style="background-color: #ef4444;" title="빨간색"></div>
+                        <div class="color-option" data-color="#8b5cf6" style="background-color: #8b5cf6;" title="보라색"></div>
+                        <div class="color-option" data-color="#06b6d4" style="background-color: #06b6d4;" title="청록색"></div>
+                        <div class="color-option" data-color="#84cc16" style="background-color: #84cc16;" title="라임"></div>
+                        <div class="color-option" data-color="#f97316" style="background-color: #f97316;" title="오렌지"></div>
+                        <div class="color-option" data-color="#ec4899" style="background-color: #ec4899;" title="핑크"></div>
+                        <div class="color-option" data-color="#6366f1" style="background-color: #6366f1;" title="인디고"></div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="group-dialog-cancel" class="btn btn-secondary">취소</button>
                 <button id="group-dialog-save" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 그룹 컨텍스트 메뉴 -->
+    <div id="group-context-menu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" id="edit-group">
+            <span class="menu-icon">✏️</span>
+            <span class="menu-text">그룹 수정</span>
+        </div>
+        <div class="context-menu-item" id="change-group-color">
+            <span class="menu-icon">🎨</span>
+            <span class="menu-text">색상 변경</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="view-group-stats">
+            <span class="menu-icon">📊</span>
+            <span class="menu-text">그룹 통계</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="delete-group" class="danger">
+            <span class="menu-icon">🗑️</span>
+            <span class="menu-text">그룹 삭제</span>
+        </div>
+    </div>
+
+    <!-- 고급 그룹 관리 다이얼로그 -->
+    <div id="advanced-group-dialog" class="modal modal-large" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>고급 그룹 관리</h3>
+                <button id="advanced-group-close" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tabs">
+                    <div class="tab-headers">
+                        <button class="tab-header active" data-tab="groups">그룹 목록</button>
+                        <button class="tab-header" data-tab="statistics">통계</button>
+                        <button class="tab-header" data-tab="import-export">가져오기/내보내기</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="tab-groups">
+                        <div class="group-management">
+                            <div class="group-list-header">
+                                <h4>전체 그룹 (0개)</h4>
+                                <div class="group-actions">
+                                    <button id="cleanup-empty-groups" class="btn btn-outline">빈 그룹 정리</button>
+                                    <button id="create-new-group" class="btn btn-primary">새 그룹</button>
+                                </div>
+                            </div>
+                            <div id="advanced-groups-list" class="advanced-groups-list">
+                                <!-- 그룹 목록이 여기에 표시됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-statistics">
+                        <div id="group-statistics" class="group-statistics">
+                            <!-- 통계 정보가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-import-export">
+                        <div class="import-export-section">
+                            <div class="section">
+                                <h4>데이터 내보내기</h4>
+                                <p>모든 그룹 데이터를 JSON 파일로 내보냅니다.</p>
+                                <button id="export-groups" class="btn btn-primary">그룹 데이터 내보내기</button>
+                            </div>
+                            
+                            <div class="section">
+                                <h4>데이터 가져오기</h4>
+                                <p>이전에 내보낸 JSON 파일에서 그룹 데이터를 가져옵니다.</p>
+                                <button id="import-groups" class="btn btn-secondary">그룹 데이터 가져오기</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

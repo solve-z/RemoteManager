@@ -145,8 +145,8 @@ export class GroupService {
       // 현재 그룹에서 제거
       const currentGroup = this.groupStore.getGroupByProcessId(processId);
       
-      // 그룹 스토어에서 할당 변경
-      const success = this.groupStore.assignProcessToGroup(processId, groupId);
+      // 그룹 스토어에서 할당 변경 (안정적 키 저장을 위해 processInfo 전달)
+      const success = this.groupStore.assignProcessToGroup(processId, groupId, process);
       
       if (success) {
         // 프로세스 스토어에도 반영

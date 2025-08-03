@@ -3,9 +3,13 @@
  * 프로세스 그룹화를 위한 중앙 집중식 데이터 관리
  */
 
+import { KeyManager } from '../services/KeyManager.js';
+
 export class GroupStore {
   constructor() {
     this.groups = new Map(); // id -> ProcessGroup
+    this.stableKeyGroupMap = new Map(); // stableKey -> groupId (안정적 그룹 할당)
+    this.stableKeyCategoryMap = new Map(); // stableKey -> category (안정적 카테고리 할당)
     this.listeners = new Set();
     this.load();
   }
@@ -77,6 +81,27 @@ export class GroupStore {
       return false;
     }
 
+    // 삭제될 그룹과 연결된 안정적 키 매핑들을 찾아서 제거
+    const keysToDelete = [];
+    for (const [stableKey, mappedGroupId] of this.stableKeyGroupMap.entries()) {
+      if (mappedGroupId === groupId) {
+        keysToDelete.push(stableKey);
+      }
+    }
+
+    // 안정적 키 매핑에서 제거
+    for (const key of keysToDelete) {
+      this.stableKeyGroupMap.delete(key);
+    }
+
+    console.log('🗑️ 그룹 삭제 시 안정적 키 매핑 정리:', {
+      deletedGroupId: groupId,
+      groupName: group.name,
+      deletedStableKeys: keysToDelete,
+      remainingMappings: this.stableKeyGroupMap.size
+    });
+
+    // 그룹 삭제
     this.groups.delete(groupId);
     this.save();
     this.notifyListeners();
@@ -84,18 +109,45 @@ export class GroupStore {
   }
 
   /**
-   * 프로세스를 그룹에 할당
+   * 프로세스를 그룹에 할당 (안정적 키 기반)
    * @param {string} processId - 프로세스 ID
    * @param {string|null} groupId - 그룹 ID (null이면 그룹 해제)
+   * @param {Object} processInfo - 프로세스 정보 (안정적 키 생성용)
    * @returns {boolean} 성공 여부
    */
-  assignProcessToGroup(processId, groupId) {
+  assignProcessToGroup(processId, groupId, processInfo = null) {
     // 모든 그룹에서 해당 프로세스 제거
     for (const group of this.groups.values()) {
       const index = group.processIds.indexOf(processId);
       if (index > -1) {
         group.processIds.splice(index, 1);
       }
+    }
+
+    // 안정적 키 기반 그룹 할당 저장
+    if (processInfo) {
+      const stableKey = KeyManager.getStableIdentifier(processInfo);
+      console.log('💾 그룹 할당 저장:', {
+        processId: processId,
+        groupId: groupId,
+        stableKey: stableKey,
+        computerName: processInfo.computerName || KeyManager.extractComputerName(processInfo),
+        type: processInfo.type || KeyManager.detectProcessType(processInfo)
+      });
+      
+      if (groupId) {
+        this.stableKeyGroupMap.set(stableKey, groupId);
+        console.log('✅ 안정적 키 맵에 저장됨:', {
+          stableKey: stableKey,
+          groupId: groupId,
+          totalMappings: this.stableKeyGroupMap.size
+        });
+      } else {
+        this.stableKeyGroupMap.delete(stableKey);
+        console.log('🗑️ 안정적 키 맵에서 제거됨:', stableKey);
+      }
+    } else {
+      console.warn('⚠️ processInfo가 없어서 안정적 키 저장 불가');
     }
 
     // 새 그룹에 추가 (null이면 그룹 해제)
@@ -114,10 +166,11 @@ export class GroupStore {
   /**
    * 프로세스의 그룹 할당 해제
    * @param {string} processId - 프로세스 ID
+   * @param {Object} processInfo - 프로세스 정보 (안정적 키 생성용)
    * @returns {boolean} 성공 여부
    */
-  unassignProcessFromGroup(processId) {
-    return this.assignProcessToGroup(processId, null);
+  unassignProcessFromGroup(processId, processInfo = null) {
+    return this.assignProcessToGroup(processId, null, processInfo);
   }
 
   /**
@@ -195,11 +248,130 @@ export class GroupStore {
   }
 
   /**
+   * 안정적 키로 그룹 ID 조회
+   * @param {Object} processInfo - 프로세스 정보
+   * @returns {string|null} 그룹 ID
+   */
+  getGroupByStableKey(processInfo) {
+    const stableKey = KeyManager.getStableIdentifier(processInfo);
+    return this.stableKeyGroupMap.get(stableKey) || null;
+  }
+
+  /**
+   * 안정적 키로 카테고리 조회
+   * @param {Object} processInfo - 프로세스 정보
+   * @returns {string|null} 카테고리
+   */
+  getCategoryByStableKey(processInfo) {
+    const stableKey = KeyManager.getStableIdentifier(processInfo);
+    return this.stableKeyCategoryMap.get(stableKey) || null;
+  }
+
+  /**
+   * 안정적 키로 카테고리 설정
+   * @param {Object} processInfo - 프로세스 정보
+   * @param {string|null} category - 카테고리
+   */
+  setCategoryByStableKey(processInfo, category) {
+    const stableKey = KeyManager.getStableIdentifier(processInfo);
+    if (category) {
+      this.stableKeyCategoryMap.set(stableKey, category);
+    } else {
+      this.stableKeyCategoryMap.delete(stableKey);
+    }
+    this.save();
+  }
+
+  /**
+   * 프로세스에 저장된 그룹/카테고리 정보 복원
+   * @param {Object} process - 프로세스 객체
+   */
+  restoreProcessGroupInfo(process) {
+    const stableKey = KeyManager.getStableIdentifier(process);
+    const savedGroupId = this.getGroupByStableKey(process);
+    const savedCategory = this.getCategoryByStableKey(process);
+
+    console.log('🔍 그룹 정보 복원 시도:', {
+      processId: process.id,
+      computerName: process.computerName,
+      stableKey: stableKey,
+      savedGroupId: savedGroupId,
+      savedCategory: savedCategory,
+      groupExists: savedGroupId ? this.groups.has(savedGroupId) : false,
+      totalStableKeys: this.stableKeyGroupMap.size,
+      allStableKeys: Array.from(this.stableKeyGroupMap.keys())
+    });
+
+    // 그룹 정보 복원
+    if (savedGroupId && this.groups.has(savedGroupId)) {
+      process.groupId = savedGroupId;
+      // 그룹의 processIds에도 추가 (중복 방지)
+      const group = this.groups.get(savedGroupId);
+      if (!group.processIds.includes(process.id)) {
+        group.processIds.push(process.id);
+        console.log('✅ 그룹에 프로세스 추가됨:', {
+          groupName: group.name,
+          processId: process.id,
+          groupProcessCount: group.processIds.length
+        });
+      }
+    } else if (savedGroupId) {
+      console.warn('⚠️ 저장된 그룹 ID가 존재하지 않음:', {
+        savedGroupId: savedGroupId,
+        availableGroups: Array.from(this.groups.keys())
+      });
+    }
+
+    // 카테고리 정보 복원
+    if (savedCategory) {
+      process.category = savedCategory;
+      console.log('✅ 카테고리 복원됨:', savedCategory);
+    }
+
+    return { groupId: savedGroupId, category: savedCategory };
+  }
+
+  /**
+   * 존재하지 않는 그룹 ID와 연결된 고아 매핑 정리
+   * @returns {number} 정리된 매핑 수
+   */
+  cleanupOrphanedMappings() {
+    let cleanupCount = 0;
+    const keysToDelete = [];
+
+    // 존재하지 않는 그룹 ID와 연결된 매핑 찾기
+    for (const [stableKey, groupId] of this.stableKeyGroupMap.entries()) {
+      if (!this.groups.has(groupId)) {
+        keysToDelete.push(stableKey);
+        cleanupCount++;
+      }
+    }
+
+    // 고아 매핑 삭제
+    for (const key of keysToDelete) {
+      this.stableKeyGroupMap.delete(key);
+    }
+
+    if (cleanupCount > 0) {
+      console.log('🧹 고아 매핑 정리:', {
+        cleanupCount: cleanupCount,
+        deletedKeys: keysToDelete,
+        remainingMappings: this.stableKeyGroupMap.size
+      });
+      this.save();
+    }
+
+    return cleanupCount;
+  }
+
+  /**
    * 그룹 통계 정보
    * @returns {Object} 통계 객체
    */
   getStatistics() {
     const groups = this.getAllGroups();
+    const orphanedMappings = this.cleanupOrphanedMappings(); // 통계 조회 시 자동 정리
+    
     return {
       totalGroups: groups.length,
       totalProcessesInGroups: groups.reduce((sum, group) => sum + group.processIds.length, 0),
@@ -208,6 +380,9 @@ export class GroupStore {
         : 0,
       largestGroup: groups.reduce((max, group) => 
         group.processIds.length > (max?.processIds?.length || 0) ? group : max, null),
+      totalStableKeys: this.stableKeyGroupMap.size,
+      totalCategories: this.stableKeyCategoryMap.size,
+      orphanedMappingsCleanedUp: orphanedMappings,
     };
   }
 
@@ -245,17 +420,59 @@ export class GroupStore {
   load() {
     try {
       const data = localStorage.getItem('remotemanager_groups_v4');
+      console.log('📂 GroupStore 로드 시작:', { hasData: !!data });
+      
       if (data) {
-        const groupsArray = JSON.parse(data);
-        this.groups = new Map(groupsArray.map(group => {
-          // Date 객체 복원
-          group.createdAt = new Date(group.createdAt);
-          return [group.id, group];
-        }));
+        const parsed = JSON.parse(data);
+        console.log('📂 파싱된 데이터:', {
+          isArray: Array.isArray(parsed),
+          version: parsed.version,
+          hasGroups: !!parsed.groups,
+          hasStableKeyGroupMap: !!parsed.stableKeyGroupMap,
+          hasStableKeyCategoryMap: !!parsed.stableKeyCategoryMap
+        });
+        
+        // 기존 형식 (배열)과 새 형식 (객체) 모두 지원
+        if (Array.isArray(parsed)) {
+          // 기존 그룹 데이터만 로드 (호환성)
+          console.log('📂 기존 형식 (배열) 로드');
+          this.groups = new Map(parsed.map(group => {
+            group.createdAt = new Date(group.createdAt);
+            return [group.id, group];
+          }));
+        } else {
+          // 새 형식: 그룹 + 안정적 키 맵 데이터
+          console.log('📂 새 형식 (객체) 로드');
+          this.groups = new Map((parsed.groups || []).map(group => {
+            group.createdAt = new Date(group.createdAt);
+            return [group.id, group];
+          }));
+          
+          // 안정적 키 맵 복원
+          if (parsed.stableKeyGroupMap) {
+            this.stableKeyGroupMap = new Map(parsed.stableKeyGroupMap);
+            console.log('✅ 안정적 키 그룹 맵 로드됨:', {
+              count: this.stableKeyGroupMap.size,
+              entries: Array.from(this.stableKeyGroupMap.entries())
+            });
+          }
+          if (parsed.stableKeyCategoryMap) {
+            this.stableKeyCategoryMap = new Map(parsed.stableKeyCategoryMap);
+            console.log('✅ 안정적 키 카테고리 맵 로드됨:', this.stableKeyCategoryMap.size);
+          }
+        }
+        
+        console.log('📂 GroupStore 로드 완료:', {
+          groupCount: this.groups.size,
+          stableKeyGroupMappings: this.stableKeyGroupMap.size,
+          stableKeyCategoryMappings: this.stableKeyCategoryMap.size
+        });
       }
     } catch (error) {
       console.error('그룹 데이터 로드 실패:', error);
       this.groups = new Map();
+      this.stableKeyGroupMap = new Map();
+      this.stableKeyCategoryMap = new Map();
     }
   }
 
@@ -264,8 +481,22 @@ export class GroupStore {
    */
   save() {
     try {
-      const groupsArray = Array.from(this.groups.values());
-      localStorage.setItem('remotemanager_groups_v4', JSON.stringify(groupsArray));
+      const data = {
+        version: '4.1', // 안정적 키 지원 버전
+        groups: Array.from(this.groups.values()),
+        stableKeyGroupMap: Array.from(this.stableKeyGroupMap.entries()),
+        stableKeyCategoryMap: Array.from(this.stableKeyCategoryMap.entries()),
+        timestamp: new Date().toISOString(),
+      };
+      
+      console.log('💾 GroupStore 저장:', {
+        groupCount: data.groups.length,
+        stableKeyMappings: data.stableKeyGroupMap.length,
+        categoryMappings: data.stableKeyCategoryMap.length,
+        stableKeys: data.stableKeyGroupMap.map(([key, groupId]) => ({ key, groupId }))
+      });
+      
+      localStorage.setItem('remotemanager_groups_v4', JSON.stringify(data));
     } catch (error) {
       console.error('그룹 데이터 저장 실패:', error);
     }

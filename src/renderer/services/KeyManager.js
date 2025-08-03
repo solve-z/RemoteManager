@@ -15,6 +15,33 @@ export class KeyManager {
   }
 
   /**
+   * 안정적 식별자 생성 (프로그램 재시작 후에도 유지)
+   * - 컴퓨터명 기반으로 고유성 확보
+   * - 그룹/카테고리 정보 유지를 위한 핵심 키
+   * @param {Object} process - 프로세스 정보
+   * @returns {string} 안정적 식별자
+   */
+  static getStableIdentifier(process) {
+    const type = process.type || this.detectProcessType(process);
+    const computerName = process.computerName || this.extractComputerName(process);
+
+    if (!computerName) {
+      // 컴퓨터명이 없으면 임시 키 생성 (저장되지 않음)
+      return `${type}_unknown_${process.pid}`;
+    }
+
+    if (type === 'ezhelp') {
+      // ezHelp: 컴퓨터명 기반
+      return `ezhelp_${computerName}`;
+    } else if (type === 'teamviewer') {
+      // TeamViewer: 컴퓨터명 기반
+      return `teamviewer_${computerName}`;
+    }
+
+    return `${type}_${computerName}`;
+  }
+
+  /**
    * 프로세스 매칭 키 생성 (재연결 감지용)
    * - 컴퓨터명 기반으로 동일한 원격지 인식
    * - ezHelp와 TeamViewer별로 다른 키 전략 사용
@@ -22,23 +49,32 @@ export class KeyManager {
    * @returns {string} 매칭 키
    */
   static getMatchingKey(process) {
-    const type = process.type || this.detectProcessType(process);
-    const computerName = process.computerName || this.extractComputerName(process);
+    // 안정적 식별자를 매칭 키로 사용
+    return this.getStableIdentifier(process);
+  }
 
-    if (!computerName) {
-      // 컴퓨터명이 없으면 PID 기반으로 임시 키 생성
-      return `${type}_unknown_${process.pid}`;
-    }
+  /**
+   * IP 변경 감지를 위한 프로세스 정보 비교
+   * @param {Object} existingProcess - 기존 프로세스 정보
+   * @param {Object} newProcess - 새로운 프로세스 정보
+   * @returns {Object} 비교 결과 { sameComputer, ipChanged, oldIP, newIP }
+   */
+  static compareProcessInfo(existingProcess, newProcess) {
+    const existingKey = this.getStableIdentifier(existingProcess);
+    const newKey = this.getStableIdentifier(newProcess);
+    const sameComputer = existingKey === newKey;
 
-    if (type === 'ezhelp') {
-      // ezHelp는 컴퓨터명만으로 충분 (단일세션)
-      return `ezhelp_${computerName}`;
-    } else if (type === 'teamviewer') {
-      // TeamViewer는 컴퓨터명만으로 매칭 (다중세션은 WindowHandle로 구분)
-      return `teamviewer_${computerName}`;
-    }
+    const oldIP = existingProcess.ipAddress || this.extractIpAddress(existingProcess);
+    const newIP = newProcess.ipAddress || this.extractIpAddress(newProcess);
+    const ipChanged = oldIP && newIP && oldIP !== newIP;
 
-    return `${type}_${computerName}`;
+    return {
+      sameComputer,
+      ipChanged,
+      oldIP,
+      newIP,
+      computerName: this.extractComputerName(newProcess)
+    };
   }
 
   /**

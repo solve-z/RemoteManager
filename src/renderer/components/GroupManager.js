@@ -8,6 +8,10 @@ export class GroupManager {
     this.groupStore = groupStore;
     this.groupService = groupService;
     this.dialog = null;
+    this.advancedDialog = null;
+    this.contextMenu = null;
+    this.selectedColor = null;
+    this.currentEditingGroup = null;
     this.initialize();
   }
 
@@ -19,15 +23,138 @@ export class GroupManager {
   }
 
   /**
+   * 이벤트 리스너 설정
+   */
+  setupEventListeners() {
+    if (this.colorPicker) {
+      this.setupColorPicker();
+    }
+    
+    if (this.advancedDialog) {
+      this.setupAdvancedDialog();
+    }
+    
+    if (this.contextMenu) {
+      this.setupContextMenu();
+    }
+    
+    // 외부 클릭으로 컨텍스트 메뉴 닫기
+    document.addEventListener('click', (e) => {
+      if (this.contextMenu && !this.contextMenu.contains(e.target)) {
+        this.hideContextMenu();
+      }
+    });
+  }
+
+  /**
+   * 색상 선택기 설정
+   */
+  setupColorPicker() {
+    const colorOptions = this.colorPicker.querySelectorAll('.color-option');
+    colorOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // 이전 선택 해제
+        colorOptions.forEach(opt => opt.classList.remove('selected'));
+        
+        // 새 선택 설정
+        option.classList.add('selected');
+        this.selectedColor = option.dataset.color;
+      });
+    });
+  }
+
+  /**
+   * 고급 다이얼로그 설정
+   */
+  setupAdvancedDialog() {
+    // 탭 전환
+    const tabHeaders = this.advancedDialog.querySelectorAll('.tab-header');
+    const tabContents = this.advancedDialog.querySelectorAll('.tab-content');
+    
+    tabHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        const tabId = header.dataset.tab;
+        
+        // 모든 탭 비활성화
+        tabHeaders.forEach(h => h.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        // 선택된 탭 활성화
+        header.classList.add('active');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        
+        // 탭별 데이터 로드
+        this.loadTabContent(tabId);
+      });
+    });
+    
+    // 닫기 버튼
+    this.advancedCloseButton?.addEventListener('click', () => {
+      this.hideAdvancedDialog();
+    });
+  }
+
+  /**
+   * 컨텍스트 메뉴 설정
+   */
+  setupContextMenu() {
+    const editGroup = this.contextMenu.querySelector('#edit-group');
+    const changeColor = this.contextMenu.querySelector('#change-group-color');
+    const viewStats = this.contextMenu.querySelector('#view-group-stats');
+    const deleteGroup = this.contextMenu.querySelector('#delete-group');
+    
+    editGroup?.addEventListener('click', () => {
+      if (this.currentEditingGroup) {
+        this.showEditDialog(this.currentEditingGroup);
+      }
+      this.hideContextMenu();
+    });
+    
+    changeColor?.addEventListener('click', () => {
+      if (this.currentEditingGroup) {
+        this.showColorChangeDialog(this.currentEditingGroup);
+      }
+      this.hideContextMenu();
+    });
+    
+    viewStats?.addEventListener('click', () => {
+      if (this.currentEditingGroup) {
+        this.showGroupStatistics(this.currentEditingGroup.id);
+      }
+      this.hideContextMenu();
+    });
+    
+    deleteGroup?.addEventListener('click', () => {
+      if (this.currentEditingGroup) {
+        this.confirmDelete(this.currentEditingGroup);
+      }
+      this.hideContextMenu();
+    });
+  }
+
+  /**
    * 다이얼로그 요소들 찾기
    */
   findDialogElements() {
+    // 기본 그룹 다이얼로그
     this.dialog = document.getElementById('group-dialog');
     this.titleElement = document.getElementById('group-dialog-title');
     this.inputElement = document.getElementById('group-name-input');
     this.saveButton = document.getElementById('group-dialog-save');
     this.cancelButton = document.getElementById('group-dialog-cancel');
     this.closeButton = document.getElementById('group-dialog-close');
+    this.colorPicker = document.getElementById('color-picker');
+    
+    // 고급 그룹 관리 다이얼로그
+    this.advancedDialog = document.getElementById('advanced-group-dialog');
+    this.advancedCloseButton = document.getElementById('advanced-group-close');
+    
+    // 컨텍스트 메뉴
+    this.contextMenu = document.getElementById('group-context-menu');
+    
+    this.setupEventListeners();
   }
 
   /**
@@ -39,10 +166,20 @@ export class GroupManager {
     this.titleElement.textContent = '그룹 추가';
     this.inputElement.value = '';
     this.inputElement.placeholder = '그룹명을 입력하세요';
+    this.selectedColor = null;
+    
+    // 첫 번째 색상을 기본으로 선택
+    const firstColor = this.colorPicker?.querySelector('.color-option');
+    if (firstColor) {
+      firstColor.click();
+    }
     
     this.showDialog((groupName) => {
       if (groupName.trim()) {
-        this.groupService.createGroup(groupName.trim());
+        const group = this.groupService.createGroup(groupName.trim());
+        if (group && this.selectedColor) {
+          this.groupService.updateGroup(group.id, { color: this.selectedColor });
+        }
       }
     });
   }
@@ -57,10 +194,30 @@ export class GroupManager {
     this.titleElement.textContent = '그룹 수정';
     this.inputElement.value = group.name;
     this.inputElement.placeholder = '그룹명을 입력하세요';
+    this.selectedColor = group.color;
+    
+    // 현재 그룹 색상 선택
+    const colorOptions = this.colorPicker?.querySelectorAll('.color-option');
+    colorOptions?.forEach(option => {
+      option.classList.remove('selected');
+      if (option.dataset.color === group.color) {
+        option.classList.add('selected');
+      }
+    });
     
     this.showDialog((groupName) => {
+      const updates = {};
+      
       if (groupName.trim() && groupName.trim() !== group.name) {
-        this.groupService.updateGroup(group.id, { name: groupName.trim() });
+        updates.name = groupName.trim();
+      }
+      
+      if (this.selectedColor && this.selectedColor !== group.color) {
+        updates.color = this.selectedColor;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        this.groupService.updateGroup(group.id, updates);
       }
     });
   }
@@ -150,29 +307,293 @@ export class GroupManager {
   }
 
   /**
-   * 그룹 색상 변경 다이얼로그
+   * 그룹 색상 변경 다이얼로그 (모던 UI 버전)
    * @param {Object} group - 색상을 변경할 그룹 객체
    */
-  showColorDialog(group) {
+  showColorChangeDialog(group) {
     if (!group) return;
 
-    const colors = [
-      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
-    ];
+    this.titleElement.textContent = `${group.name} 색상 변경`;
+    this.inputElement.value = group.name;
+    this.inputElement.readOnly = true;
+    this.selectedColor = group.color;
+    
+    // 현재 그룹 색상 선택
+    const colorOptions = this.colorPicker?.querySelectorAll('.color-option');
+    colorOptions?.forEach(option => {
+      option.classList.remove('selected');
+      if (option.dataset.color === group.color) {
+        option.classList.add('selected');
+      }
+    });
+    
+    this.showDialog(() => {
+      if (this.selectedColor && this.selectedColor !== group.color) {
+        this.groupService.updateGroup(group.id, { color: this.selectedColor });
+      }
+      this.inputElement.readOnly = false;
+    });
+  }
 
-    // 간단한 색상 선택 프롬프트 (향후 더 나은 UI로 교체 가능)
-    const colorOptions = colors.map((color, index) => 
-      `${index + 1}. ${color}`
-    ).join('\n');
+  /**
+   * 그룹 컨텍스트 메뉴 표시
+   * @param {Object} group - 그룹 객체
+   * @param {number} x - 마우스 X 좌표
+   * @param {number} y - 마우스 Y 좌표
+   */
+  showContextMenu(group, x, y) {
+    if (!this.contextMenu || !group) return;
+    
+    this.currentEditingGroup = group;
+    
+    this.contextMenu.style.left = `${x}px`;
+    this.contextMenu.style.top = `${y}px`;
+    this.contextMenu.style.display = 'block';
+    
+    // 화면 경계 조정
+    const rect = this.contextMenu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      this.contextMenu.style.left = `${x - rect.width}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+      this.contextMenu.style.top = `${y - rect.height}px`;
+    }
+  }
 
-    const choice = prompt(
-      `그룹 '${group.name}'의 색상을 선택하세요:\n\n${colorOptions}\n\n번호를 입력하세요 (1-${colors.length}):`
-    );
+  /**
+   * 컨텍스트 메뉴 숨기기
+   */
+  hideContextMenu() {
+    if (this.contextMenu) {
+      this.contextMenu.style.display = 'none';
+      this.currentEditingGroup = null;
+    }
+  }
 
-    const colorIndex = parseInt(choice) - 1;
-    if (colorIndex >= 0 && colorIndex < colors.length) {
-      this.groupService.updateGroup(group.id, { color: colors[colorIndex] });
+  /**
+   * 고급 그룹 관리 다이얼로그 표시
+   */
+  showAdvancedDialog() {
+    if (!this.advancedDialog) return;
+    
+    this.advancedDialog.style.display = 'flex';
+    
+    // 첫 번째 탭 활성화
+    const firstTab = this.advancedDialog.querySelector('.tab-header');
+    if (firstTab) {
+      firstTab.click();
+    }
+  }
+
+  /**
+   * 고급 다이얼로그 숨기기
+   */
+  hideAdvancedDialog() {
+    if (this.advancedDialog) {
+      this.advancedDialog.style.display = 'none';
+    }
+  }
+
+  /**
+   * 탭 콘텐츠 로드
+   * @param {string} tabId - 탭 ID
+   */
+  loadTabContent(tabId) {
+    switch (tabId) {
+      case 'groups':
+        this.loadGroupsTab();
+        break;
+      case 'statistics':
+        this.loadStatisticsTab();
+        break;
+      case 'import-export':
+        this.loadImportExportTab();
+        break;
+    }
+  }
+
+  /**
+   * 그룹 목록 탭 로드
+   */
+  loadGroupsTab() {
+    const container = document.getElementById('advanced-groups-list');
+    const header = this.advancedDialog.querySelector('.group-list-header h4');
+    
+    if (!container || !header) return;
+    
+    const groups = this.groupStore.getAllGroups();
+    header.textContent = `전체 그룹 (${groups.length}개)`;
+    
+    container.innerHTML = '';
+    
+    if (groups.length === 0) {
+      container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">생성된 그룹이 없습니다.</p>';
+      return;
+    }
+    
+    groups.forEach(group => {
+      const stats = this.groupService.getGroupStatistics(group.id);
+      const item = document.createElement('div');
+      item.className = 'advanced-group-item';
+      item.innerHTML = `
+        <div class="group-color-indicator" style="background-color: ${group.color}"></div>
+        <div class="group-info">
+          <div class="group-name">${group.name}</div>
+          <div class="group-details">
+            프로세스: ${stats?.totalProcesses || 0}개 | 
+            연결됨: ${stats?.connectedProcesses || 0}개 | 
+            생성일: ${group.createdAt.toLocaleDateString()}
+          </div>
+        </div>
+        <div class="group-item-actions">
+          <button class="btn-icon-small btn-secondary" title="수정" data-action="edit">
+            ✏️
+          </button>
+          <button class="btn-icon-small btn-secondary" title="색상 변경" data-action="color">
+            🎨
+          </button>
+          <button class="btn-icon-small btn-secondary" title="통계" data-action="stats">
+            📊
+          </button>
+          <button class="btn-icon-small btn-danger" title="삭제" data-action="delete">
+            🗑️
+          </button>
+        </div>
+      `;
+      
+      // 액션 버튼 이벤트
+      item.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = btn.dataset.action;
+          
+          switch (action) {
+            case 'edit':
+              this.hideAdvancedDialog();
+              this.showEditDialog(group);
+              break;
+            case 'color':
+              this.hideAdvancedDialog();
+              this.showColorChangeDialog(group);
+              break;
+            case 'stats':
+              this.showGroupStatistics(group.id);
+              break;
+            case 'delete':
+              this.confirmDelete(group);
+              break;
+          }
+        });
+      });
+      
+      container.appendChild(item);
+    });
+    
+    // 빈 그룹 정리 버튼 이벤트
+    const cleanupBtn = document.getElementById('cleanup-empty-groups');
+    const createBtn = document.getElementById('create-new-group');
+    
+    if (cleanupBtn) {
+      cleanupBtn.onclick = () => this.cleanupEmptyGroups();
+    }
+    
+    if (createBtn) {
+      createBtn.onclick = () => {
+        this.hideAdvancedDialog();
+        this.showAddDialog();
+      };
+    }
+  }
+
+  /**
+   * 통계 탭 로드
+   */
+  loadStatisticsTab() {
+    const container = document.getElementById('group-statistics');
+    if (!container) return;
+    
+    const stats = this.groupService.getOverallStatistics();
+    
+    container.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <div class="stat-value">${stats.totalGroups}</div>
+          <div class="stat-label">전체 그룹</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-value">${stats.activeGroups}</div>
+          <div class="stat-label">활성 그룹</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-value">${stats.emptyGroups}</div>
+          <div class="stat-label">빈 그룹</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.totalProcesses}</div>
+          <div class="stat-label">전체 프로세스</div>
+        </div>
+        <div class="stat-card primary">
+          <div class="stat-value">${stats.groupedProcesses}</div>
+          <div class="stat-label">그룹 소속</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-value">${stats.ungroupedProcesses}</div>
+          <div class="stat-label">그룹 없음</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.averageProcessesPerGroup}</div>
+          <div class="stat-label">그룹당 평균</div>
+        </div>
+      </div>
+      
+      <h4>그룹별 상세 통계</h4>
+      <div id="detailed-stats">
+        ${this.generateDetailedStats()}
+      </div>
+    `;
+  }
+
+  /**
+   * 상세 통계 생성
+   */
+  generateDetailedStats() {
+    const groups = this.groupStore.getAllGroups();
+    if (groups.length === 0) {
+      return '<p style="color: #6b7280;">생성된 그룹이 없습니다.</p>';
+    }
+    
+    return groups.map(group => {
+      const stats = this.groupService.getGroupStatistics(group.id);
+      return `
+        <div class="advanced-group-item">
+          <div class="group-color-indicator" style="background-color: ${group.color}"></div>
+          <div class="group-info">
+            <div class="group-name">${group.name}</div>
+            <div class="group-details">
+              총 ${stats?.totalProcesses || 0}개 프로세스 | 
+              연결됨 ${stats?.connectedProcesses || 0}개 | 
+              ezHelp ${stats?.ezhelpProcesses || 0}개 | 
+              TeamViewer ${stats?.teamviewerProcesses || 0}개
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
+   * 가져오기/내보내기 탭 로드
+   */
+  loadImportExportTab() {
+    const exportBtn = document.getElementById('export-groups');
+    const importBtn = document.getElementById('import-groups');
+    
+    if (exportBtn) {
+      exportBtn.onclick = () => this.exportGroups();
+    }
+    
+    if (importBtn) {
+      importBtn.onclick = () => this.importGroups();
     }
   }
 
