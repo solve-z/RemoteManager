@@ -234,7 +234,7 @@ class RemoteManagerApp {
         setTimeout(() => {
           refreshBtn.disabled = false;
           refreshBtn.textContent = originalText;
-        }, 3000);
+        }, 2000);
       }
 
       // 기존 프로세스가 있는 경우 목록을 유지하고, 상단에 작은 로딩 인디케이터만 표시

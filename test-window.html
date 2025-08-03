@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ezHelp - desktop-6bcogpv(Relay) - 원격지 IP : 192.168.0.18(121.164.168.194) - 원격제어 경과시간 : 00:00:04 - 상담원(46)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2196F3; }
+        .button {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background: #1976D2; }
+        .status {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ 원격 지원 테스트 창</h1>
+        <div class="status">
+            <strong>연결 상태:</strong> 활성 <br>
+            <strong>원격 IP:</strong> 192.168.1.189 <br>
+            <strong>컴퓨터명:</strong> TestPC <br>
+            <strong>세션 시간:</strong> <span id="time">00:00:00</span>
+        </div>
+        
+        <h2>테스트 기능</h2>
+        <button class="button" onclick="minimize()">🗕 최소화 테스트</button>
+        <button class="button" onclick="restore()">🗖 복원 테스트</button>
+        <button class="button" onclick="changeTitle()">🏷️ 제목 변경</button>
+        <button class="button" onclick="createNew()">➕ 새 창 열기</button>
+        
+        <h2>현재 창 정보</h2>
+        <div id="windowInfo"></div>
+        
+        <h2>사용법</h2>
+        <ol>
+            <li>이 창을 <strong>최소화</strong>하세요</li>
+            <li>Remote Manager에서 <strong>"전체 프로세스"</strong> 확인</li>
+            <li>이 프로세스가 <strong>"최소화됨"</strong> 라벨과 함께 표시되는지 확인</li>
+            <li>다른 브라우저 창도 열어서 비교 테스트</li>
+        </ol>
+    </div>
+
+    <script>
+        let startTime = Date.now();
+        
+        function updateTime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('time').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        
+        function minimize() {
+            alert('브라우저를 최소화한 후 Remote Manager에서 확인하세요!');
+        }
+        
+        function restore() {
+            if (document.hidden) {
+                document.title = document.title + ' [복원됨]';
+            }
+        }
+        
+        function changeTitle() {
+            const titles = [
+                'ezHelp - PC001(Relay) - 원격지 IP : 192.168.0.50(1.2.3.4) - 변경됨',
+                'YSCENTER1_01 - TeamViewer',
+                'ezHelp - SERVER-01(Relay) - 원격지 IP : 10.0.0.190(5.6.7.8) - 테스트'
+            ];
+            document.title = titles[Math.floor(Math.random() * titles.length)];
+            updateWindowInfo();
+        }
+        
+        function createNew() {
+            window.open('test-window.html', '_blank', 'width=400,height=300');
+        }
+        
+        function updateWindowInfo() {
+            document.getElementById('windowInfo').innerHTML = `
+                <strong>현재 제목:</strong> ${document.title}<br>
+                <strong>창 상태:</strong> ${document.hidden ? '숨김/최소화' : '활성'}<br>
+                <strong>화면 크기:</strong> ${window.innerWidth} x ${window.innerHeight}
+            `;
+        }
+        
+        // 주기적 업데이트
+        setInterval(updateTime, 1000);
+        setInterval(updateWindowInfo, 2000);
+        updateWindowInfo();
+        
+        // 창 상태 변화 감지
+        document.addEventListener('visibilitychange', function() {
+            updateWindowInfo();
+            if (document.hidden) {
+                console.log('창이 숨겨짐/최소화됨');
+            } else {
+                console.log('창이 활성화됨');
+            }
+        });
+    </script>
+</body>
+</html>

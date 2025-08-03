@@ -204,15 +204,15 @@ export class ProcessStore {
    * 오래된 끊어진 프로세스 자동 정리
    */
   cleanupOldProcesses() {
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const thirtySecondsAgo = Date.now() - 30 * 1000;
     let hasChanges = false;
 
     for (const [id, process] of this.processes) {
-      // 그룹에 속하지 않고, 5분 이상 끊어진 프로세스만 삭제
+      // 그룹에 속하지 않고, 30초 이상 끊어진 프로세스만 삭제
       if (!process.groupId && 
           process.status === 'disconnected' && 
           process.disconnectedAt && 
-          process.disconnectedAt.getTime() < fiveMinutesAgo) {
+          process.disconnectedAt.getTime() < thirtySecondsAgo) {
         
         // 히스토리는 유지하면서 프로세스만 제거 (재연결 시 복원 가능)
         this.removeProcess(id, true);

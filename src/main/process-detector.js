@@ -1,5 +1,6 @@
 /**
  * ProcessDetector - Windows 프로세스 감지 모듈
+ * 컴퓨터에서 실행 중인 특정 원격 제어 프로그램(ezHelp, TeamViewer)을 찾아내서 그에 대한 상세 정보를 보고하는 것
  * PowerShell과 Windows API를 통한 원격 프로세스 감지
  */
 

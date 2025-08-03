@@ -25,7 +25,6 @@ export class ProcessService {
     
     try {
       const result = await window.electronAPI.detectProcesses();
-      
       if (result.success) {
         this.updateProcessStatuses(result.data);
         this.lastLoadTime = new Date();
