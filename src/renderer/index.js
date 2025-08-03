@@ -168,32 +168,11 @@ class RemoteManagerApp {
       this.components.processList.setCategoryFilter(e.target.value);
     });
 
-    // 새로 추가된 필터들
-    const searchInput = document.getElementById('search-input');
-    const clearSearchBtn = document.getElementById('clear-search');
-    const statusFilter = document.getElementById('status-filter');
+    // 필터 관련 요소들
     const typeFilter = document.getElementById('type-filter');
     const clearAllFiltersBtn = document.getElementById('clear-all-filters');
-
-    // 검색 입력 (디바운스 적용)
-    let searchTimeout;
-    searchInput?.addEventListener('input', (e) => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        this.components.processList.setSearchQuery(e.target.value);
-      }, 300);
-    });
-
-    // 검색 초기화 버튼
-    clearSearchBtn?.addEventListener('click', () => {
-      searchInput.value = '';
-      this.components.processList.setSearchQuery('');
-    });
-
-    // 상태 필터
-    statusFilter?.addEventListener('change', (e) => {
-      this.components.processList.setStatusFilter(e.target.value);
-    });
+    const filtersToggle = document.getElementById('filters-toggle');
+    const filtersContainer = document.getElementById('filters-container');
 
     // 타입 필터
     typeFilter?.addEventListener('change', (e) => {
@@ -203,6 +182,11 @@ class RemoteManagerApp {
     // 전체 필터 초기화
     clearAllFiltersBtn?.addEventListener('click', () => {
       this.clearAllFilters();
+    });
+
+    // 필터 토글 기능
+    filtersToggle?.addEventListener('click', () => {
+      this.toggleFilters();
     });
 
     // 키보드 단축키
@@ -228,6 +212,22 @@ class RemoteManagerApp {
       const groupFilterSelect = document.getElementById('group-filter');
       if (groupFilterSelect) {
         groupFilterSelect.value = '';
+      }
+    });
+
+    // 그룹 생성 이벤트 - 필터 드롭다운 업데이트
+    window.addEventListener('group-created', (e) => {
+      this.updateGroupFilterOptions();
+    });
+
+    // 그룹 삭제 이벤트 - 필터 드롭다운 업데이트
+    window.addEventListener('group-deleted', (e) => {
+      this.updateGroupFilterOptions();
+      // 삭제된 그룹이 현재 선택된 필터였다면 초기화
+      const groupFilterSelect = document.getElementById('group-filter');
+      if (groupFilterSelect && groupFilterSelect.value === e.detail.groupId) {
+        groupFilterSelect.value = '';
+        this.components.processList.setGroupFilter('');
       }
     });
 
@@ -262,6 +262,9 @@ class RemoteManagerApp {
 
     // 초기 프로세스 로드
     await this.refreshProcesses();
+
+    // 그룹 필터 옵션 초기화
+    this.updateGroupFilterOptions();
 
     // 자동 새로고침 시작 (기본값)
     this.startAutoRefresh();
@@ -422,19 +425,15 @@ class RemoteManagerApp {
     this.components.processList.clearAllFilters();
     
     // UI 폼 요소들 초기화
-    const searchInput = document.getElementById('search-input');
     const groupFilter = document.getElementById('group-filter');
     const categoryFilter = document.getElementById('category-filter');
-    const statusFilter = document.getElementById('status-filter');
     const typeFilter = document.getElementById('type-filter');
     const sortSelect = document.getElementById('sort-select');
     
-    if (searchInput) searchInput.value = '';
     if (groupFilter) groupFilter.value = '';
     if (categoryFilter) categoryFilter.value = '';
-    if (statusFilter) statusFilter.value = '';
     if (typeFilter) typeFilter.value = '';
-    if (sortSelect) sortSelect.value = 'default';
+    if (sortSelect) sortSelect.value = 'latest';
     
     // 사이드바 그룹 선택도 해제
     this.components.sidebar?.clearGroupSelection();
@@ -467,6 +466,71 @@ class RemoteManagerApp {
     if (event.ctrlKey && event.shiftKey && event.key === 'X') {
       event.preventDefault();
       this.clearAllFilters();
+    }
+
+    // Ctrl+Shift+F: 필터 토글 (대소문자 구분 없음)
+    if (event.ctrlKey && event.shiftKey && (event.key === 'F' || event.key === 'f')) {
+      event.preventDefault();
+      this.toggleFilters();
+    }
+  }
+
+  /**
+   * 그룹 필터 옵션 업데이트
+   */
+  updateGroupFilterOptions() {
+    const groupFilterSelect = document.getElementById('group-filter');
+    if (!groupFilterSelect) return;
+
+    const currentValue = groupFilterSelect.value;
+    const groups = this.services.group.groupStore.getAllGroups();
+    
+    // 기존 옵션들 제거 (기본 옵션들 제외)
+    while (groupFilterSelect.children.length > 2) {
+      groupFilterSelect.removeChild(groupFilterSelect.lastChild);
+    }
+    
+    // 새 그룹 옵션들 추가
+    groups.forEach(group => {
+      const option = document.createElement('option');
+      option.value = group.id;
+      option.textContent = group.name;
+      groupFilterSelect.appendChild(option);
+    });
+    
+    // 이전 선택값이 여전히 유효하면 복원
+    if (currentValue && groups.find(g => g.id === currentValue)) {
+      groupFilterSelect.value = currentValue;
+    } else if (currentValue && currentValue !== '') {
+      // 선택된 그룹이 삭제된 경우 초기화
+      groupFilterSelect.value = '';
+    }
+  }
+
+  /**
+   * 필터 표시/숨기기 토글
+   */
+  toggleFilters() {
+    const filtersContainer = document.getElementById('filters-container');
+    const filtersToggle = document.getElementById('filters-toggle');
+    const toggleIcon = filtersToggle?.querySelector('.toggle-icon');
+    
+    if (!filtersContainer || !filtersToggle) return;
+
+    const isVisible = filtersContainer.style.display !== 'none';
+    
+    if (isVisible) {
+      // 필터 숨기기
+      filtersContainer.style.display = 'none';
+      filtersToggle.setAttribute('aria-expanded', 'false');
+      filtersToggle.title = '필터 표시 (Ctrl+Shift+F)';
+      if (toggleIcon) toggleIcon.textContent = '🔼';
+    } else {
+      // 필터 표시
+      filtersContainer.style.display = '';
+      filtersToggle.setAttribute('aria-expanded', 'true');
+      filtersToggle.title = '필터 숨기기 (Ctrl+Shift+F)';
+      if (toggleIcon) toggleIcon.textContent = '🔽';
     }
   }
 

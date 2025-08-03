@@ -31,6 +31,11 @@ export class GroupService {
       
       this.notificationService?.showSuccess(`그룹 '${group.name}'이 생성되었습니다.`);
       
+      // 그룹 생성 이벤트 발생
+      window.dispatchEvent(new CustomEvent('group-created', {
+        detail: { group }
+      }));
+      
       return group;
     } catch (error) {
       console.error('그룹 생성 실패:', error);
@@ -111,6 +116,11 @@ export class GroupService {
       
       if (success) {
         this.notificationService?.showSuccess(`그룹 '${group.name}'이 삭제되었습니다.`);
+        
+        // 그룹 삭제 이벤트 발생
+        window.dispatchEvent(new CustomEvent('group-deleted', {
+          detail: { groupId, groupName: group.name }
+        }));
       }
 
       return success;

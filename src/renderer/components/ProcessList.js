@@ -14,11 +14,9 @@ export class ProcessList {
     
     this.processes = [];
     this.filteredProcesses = [];
-    this.sortOption = 'default';
+    this.sortOption = 'latest';
     this.groupFilter = '';
     this.categoryFilter = '';
-    this.searchQuery = '';
-    this.statusFilter = '';
     this.typeFilter = '';
     
     this.categories = {
@@ -47,22 +45,6 @@ export class ProcessList {
   applyFiltersAndSort() {
     let filtered = [...this.processes];
 
-    // 검색 쿼리 필터 적용
-    if (this.searchQuery.trim()) {
-      const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(p => {
-        const displayName = this.getDisplayName(p).toLowerCase();
-        const computerName = (p.computerName || '').toLowerCase();
-        const ipAddress = (p.ipAddress || '').toLowerCase();
-        const customLabel = (p.customLabel || '').toLowerCase();
-        
-        return displayName.includes(query) || 
-               computerName.includes(query) || 
-               ipAddress.includes(query) || 
-               customLabel.includes(query);
-      });
-    }
-
     // 그룹 필터 적용
     if (this.groupFilter) {
       if (this.groupFilter === 'ungrouped') {
@@ -81,10 +63,6 @@ export class ProcessList {
       }
     }
 
-    // 상태 필터 적용
-    if (this.statusFilter) {
-      filtered = filtered.filter(p => p.status === this.statusFilter);
-    }
 
     // 타입 필터 적용
     if (this.typeFilter) {
@@ -104,16 +82,6 @@ export class ProcessList {
    */
   sortProcesses(processes) {
     switch (this.sortOption) {
-      case 'name':
-        return processes.sort((a, b) => {
-          const nameA = this.getDisplayName(a).toLowerCase();
-          const nameB = this.getDisplayName(b).toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-
-      case 'pid':
-        return processes.sort((a, b) => a.pid - b.pid);
-
       case 'group':
         return processes.sort((a, b) => {
           const groupA = a.groupId || 'zzz_ungrouped';
@@ -128,14 +96,10 @@ export class ProcessList {
           return catA.localeCompare(catB);
         });
 
-      case 'default':
+      case 'latest':
       default:
         return processes.sort((a, b) => {
-          // 연결 상태 우선, 그 다음 생성 시간
-          if (a.status !== b.status) {
-            const statusOrder = { 'connected': 0, 'reconnected': 1, 'disconnected': 2 };
-            return statusOrder[a.status] - statusOrder[b.status];
-          }
+          // 최신순: 생성 시간 기준 내림차순 (최신이 위로)
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
     }
@@ -664,25 +628,6 @@ export class ProcessList {
     this.renderProcessList();
   }
 
-  /**
-   * 검색 쿼리 설정
-   * @param {string} query - 검색 쿼리
-   */
-  setSearchQuery(query) {
-    this.searchQuery = query;
-    this.applyFiltersAndSort();
-    this.renderProcessList();
-  }
-
-  /**
-   * 상태 필터 설정
-   * @param {string} statusFilter - 상태 필터
-   */
-  setStatusFilter(statusFilter) {
-    this.statusFilter = statusFilter;
-    this.applyFiltersAndSort();
-    this.renderProcessList();
-  }
 
   /**
    * 타입 필터 설정
@@ -700,8 +645,6 @@ export class ProcessList {
   clearAllFilters() {
     this.groupFilter = '';
     this.categoryFilter = '';
-    this.searchQuery = '';
-    this.statusFilter = '';
     this.typeFilter = '';
     this.applyFiltersAndSort();
     this.renderProcessList();
@@ -714,8 +657,6 @@ export class ProcessList {
   setFilters(filters) {
     if (filters.group !== undefined) this.groupFilter = filters.group;
     if (filters.category !== undefined) this.categoryFilter = filters.category;
-    if (filters.search !== undefined) this.searchQuery = filters.search;
-    if (filters.status !== undefined) this.statusFilter = filters.status;
     if (filters.type !== undefined) this.typeFilter = filters.type;
     
     this.applyFiltersAndSort();
@@ -730,8 +671,6 @@ export class ProcessList {
     return {
       group: this.groupFilter,
       category: this.categoryFilter,
-      search: this.searchQuery,
-      status: this.statusFilter,
       type: this.typeFilter,
       sort: this.sortOption
     };
@@ -826,8 +765,6 @@ export class ProcessList {
   hasActiveFilters() {
     return !!(this.groupFilter || 
               this.categoryFilter || 
-              this.searchQuery.trim() || 
-              this.statusFilter || 
               this.typeFilter);
   }
 

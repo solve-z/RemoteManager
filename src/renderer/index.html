@@ -102,19 +102,21 @@
             <!-- 콘텐츠 영역 -->
             <div class="content-area">
                 <!-- 필터 및 정렬 옵션 -->
-                <div class="filters-bar">
-                    <div class="filter-group search-group">
-                        <label for="search-input">검색:</label>
-                        <input type="text" id="search-input" class="form-input" placeholder="IP, 컴퓨터명, 라벨 검색...">
-                        <button id="clear-search" class="btn-icon" title="검색 초기화">✕</button>
+                <div class="filters-header">
+                    <h3>필터 및 정렬</h3>
+                    <div class="filters-header-actions">
+                        <button id="clear-all-filters" class="btn-icon" title="필터 초기화">🔄</button>
+                        <button id="filters-toggle" class="btn-icon" title="필터 표시/숨기기 (Ctrl+Shift+F)" aria-expanded="true">
+                            <span class="toggle-icon">🔽</span>
+                        </button>
                     </div>
+                </div>
+                <div class="filters-bar" id="filters-container">
                     
                     <div class="filter-group">
                         <label for="sort-select">정렬:</label>
                         <select id="sort-select" class="form-select">
-                            <option value="default">기본순서</option>
-                            <option value="name">이름순</option>
-                            <option value="pid">PID순</option>
+                            <option value="latest">최신순</option>
                             <option value="group">그룹순</option>
                             <option value="category">카테고리순</option>
                         </select>
@@ -140,15 +142,6 @@
                         </select>
                     </div>
                     
-                    <div class="filter-group">
-                        <label for="status-filter">상태:</label>
-                        <select id="status-filter" class="form-select">
-                            <option value="">전체</option>
-                            <option value="connected">연결됨</option>
-                            <option value="reconnected">재연결됨</option>
-                            <option value="disconnected">연결 끊김</option>
-                        </select>
-                    </div>
                     
                     <div class="filter-group">
                         <label for="type-filter">타입:</label>
@@ -160,7 +153,6 @@
                     </div>
                     
                     <div class="filter-actions">
-                        <button id="clear-all-filters" class="btn btn-outline btn-sm">전체 초기화</button>
                         <span id="filter-summary" class="filter-summary"></span>
                     </div>
                 </div>
