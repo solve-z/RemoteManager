@@ -17,10 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /**
    * 윈도우 포커스 요청
-   * @param {number} processId - 프로세스 ID
+   * @param {Object} focusData - 포커스 데이터 (id, useHandle, processName, windowTitle)
    * @returns {Promise<Object>} 포커스 결과
    */
-  focusWindow: (processId) => ipcRenderer.invoke('focus-window', processId),
+  focusWindow: (focusData) => ipcRenderer.invoke('focus-window', focusData),
 
   /**
    * 애플리케이션 정보 가져오기

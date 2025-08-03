@@ -255,7 +255,7 @@
 }
 
 /* 다이얼로그 스타일 */
-.modal {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -266,6 +266,16 @@
   align-items: center;
   justify-content: center;
   z-index: 10000;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
@@ -276,6 +286,18 @@
   max-height: 90vh;
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -290,9 +312,10 @@
   font-size: 18px;
   font-weight: 600;
   color: #1f2937;
+  margin: 0;
 }
 
-.btn-close {
+.modal-close {
   background: none;
   border: none;
   font-size: 24px;
@@ -300,10 +323,18 @@
   cursor: pointer;
   padding: 0;
   line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
-.btn-close:hover {
+.modal-close:hover {
   color: #374151;
+  background: #f3f4f6;
 }
 
 .modal-body {
@@ -317,6 +348,43 @@
   padding: 20px 24px;
   border-top: 1px solid #e5e7eb;
   background: #f9fafb;
+}
+
+/* 폼 요소 스타일 */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-help {
+  margin-top: 6px;
+}
+
+.text-muted {
+  color: #6b7280;
 }
 
 /* 알림 컨테이너 (NotificationService에서 사용) */

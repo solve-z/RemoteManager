@@ -415,11 +415,148 @@ export class ProcessList {
     if (!process) return;
 
     const currentLabel = process.customLabel || KeyManager.getDisplayKey(process);
-    const newLabel = prompt('프로세스 라벨 편집:', currentLabel);
-    
-    if (newLabel !== null && newLabel !== currentLabel) {
-      this.processService.setProcessLabel(processId, newLabel);
+    this.createLabelEditModal(processId, currentLabel);
+  }
+
+  /**
+   * 라벨 편집 모달 생성
+   * @param {string} processId - 프로세스 ID
+   * @param {string} currentLabel - 현재 라벨
+   */
+  createLabelEditModal(processId, currentLabel) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.getElementById('label-edit-modal');
+    if (existingModal) {
+      existingModal.remove();
     }
+
+    // 모달 HTML 생성
+    const modalHtml = `
+      <div id="label-edit-modal" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>프로세스 라벨 편집</h3>
+            <button type="button" class="modal-close" aria-label="닫기">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="label-input">새 라벨:</label>
+              <input type="text" 
+                     id="label-input" 
+                     class="form-control" 
+                     value="${this.escapeHtml(currentLabel)}" 
+                     placeholder="라벨을 입력하세요..."
+                     maxlength="100">
+            </div>
+            <div class="form-help">
+              <small class="text-muted">비워두면 기본 표시명이 사용됩니다.</small>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-action="cancel">취소</button>
+            <button type="button" class="btn btn-danger" data-action="reset">기본값으로 초기화</button>
+            <button type="button" class="btn btn-primary" data-action="save">저장</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // DOM에 모달 추가
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 모달 이벤트 리스너 설정
+    this.setupModalEventListeners(processId, currentLabel);
+    
+    // 포커스 설정
+    const input = document.getElementById('label-input');
+    input.focus();
+    input.select();
+  }
+
+  /**
+   * 모달 이벤트 리스너 설정
+   * @param {string} processId - 프로세스 ID
+   * @param {string} originalLabel - 원본 라벨
+   */
+  setupModalEventListeners(processId, originalLabel) {
+    const modal = document.getElementById('label-edit-modal');
+    const input = document.getElementById('label-input');
+    const overlay = modal;
+
+    // 저장 버튼
+    const saveBtn = modal.querySelector('[data-action="save"]');
+    saveBtn.addEventListener('click', () => {
+      this.saveLabelEdit(processId, input.value.trim());
+    });
+
+    // 취소 버튼
+    const cancelBtn = modal.querySelector('[data-action="cancel"]');
+    cancelBtn.addEventListener('click', () => {
+      this.closeLabelEditModal();
+    });
+
+    // 초기화 버튼
+    const resetBtn = modal.querySelector('[data-action="reset"]');
+    resetBtn.addEventListener('click', () => {
+      input.value = '';
+      input.focus();
+    });
+
+    // 닫기 버튼
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn.addEventListener('click', () => {
+      this.closeLabelEditModal();
+    });
+
+    // 오버레이 클릭으로 닫기
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this.closeLabelEditModal();
+      }
+    });
+
+    // 키보드 이벤트
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeLabelEditModal();
+      } else if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.saveLabelEdit(processId, input.value.trim());
+      }
+    });
+  }
+
+  /**
+   * 라벨 편집 저장
+   * @param {string} processId - 프로세스 ID
+   * @param {string} newLabel - 새 라벨
+   */
+  saveLabelEdit(processId, newLabel) {
+    this.processService.setProcessLabel(processId, newLabel);
+    this.closeLabelEditModal();
+  }
+
+  /**
+   * 라벨 편집 모달 닫기
+   */
+  closeLabelEditModal() {
+    const modal = document.getElementById('label-edit-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  /**
+   * HTML 이스케이프
+   * @param {string} text - 이스케이프할 텍스트
+   * @returns {string} 이스케이프된 텍스트
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**

@@ -114,10 +114,19 @@ function registerIpcHandlers() {
   });
 
   // 윈도우 포커스 요청
-  ipcMain.handle('focus-window', async (event, processId) => {
+  ipcMain.handle('focus-window', async (event, focusData) => {
     try {
-      const result = await WindowManager.focusWindow(processId);
-      return { success: true, data: result };
+      let result;
+      
+      if (focusData.useHandle && focusData.id) {
+        // WindowHandle로 포커스
+        result = await WindowManager.focusWindowByHandle(focusData.id);
+      } else {
+        // PID로 포커스
+        result = await WindowManager.focusWindow(focusData.id);
+      }
+      
+      return { success: result, data: result };
     } catch (error) {
       console.error('윈도우 포커스 오류:', error);
       return { success: false, error: error.message };

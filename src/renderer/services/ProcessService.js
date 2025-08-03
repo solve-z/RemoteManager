@@ -165,7 +165,16 @@ export class ProcessService {
         throw new Error('프로세스를 찾을 수 없습니다.');
       }
 
-      const result = await window.electronAPI.focusWindow(process.pid);
+      // WindowHandle이 있으면 우선 사용, 없으면 PID 사용
+      const targetId = process.windowHandle || process.pid;
+      const useHandle = !!process.windowHandle;
+      
+      const result = await window.electronAPI.focusWindow({
+        id: targetId,
+        useHandle: useHandle,
+        processName: process.processName,
+        windowTitle: process.windowTitle
+      });
       
       if (result.success) {
         this.notificationService?.showSuccess(
