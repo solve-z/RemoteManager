@@ -133,7 +133,31 @@ export class ProcessStore {
     existingProcess.pid = newProcessInfo.pid;
     existingProcess.windowTitle = newProcessInfo.windowTitle;
     existingProcess.windowHandle = newProcessInfo.windowHandle;
-    existingProcess.ipAddress = newProcessInfo.ipAddress; // IP 업데이트
+    
+    // IP 주소 강제 재추출 (새로운 windowTitle에서)
+    const newIpAddress = KeyManager.extractIpAddress(newProcessInfo);
+    const oldIpAddress = existingProcess.ipAddress;
+    existingProcess.ipAddress = newIpAddress || newProcessInfo.ipAddress || existingProcess.ipAddress;
+    
+    // 상담원 ID도 재추출 (ezHelp의 경우)
+    if (existingProcess.type === 'ezhelp') {
+      const newCounselorId = KeyManager.extractCounselorId(newProcessInfo);
+      existingProcess.counselorId = newCounselorId || newProcessInfo.counselorId || existingProcess.counselorId;
+    }
+    
+    // IP 변경 감지 로그
+    if (oldIpAddress !== existingProcess.ipAddress) {
+      console.log('🔄 IP 주소 업데이트 감지:', {
+        processId: existingProcess.id,
+        computerName: existingProcess.computerName,
+        oldIP: oldIpAddress,
+        newIP: existingProcess.ipAddress,
+        windowTitle: newProcessInfo.windowTitle,
+        extractedIP: newIpAddress,
+        providedIP: newProcessInfo.ipAddress
+      });
+    }
+    
     existingProcess.status = 'connected';
     existingProcess.isMinimized = newProcessInfo.isMinimized || false;
     existingProcess.isHidden = newProcessInfo.isHidden || false;
@@ -274,6 +298,31 @@ export class ProcessStore {
       process.pid = processInfo.pid;
       process.windowTitle = processInfo.windowTitle;
       process.windowHandle = processInfo.windowHandle;
+      
+      // IP 주소 강제 재추출 (재연결 시에도)
+      const newIpAddress = KeyManager.extractIpAddress(processInfo);
+      const oldIpAddress = process.ipAddress;
+      process.ipAddress = newIpAddress || processInfo.ipAddress || process.ipAddress;
+      
+      // 상담원 ID도 재추출 (ezHelp의 경우)
+      if (process.type === 'ezhelp') {
+        const newCounselorId = KeyManager.extractCounselorId(processInfo);
+        process.counselorId = newCounselorId || processInfo.counselorId || process.counselorId;
+      }
+      
+      // IP 변경 감지 로그 (재연결 시)
+      if (oldIpAddress !== process.ipAddress) {
+        console.log('🔄 재연결 시 IP 주소 업데이트 감지:', {
+          processId: process.id,
+          computerName: process.computerName,
+          oldIP: oldIpAddress,
+          newIP: process.ipAddress,
+          windowTitle: processInfo.windowTitle,
+          extractedIP: newIpAddress,
+          providedIP: processInfo.ipAddress
+        });
+      }
+      
       process.status = historyEntry.status === 'disconnected' ? 'reconnected' : 'connected';
       process.isMinimized = processInfo.isMinimized || false;
       process.isHidden = processInfo.isHidden || false;

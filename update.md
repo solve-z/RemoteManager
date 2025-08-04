@@ -274,4 +274,100 @@ setProcessCategory(processId, category) {
 
 ---
 
+## 2025-08-04 - IP 변경 시 UI 업데이트 문제 해결
+
+### 🐛 해결된 문제
+**원격지 IP 변경 시 UI에 이전 IP 주소가 계속 표시되는 문제**
+- ezHelp 원격 연결에서 IP가 바뀌어도 프로세스 리스트와 복사 기능에서 이전 IP가 계속 표시됨
+- 그룹/카테고리는 유지되지만 새로운 IP 정보가 UI에 반영되지 않아 복사 시 잘못된 IP가 나오는 불편함
+
+### 🔍 근본 원인 분석
+**프로세스 업데이트 시 IP 정보 재추출 누락**
+- `ProcessStore.updateExistingProcess()`: IP 변경 시 `newProcessInfo.ipAddress`로만 업데이트
+- `ProcessStore.handleReconnection()`: 재연결 시에도 동일한 문제
+- **문제점**: `newProcessInfo`에서 IP가 제대로 추출되지 않으면 새로운 IP가 반영되지 않음
+
+### 🔧 수정 사항
+
+#### ProcessStore.js - updateExistingProcess() 메서드 (137-159라인)
+**기존 코드:**
+```javascript
+existingProcess.ipAddress = newProcessInfo.ipAddress; // IP 업데이트
+```
+
+**수정된 코드:**
+```javascript
+// IP 주소 강제 재추출 (새로운 windowTitle에서)
+const newIpAddress = KeyManager.extractIpAddress(newProcessInfo);
+const oldIpAddress = existingProcess.ipAddress;
+existingProcess.ipAddress = newIpAddress || newProcessInfo.ipAddress || existingProcess.ipAddress;
+
+// 상담원 ID도 재추출 (ezHelp의 경우)
+if (existingProcess.type === 'ezhelp') {
+  const newCounselorId = KeyManager.extractCounselorId(newProcessInfo);
+  existingProcess.counselorId = newCounselorId || newProcessInfo.counselorId || existingProcess.counselorId;
+}
+
+// IP 변경 감지 로그
+if (oldIpAddress !== existingProcess.ipAddress) {
+  console.log('🔄 IP 주소 업데이트 감지:', {
+    processId: existingProcess.id,
+    computerName: existingProcess.computerName,
+    oldIP: oldIpAddress,
+    newIP: existingProcess.ipAddress,
+    windowTitle: newProcessInfo.windowTitle,
+    extractedIP: newIpAddress,
+    providedIP: newProcessInfo.ipAddress
+  });
+}
+```
+
+#### ProcessStore.js - handleReconnection() 메서드 (302-324라인)
+**동일한 IP 재추출 로직 추가:**
+```javascript
+// IP 주소 강제 재추출 (재연결 시에도)
+const newIpAddress = KeyManager.extractIpAddress(processInfo);
+const oldIpAddress = process.ipAddress;
+process.ipAddress = newIpAddress || processInfo.ipAddress || process.ipAddress;
+
+// 상담원 ID도 재추출 (ezHelp의 경우)
+if (process.type === 'ezhelp') {
+  const newCounselorId = KeyManager.extractCounselorId(processInfo);
+  process.counselorId = newCounselorId || processInfo.counselorId || process.counselorId;
+}
+
+// IP 변경 감지 로그 (재연결 시)
+if (oldIpAddress !== process.ipAddress) {
+  console.log('🔄 재연결 시 IP 주소 업데이트 감지:', {
+    processId: process.id,
+    computerName: process.computerName,
+    oldIP: oldIpAddress,
+    newIP: process.ipAddress,
+    windowTitle: processInfo.windowTitle,
+    extractedIP: newIpAddress,
+    providedIP: processInfo.ipAddress
+  });
+}
+```
+
+### ✅ 개선된 IP 업데이트 시스템
+
+1. **강제 재추출**: 새로운 `windowTitle`에서 IP 주소를 다시 추출하여 확실한 업데이트 보장
+2. **3단계 폴백**: `extractedIP` → `providedIP` → `existingIP` 순서로 안전한 업데이트
+3. **상담원 ID 동기화**: ezHelp의 경우 상담원 ID도 함께 업데이트
+4. **디버깅 로그**: IP 변경 시 상세한 로그로 추적 가능
+5. **재연결 지원**: 단순 업데이트와 재연결 시 모두 동일한 로직 적용
+
+### 🎯 결과
+- ✅ **IP 변경 즉시 반영**: 원격지 IP가 바뀌면 UI에 새로운 IP가 바로 표시됨
+- ✅ **정확한 복사 기능**: 복사 버튼 클릭 시 최신 IP 주소가 복사됨
+- ✅ **그룹/카테고리 유지**: 기존 그룹과 카테고리 정보는 그대로 보존
+- ✅ **재연결 시에도 적용**: 연결이 끊어졌다가 다시 연결될 때도 새로운 IP로 업데이트
+- ✅ **디버깅 친화적**: 콘솔 로그로 IP 변경 과정을 상세히 추적 가능
+
+### 📋 관련 파일
+- `src/renderer/store/ProcessStore.js`: IP 재추출 로직 추가 (updateExistingProcess, handleReconnection)
+
+---
+
 **이전 업데이트 내용들은 이 위에 추가하세요**
