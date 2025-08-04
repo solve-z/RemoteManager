@@ -94,8 +94,19 @@ export class GroupService {
    */
   deleteGroup(groupId, force = false) {
     try {
+      console.log('🗑️ 그룹 삭제 시도:', {
+        groupId: groupId,
+        force: force,
+        allGroups: Array.from(this.groupStore.groups.keys()),
+        groupCount: this.groupStore.groups.size
+      });
+      
       const group = this.groupStore.getGroup(groupId);
       if (!group) {
+        console.error('❌ 그룹을 찾을 수 없음:', {
+          targetGroupId: groupId,
+          availableGroups: Array.from(this.groupStore.groups.entries()).map(([id, g]) => ({id, name: g.name}))
+        });
         throw new Error('그룹을 찾을 수 없습니다.');
       }
 

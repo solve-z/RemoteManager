@@ -370,4 +370,159 @@ if (oldIpAddress !== process.ipAddress) {
 
 ---
 
+## 2025-08-04 - 끊어진 프로세스 완전 삭제 기능 구현
+
+### 🐛 해결된 문제
+**연결이 끊어진 프로세스 수동 제거 기능 개선 및 데이터 무결성 문제 해결**
+
+1. **제거 버튼 표시 범위 제한**: 기존에는 `disconnected`(빨간색) 상태에서만 제거 가능, `reconnected`(노란색) 상태에서는 제거 불가
+2. **UI 일관성 부족**: `confirm()` 대신 모던한 커스텀 다이얼로그 필요
+3. **데이터 무결성 문제**: 수동 제거 시 그룹/카테고리 안정적 키 매핑이 삭제되지 않아 재연결 시 혼란 발생
+4. **그룹 개수 동기화 오류**: 프로세스 제거 시 그룹의 `processIds` 배열에서 완전히 제거되지 않음
+5. **중복 처리 문제**: ProcessService와 ProcessStore에서 안정적 키를 중복으로 처리
+
+### 🔍 근본 원인 분석
+
+#### 기존 버그의 연쇄 반응
+1. **ezHelp 타이틀 변경 버그** (이전에 해결) → 중복 프로세스 생성
+2. **불완전한 삭제 로직** → 그룹의 `processIds`에서 미제거
+3. **안정적 키 누적** → 실제 프로세스와 저장된 그룹 개수 불일치
+4. **결과**: 로컬스토리지의 그룹 개수 ≠ 실제 화면의 프로세스 개수
+
+#### 수동 제거의 의미
+- 사용자가 수동으로 제거한다는 것은 "더 이상 필요 없다"는 의미
+- 따라서 그룹/카테고리 설정도 함께 완전 삭제해야 함
+
+### 🔧 수정 사항
+
+#### 1. ProcessList.js - 제거 버튼 표시 조건 확장 (194-196라인)
+**기존 코드:**
+```javascript
+${process.status === 'disconnected' ? 
+  '<button class="btn btn-sm btn-danger" data-action="remove" title="제거">🗑️ 제거</button>' : 
+  ''
+}
+```
+
+**수정된 코드:**
+```javascript
+${process.status !== 'connected' ? 
+  '<button class="btn btn-sm btn-danger" data-action="remove" title="완전 삭제">🗑️ 삭제</button>' : 
+  ''
+}
+```
+
+#### 2. ProcessList.js - 커스텀 확인 다이얼로그 구현 (44-129라인)
+**GroupManager의 showCustomConfirm 메서드를 ProcessList에 추가:**
+```javascript
+showCustomConfirm(title, message, onConfirm, onCancel = null) {
+  // 다시 요소들을 찾기 (DOM이 변경되었을 수 있음)
+  this.findConfirmDialogElements();
+  
+  // 안전성 검사 후 커스텀 다이얼로그 표시
+  if (!this.confirmDialog || !this.confirmTitle || !this.confirmMessage) {
+    // 폴백: 기본 confirm 사용
+    if (confirm(message.replace(/<[^>]*>/g, ''))) {
+      if (onConfirm) onConfirm();
+    }
+    return;
+  }
+  
+  // HTML5 기반 모달 다이얼로그
+  // - 키보드 단축키 지원 (Enter/Escape)
+  // - 외부 클릭으로 닫기
+  // - 완전한 이벤트 리스너 정리
+}
+```
+
+#### 3. ProcessList.js - 확인 메시지 개선 (482-489라인)
+**수정된 확인 다이얼로그:**
+```javascript
+const message = `<strong>${displayName}</strong><br>상태: ${statusText}<br><br>이 프로세스를 완전히 제거하시겠습니까?<br><small class="text-warning">⚠️ 그룹/카테고리 설정도 함께 삭제됩니다.</small>`;
+
+this.showCustomConfirm(
+  '프로세스 완전 삭제 확인',
+  message,
+  () => {
+    this.processService.removeDisconnectedProcess(processId);
+  }
+);
+```
+
+#### 4. ProcessService.js - 완전 삭제 로직 개선 (354-394라인)
+**기존 조건:**
+```javascript
+if (process.status !== 'disconnected') {
+  this.notificationService?.showWarning('연결된 프로세스는 제거할 수 없습니다.');
+  return false;
+}
+```
+
+**수정된 로직:**
+```javascript
+// 연결된 프로세스만 제거 불가 (disconnected, reconnected 등은 제거 가능)
+if (process.status === 'connected') {
+  this.notificationService?.showWarning('연결된 프로세스는 제거할 수 없습니다.');
+  return false;
+}
+
+// 먼저 ProcessStore에서 프로세스 제거 (그룹에서 제거 포함)
+const success = this.processStore.removeProcess(processId, false); // 히스토리도 삭제
+
+// 수동 제거 시에는 안정적 키 기반 설정도 완전 삭제
+if (success && this.groupStore) {
+  const stableKey = KeyManager.getStableIdentifier(process);
+  
+  // 그룹과 카테고리 안정적 키 매핑 삭제
+  this.groupStore.stableKeyGroupMap.delete(stableKey);
+  this.groupStore.stableKeyCategoryMap.delete(stableKey);
+  this.groupStore.save();
+}
+```
+
+#### 5. ProcessStore.js - stableKeyMap 정리 추가 (403-405라인)
+```javascript
+// 프로세스 제거
+this.processes.delete(processId);
+
+// stableKeyMap에서도 제거
+const stableKey = KeyManager.getStableIdentifier(process);
+this.stableKeyMap.delete(stableKey);
+```
+
+### ✅ 완성된 완전 삭제 시스템
+
+1. **확장된 제거 조건**: `connected`가 아닌 모든 상태(`disconnected`, `reconnected` 등)에서 제거 가능
+2. **완전한 데이터 정리**: 
+   - 프로세스 삭제
+   - 그룹의 `processIds` 배열에서 제거
+   - `stableKeyMap`에서 제거
+   - `stableKeyGroupMap`, `stableKeyCategoryMap`에서 제거
+   - 히스토리 삭제 (재연결 방지)
+3. **모던한 UI**: 커스텀 다이얼로그로 일관된 사용자 경험
+4. **명확한 의도 표현**: "완전 삭제"와 "설정도 함께 삭제" 경고
+5. **중복 처리 방지**: ProcessStore 먼저 → ProcessService 안정적 키만 삭제
+6. **디버깅 지원**: 상세한 로그로 삭제 과정 추적
+
+### 🎯 결과
+
+#### 즉시 해결된 문제
+- ✅ **노란색 상태 제거 가능**: `reconnected` 상태에서도 제거 버튼 표시
+- ✅ **완전한 데이터 정리**: 그룹/카테고리 설정 완전 삭제로 재연결 시 깨끗한 상태
+- ✅ **그룹 개수 동기화**: 사이드바 그룹 개수와 실제 프로세스 개수 일치
+- ✅ **일관된 UI**: 그룹 관리와 동일한 스타일의 확인 다이얼로그
+- ✅ **재연결 정상 작동**: 삭제 후 동일 원격지 재연결 시 새 프로세스로 정상 생성
+
+#### 과거 누적 문제 해결
+- ✅ **그룹 개수 불일치 문제**: 이전 ezHelp 타이틀 변경 버그 + 불완전한 삭제로 인한 누적 문제 해결
+- ✅ **데이터 무결성 복원**: 로컬스토리지의 그룹 개수와 실제 화면 프로세스 개수 동기화
+- ✅ **안정적 키 정리**: 고아 데이터 자동 정리로 향후 문제 방지
+
+### 📋 관련 파일
+- `src/renderer/components/ProcessList.js`: 제거 버튼 조건, 커스텀 다이얼로그, 확인 메시지 개선
+- `src/renderer/services/ProcessService.js`: 완전 삭제 로직, 안정적 키 삭제, 중복 처리 방지
+- `src/renderer/store/ProcessStore.js`: stableKeyMap 정리 로직 추가
+
+---
+
 **이전 업데이트 내용들은 이 위에 추가하세요**

@@ -50,6 +50,13 @@ export class ProcessStore {
     }
 
     // 3. 새 프로세스 추가
+    console.log('🆕 새 프로세스 생성:', {
+      stableKey: stableKey,
+      matchingKey: matchingKey,
+      computerName: processInfo.computerName,
+      hasHistory: !!existingHistory,
+      hasStableKeyConflict: this.stableKeyMap.has(stableKey)
+    });
     return this.addNewProcess(processInfo);
   }
 
@@ -399,6 +406,10 @@ export class ProcessStore {
 
       // 프로세스 제거
       this.processes.delete(processId);
+
+      // stableKeyMap에서도 제거
+      const stableKey = KeyManager.getStableIdentifier(process);
+      this.stableKeyMap.delete(stableKey);
 
       // 히스토리 처리
       if (!keepHistory) {

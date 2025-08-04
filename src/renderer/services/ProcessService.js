@@ -351,16 +351,40 @@ export class ProcessService {
         return false;
       }
 
-      if (process.status !== 'disconnected') {
+      // 연결된 프로세스만 제거 불가 (disconnected, reconnected 등은 제거 가능)
+      if (process.status === 'connected') {
         this.notificationService?.showWarning('연결된 프로세스는 제거할 수 없습니다.');
         return false;
       }
 
-      const success = this.processStore.removeProcess(processId);
+      // 먼저 ProcessStore에서 프로세스 제거 (그룹에서 제거 포함)
+      const success = this.processStore.removeProcess(processId, false); // 히스토리도 삭제
+      
+      // 수동 제거 시에는 안정적 키 기반 설정도 완전 삭제
+      if (success && this.groupStore) {
+        const stableKey = KeyManager.getStableIdentifier(process);
+        
+        // 그룹과 카테고리 안정적 키 매핑 삭제 (ProcessStore에서 이미 그룹에서는 제거됨)
+        this.groupStore.stableKeyGroupMap.delete(stableKey);
+        this.groupStore.stableKeyCategoryMap.delete(stableKey);
+        
+        console.log('🗑️ 수동 제거로 안정적 키 설정 완전 삭제:', {
+          processId: processId,
+          computerName: process.computerName,
+          stableKey: stableKey,
+          deletedGroup: true,
+          deletedCategory: true,
+          remainingGroupMappings: this.groupStore.stableKeyGroupMap.size,
+          remainingCategoryMappings: this.groupStore.stableKeyCategoryMap.size
+        });
+        
+        // GroupStore 저장
+        this.groupStore.save();
+      }
       
       if (success) {
         this.notificationService?.showSuccess(
-          `${KeyManager.getDisplayKey(process)} 제거되었습니다.`
+          `${KeyManager.getDisplayKey(process)} 완전히 제거되었습니다.`
         );
       }
 

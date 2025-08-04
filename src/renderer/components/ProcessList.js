@@ -26,7 +26,118 @@ export class ProcessList {
       'old-server': { name: '구서버', color: '#fce4ec', borderColor: '#e91e63' }
     };
 
+    // 커스텀 확인 다이얼로그 요소들
+    this.confirmDialog = null;
+    this.confirmTitle = null;
+    this.confirmMessage = null;
+    this.confirmConfirmBtn = null;
+    this.confirmCancelBtn = null;
+    this.confirmCloseBtn = null;
+
     this.setupEventListeners();
+    this.findConfirmDialogElements();
+  }
+
+  /**
+   * 커스텀 확인 다이얼로그 요소들 찾기
+   */
+  findConfirmDialogElements() {
+    this.confirmDialog = document.getElementById('confirm-dialog');
+    this.confirmTitle = document.getElementById('confirm-dialog-title');
+    this.confirmMessage = document.getElementById('confirm-dialog-message');
+    this.confirmConfirmBtn = document.getElementById('confirm-dialog-confirm');
+    this.confirmCancelBtn = document.getElementById('confirm-dialog-cancel');
+    this.confirmCloseBtn = document.getElementById('confirm-dialog-close');
+  }
+
+  /**
+   * 커스텀 확인 다이얼로그 표시
+   * @param {string} title - 다이얼로그 제목
+   * @param {string} message - 확인 메시지
+   * @param {Function} onConfirm - 확인 버튼 클릭 시 콜백
+   * @param {Function} onCancel - 취소 버튼 클릭 시 콜백
+   */
+  showCustomConfirm(title, message, onConfirm, onCancel = null) {
+    // 다시 요소들을 찾기 (DOM이 변경되었을 수 있음)
+    this.findConfirmDialogElements();
+    
+    if (!this.confirmDialog || !this.confirmTitle || !this.confirmMessage || 
+        !this.confirmConfirmBtn || !this.confirmCancelBtn || !this.confirmCloseBtn) {
+      console.warn('커스텀 확인 다이얼로그 요소를 찾을 수 없습니다. 기본 confirm 사용');
+      if (confirm(message.replace(/<[^>]*>/g, ''))) { // HTML 태그 제거
+        if (onConfirm) onConfirm();
+      } else {
+        if (onCancel) onCancel();
+      }
+      return;
+    }
+
+    // 다이얼로그 내용 설정
+    this.confirmTitle.textContent = title;
+    this.confirmMessage.innerHTML = message.replace(/\n/g, '<br>');
+
+    // 다이얼로그 표시
+    this.confirmDialog.style.display = 'flex';
+
+    // 기존 이벤트 리스너 제거 (클로닝으로)
+    const newConfirmBtn = this.confirmConfirmBtn.cloneNode(true);
+    const newCancelBtn = this.confirmCancelBtn.cloneNode(true);
+    const newCloseBtn = this.confirmCloseBtn.cloneNode(true);
+    
+    this.confirmConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.confirmConfirmBtn);
+    this.confirmCancelBtn.parentNode.replaceChild(newCancelBtn, this.confirmCancelBtn);
+    this.confirmCloseBtn.parentNode.replaceChild(newCloseBtn, this.confirmCloseBtn);
+    
+    this.confirmConfirmBtn = newConfirmBtn;
+    this.confirmCancelBtn = newCancelBtn;
+    this.confirmCloseBtn = newCloseBtn;
+
+    // 정리 함수
+    const cleanup = () => {
+      this.confirmDialog.style.display = 'none';
+      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('click', clickOutsideHandler);
+    };
+
+    // 확인 버튼
+    this.confirmConfirmBtn.addEventListener('click', () => {
+      cleanup();
+      if (onConfirm) onConfirm();
+    });
+
+    // 취소/닫기 버튼
+    const cancelHandler = () => {
+      cleanup();
+      if (onCancel) onCancel();
+    };
+    this.confirmCancelBtn.addEventListener('click', cancelHandler);
+    this.confirmCloseBtn.addEventListener('click', cancelHandler);
+
+    // 키보드 이벤트
+    const keyHandler = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup();
+        if (onConfirm) onConfirm();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+        if (onCancel) onCancel();
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    // 다이얼로그 외부 클릭 시 닫기
+    const clickOutsideHandler = (e) => {
+      if (e.target === this.confirmDialog) {
+        cleanup();
+        if (onCancel) onCancel();
+      }
+    };
+    document.addEventListener('click', clickOutsideHandler);
+
+    // 첫 번째 버튼에 포커스
+    this.confirmConfirmBtn.focus();
   }
 
   /**
@@ -191,8 +302,8 @@ export class ProcessList {
               <option value="old-server" ${process.category === 'old-server' ? 'selected' : ''}>구서버</option>
             </select>
 
-            ${process.status === 'disconnected' ? 
-              '<button class="btn btn-sm btn-danger" data-action="remove" title="제거">🗑️ 제거</button>' : 
+            ${process.status !== 'connected' ? 
+              '<button class="btn btn-sm btn-danger" data-action="remove" title="완전 삭제">🗑️ 삭제</button>' : 
               ''
             }
           </div>
@@ -373,9 +484,21 @@ export class ProcessList {
         break;
 
       case 'remove':
-        if (confirm('이 프로세스를 목록에서 제거하시겠습니까?')) {
-          this.processService.removeDisconnectedProcess(processId);
-        }
+        const process = this.processes.find(p => p.id === processId);
+        if (!process) break;
+        
+        const statusText = this.getStatusText(process.status);
+        const displayName = this.getDisplayName(process);
+        const message = `<strong>${displayName}</strong><br>상태: ${statusText}<br><br>이 프로세스를 완전히 제거하시겠습니까?<br><small class="text-warning">⚠️ 그룹/카테고리 설정도 함께 삭제됩니다.</small>`;
+        
+        this.showCustomConfirm(
+          '프로세스 완전 삭제 확인',
+          message,
+          () => {
+            // 확인 버튼 클릭 시
+            this.processService.removeDisconnectedProcess(processId);
+          }
+        );
         break;
     }
   }
