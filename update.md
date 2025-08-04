@@ -1,5 +1,59 @@
 # RemoteManager 업데이트 로그
 
+## 2025-08-04 - ezHelp 타이틀 변경 시 프로세스 중복 인식 문제 해결
+
+### 🐛 해결된 문제
+**ezHelp 원격 제어 상태 변경 시 새로운 프로세스로 잘못 인식하는 문제**
+- 원격 제어 잠김 시: `"ezHelp - dentweb-svr 잠김(Relay)"` → 새로운 원격으로 인식
+- 화면 녹화 중: `"ezHelp - dentweb-svr(Relay) - ... (화면 녹화 중입니다.)"` → 기존 라벨 유지 필요
+- 결과: 기존 설정한 라벨과 그룹 정보가 사라지고 새로운 프로세스로 생성됨
+
+### 🔍 근본 원인 분석
+**컴퓨터명 추출 정규식의 한계**
+- `KeyManager.js`와 `process-detector.js` 모두 동일한 문제
+- 기존 정규식: `/ezHelp - ([^(]+)/` → `"잠김"` 텍스트 포함하여 추출
+- 예시: `"dentweb-svr 잠김"` vs `"dentweb-svr"` → 다른 컴퓨터로 인식
+
+### 🔧 수정 사항
+
+**개선된 단계별 패턴 매칭 구현:**
+
+#### KeyManager.js (200-215라인)
+```javascript
+// 패턴 1: "ezHelp - 컴퓨터명 잠김(Relay)" 형태
+let match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\s+잠김\(/);
+if (match) {
+  return match[1].trim();
+}
+
+// 패턴 2: "ezHelp - 컴퓨터명(Relay)" 형태 (정상)
+match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\(/);
+if (match) {
+  return match[1].trim();
+}
+```
+
+#### process-detector.js (340-355라인)
+동일한 로직으로 일관성 있게 수정
+
+### ✅ 검증 결과
+모든 ezHelp 상태 변화에서 올바른 컴퓨터명 추출:
+- `dentweb-svr(Relay)` → `dentweb-svr` ✅
+- `dentweb-svr 잠김(Relay)` → `dentweb-svr` ✅ (기존: `dentweb-svr 잠김` ❌)
+- `WORK-STATION-01 잠김(Relay)` → `WORK-STATION-01` ✅
+
+### 🎯 결과
+- ✅ 원격 제어 잠김/해제 시 기존 프로세스로 정확히 인식
+- ✅ 화면 녹화 시작/종료 시에도 동일한 컴퓨터명 유지  
+- ✅ 사용자가 설정한 라벨과 그룹 정보 완벽 보존
+- ✅ 복잡한 컴퓨터명(하이픈 포함)도 정확히 처리
+
+### 📋 관련 파일
+- `src/renderer/services/KeyManager.js`: 컴퓨터명 추출 로직 개선
+- `src/main/process-detector.js`: PowerShell 출력 파싱 로직 개선
+
+---
+
 ## 2025-08-04 - UI 동기화 및 하이라이팅 문제 해결
 
 ### 🐛 해결된 문제

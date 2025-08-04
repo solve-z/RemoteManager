@@ -199,8 +199,23 @@ export class KeyManager {
 
     if (type === 'ezhelp') {
       // ezHelp에서 컴퓨터명 추출: "ezHelp - desktop-6bcogpv(Relay)" 또는 Chrome 테스트용
-      const match = windowTitle.match(/ezHelp - ([^(]+)/);
-      return match ? match[1].trim() : null;
+      // 잠김, 녹화중 등의 상태 정보를 고려한 개선된 정규식
+      
+      // 패턴 1: "ezHelp - 컴퓨터명 잠김(Relay)" 형태
+      let match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\s+잠김\(/);
+      if (match) {
+        return match[1].trim();
+      }
+      
+      // 패턴 2: "ezHelp - 컴퓨터명(Relay)" 형태 (정상)
+      match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\(/);
+      if (match) {
+        return match[1].trim();
+      }
+      
+      // 기존 방식 (호환성 유지)
+      const fallbackMatch = windowTitle.match(/ezHelp - ([^(]+)/);
+      return fallbackMatch ? fallbackMatch[1].trim() : null;
     } else if (type === 'teamviewer') {
       // TeamViewer에서 컴퓨터명 추출: "YSCENTER1_01 - TeamViewer" 또는 Chrome 테스트용
       let match = windowTitle.match(/^(.+) - TeamViewer$/);

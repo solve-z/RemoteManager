@@ -337,9 +337,27 @@ class ProcessDetector {
     const ipMatch = windowTitle.match(/원격지 IP : ([\d.]+)/);
     const ipAddress = ipMatch ? ipMatch[1] : null;
 
-    // 컴퓨터명 추출
-    const computerMatch = windowTitle.match(/ezHelp - ([^(]+)/);
-    const computerName = computerMatch ? computerMatch[1].trim() : null;
+    // 컴퓨터명 추출 (잠김, 녹화중 등의 상태 정보 고려)
+    let computerName = null;
+    
+    // 예시: "ezHelp - dentweb-svr 잠김(Relay) - 원격지 IP : ..."
+    // 예시: "ezHelp - dentweb-svr(Relay) - 원격지 IP : ... (화면 녹화 중입니다.)"
+    
+    // 패턴 1: "ezHelp - 컴퓨터명 잠김(Relay)" 형태
+    let computerMatch = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\s+잠김\(/);
+    if (computerMatch) {
+      computerName = computerMatch[1].trim();
+    } else {
+      // 패턴 2: "ezHelp - 컴퓨터명(Relay)" 형태 (정상)
+      computerMatch = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\(/);
+      if (computerMatch) {
+        computerName = computerMatch[1].trim();
+      } else {
+        // 기존 방식 (호환성 유지)
+        const fallbackMatch = windowTitle.match(/ezHelp - ([^(]+)/);
+        computerName = fallbackMatch ? fallbackMatch[1].trim() : null;
+      }
+    }
 
     // 상담원 번호 추출
     const counselorMatch = windowTitle.match(/상담원\((\d+)\)/);
