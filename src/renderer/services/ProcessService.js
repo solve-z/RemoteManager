@@ -293,16 +293,39 @@ export class ProcessService {
   }
 
   /**
-   * 프로세스 카테고리 설정
+   * 프로세스 카테고리 설정 (안정적 키 기반 저장 포함)
    * @param {string} processId - 프로세스 ID
    * @param {string} category - 카테고리
    * @returns {boolean} 성공 여부
    */
   setProcessCategory(processId, category) {
     try {
+      const process = this.processStore.getProcess(processId);
+      if (!process) {
+        throw new Error('프로세스를 찾을 수 없습니다.');
+      }
+
+      // 1. 프로세스 설정 업데이트
       const success = this.processStore.updateProcessSettings(processId, {
         category: category || null,
       });
+
+      if (!success) {
+        throw new Error('프로세스 설정 업데이트 실패');
+      }
+
+      // 2. 안정적 키 기반으로 카테고리 저장 (그룹과 동일한 방식)
+      if (this.groupStore) {
+        this.groupStore.setCategoryByStableKey(process, category);
+        console.log('💾 카테고리 안정적 키 저장:', {
+          processId: processId,
+          category: category,
+          stableKey: KeyManager.getStableIdentifier(process),
+          computerName: process.computerName
+        });
+      } else {
+        console.warn('⚠️ GroupStore가 없어서 카테고리 안정적 키 저장 불가');
+      }
 
       if (success) {
         this.notificationService?.showSuccess('카테고리가 변경되었습니다.');
