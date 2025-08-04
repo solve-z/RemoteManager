@@ -316,10 +316,32 @@ html, body {
   font-size: 14px;
 }
 
+.header-controls .btn-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 버튼 내부 요소 정렬 개선 */
+.btn .btn-icon,
+.btn .btn-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn .btn-icon {
+  line-height: 1;
+}
+
+.btn .btn-text {
+  line-height: 1;
+}
+
 /* 버튼 스타일 */
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 8px 16px;
   border: 1px solid transparent;
@@ -331,6 +353,7 @@ html, body {
   transition: all 0.2s;
   background: none;
   min-height: 36px;
+  line-height: 1;
 }
 
 .btn-primary {
@@ -505,6 +528,97 @@ html, body {
   margin-bottom: 16px;
 }
 
+/* 버튼용 작은 스피너 */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* 자동 새로고침 아이콘들 - 동일한 크기로 통일 */
+.auto-refresh-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  position: relative;
+}
+
+/* 재생 아이콘 (▶️) */
+.auto-refresh-icon.play::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+/* 정지 아이콘 (⏸️) */
+.auto-refresh-icon.pause::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 3px;
+  height: 10px;
+  background: currentColor;
+  box-shadow: 6px 0 0 currentColor;
+}
+
+/* 새로고침 아이콘 - 동일한 크기로 통일 */
+.refresh-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  position: relative;
+}
+
+/* 새로고침 아이콘 (🔄 대체) */
+.refresh-icon.normal::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-right-color: transparent;
+}
+
+.refresh-icon.normal::after {
+  content: '';
+  position: absolute;
+  right: 0px;
+  top: 3px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+}
+
+/* 새로고침 스피너 아이콘 */
+.refresh-icon.spinning::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -583,6 +697,18 @@ html, body {
   .header-controls {
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+/* 중간 화면에서 헤더 버튼 텍스트 숨김 */
+@media (max-width: 768px) {
+  .header-controls .btn .btn-text {
+    display: none;
+  }
+  
+  .header-controls .btn {
+    padding: 8px 12px;
+    min-width: auto;
   }
 }
 

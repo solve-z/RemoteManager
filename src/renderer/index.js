@@ -271,7 +271,7 @@ class RemoteManagerApp {
   }
 
   /**
-   * 프로세스 새로고림
+   * 프로세스 새로고침
    */
   async refreshProcesses() {
     try {
@@ -279,52 +279,19 @@ class RemoteManagerApp {
       const emptyState = document.getElementById('empty-state');
       const processListContainer = document.getElementById('process-list-container');
       const refreshBtn = document.getElementById('refresh-btn');
+      const refreshBtnIcon = refreshBtn?.querySelector('.btn-icon');
 
-      // 새로고침 버튼 비활성화
-      if (refreshBtn) {
+      // 새로고침 버튼에 스피너 표시
+      if (refreshBtn && refreshBtnIcon) {
         refreshBtn.disabled = true;
-        
-        // 2초 후 복원
-        setTimeout(() => {
-          refreshBtn.disabled = false;
-        }, 2000);
+        refreshBtnIcon.innerHTML = '<span class="refresh-icon spinning"></span>';
       }
 
-      // 기존 프로세스가 있는 경우 목록을 유지하고, 상단에 작은 로딩 인디케이터만 표시
+      // 기존 프로세스가 있는 경우 목록을 유지
       const currentProcesses = this.stores.process.getAllProcesses();
       if (currentProcesses.length > 0) {
-        // 기존 리스트 위에 작은 로딩 바 표시
-        let loadingBar = document.getElementById('refresh-loading-bar');
-        if (!loadingBar) {
-          loadingBar = document.createElement('div');
-          loadingBar.id = 'refresh-loading-bar';
-          loadingBar.innerHTML = '<div class="loading-progress"></div>';
-          loadingBar.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--color-background-secondary);
-            z-index: 1000;
-            overflow: hidden;
-          `;
-          loadingBar.querySelector('.loading-progress').style.cssText = `
-            height: 100%;
-            background: var(--color-primary);
-            animation: loading-progress 1s ease-in-out infinite;
-            transform: translateX(-100%);
-          `;
-          processListContainer.style.position = 'relative';
-          processListContainer.insertBefore(loadingBar, processListContainer.firstChild);
-        }
-        loadingBar.style.display = 'block';
-        
         // 프로세스 로드
         await this.services.process.loadProcesses();
-        
-        // 로딩 바 숨김
-        loadingBar.style.display = 'none';
       } else {
         // 프로세스가 없는 경우만 전체 로딩 상태 표시
         loadingState.style.display = 'flex';
@@ -346,18 +313,23 @@ class RemoteManagerApp {
         emptyState.style.display = 'flex';
       }
 
+      // 새로고침 버튼 복원
+      if (refreshBtn && refreshBtnIcon) {
+        refreshBtn.disabled = false;
+        refreshBtnIcon.innerHTML = '<span class="refresh-icon normal"></span>';
+      }
+
     } catch (error) {
       console.error('프로세스 새로고침 실패:', error);
       const loadingState = document.getElementById('loading-state');
-      const loadingBar = document.getElementById('refresh-loading-bar');
       if (loadingState) loadingState.style.display = 'none';
-      if (loadingBar) loadingBar.style.display = 'none';
       
       // 새로고침 버튼 복원
       const refreshBtn = document.getElementById('refresh-btn');
-      if (refreshBtn) {
+      const refreshBtnIcon = refreshBtn?.querySelector('.btn-icon');
+      if (refreshBtn && refreshBtnIcon) {
         refreshBtn.disabled = false;
-        refreshBtn.textContent = '새로고침';
+        refreshBtnIcon.innerHTML = '<span class="refresh-icon normal"></span>';
       }
     }
   }
@@ -390,7 +362,10 @@ class RemoteManagerApp {
     const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
     if (autoRefreshToggle) {
       autoRefreshToggle.classList.add('active');
-      autoRefreshToggle.querySelector('.btn-text').textContent = '자동 새로고침 중지';
+      const btnIcon = autoRefreshToggle.querySelector('.btn-icon');
+      const btnText = autoRefreshToggle.querySelector('.btn-text');
+      if (btnIcon) btnIcon.innerHTML = '<span class="auto-refresh-icon pause"></span>';
+      if (btnText) btnText.textContent = '자동 새로고침 중지';
     }
 
     console.log('🔄 자동 새로고침 시작 (5초 간격)');
@@ -411,7 +386,10 @@ class RemoteManagerApp {
     const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
     if (autoRefreshToggle) {
       autoRefreshToggle.classList.remove('active');
-      autoRefreshToggle.querySelector('.btn-text').textContent = '자동 새로고침';
+      const btnIcon = autoRefreshToggle.querySelector('.btn-icon');
+      const btnText = autoRefreshToggle.querySelector('.btn-text');
+      if (btnIcon) btnIcon.innerHTML = '<span class="auto-refresh-icon play"></span>';
+      if (btnText) btnText.textContent = '자동 새로고침 시작';
     }
 
     console.log('⏸️ 자동 새로고침 중지');

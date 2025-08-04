@@ -525,4 +525,167 @@ this.stableKeyMap.delete(stableKey);
 
 ---
 
+## 2025-08-04 - UI/UX 개선: 로딩 시스템 개선 및 버튼 정렬 문제 해결
+
+### 🐛 해결된 문제
+
+#### 1. 새로고침 로딩 시스템의 시각적 피로 문제
+- **직선형 로딩바**: 화면 상단을 가로지르는 직선 프로그레스바가 눈에 자극적
+- **이모지 크기 차이**: 🔄 이모지와 스피너 크기 차이로 버튼 크기 변화
+- **자동 새로고침 이모지 크기 차이**: ▶️ ↔ ⏸️ 이모지 크기 차이로 버튼 크기 변화
+
+#### 2. 버튼 텍스트 수직 정렬 문제
+- **정렬 불일치**: 아이콘과 텍스트의 수직 정렬이 맞지 않음
+- **margin-bottom 오류**: components.css의 `.btn-text`에 불필요한 `margin-bottom: 4px`
+
+### 🔧 수정 사항
+
+#### 1. 새로고침 로딩 시스템 완전 개선
+
+**A. 로딩바 제거 및 버튼 스피너 적용**
+- **로딩바 완전 제거**: `refresh-loading-bar` 관련 모든 코드 제거
+- **버튼 스피너 적용**: 새로고침 클릭 시 버튼 아이콘이 스피너로 변경
+
+**B. CSS 아이콘 시스템 구현**
+```css
+/* 버튼용 작은 스피너 */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* 새로고침 아이콘 - 통일된 14px × 14px */
+.refresh-icon.normal::before {
+  /* CSS border로 구현한 새로고침 아이콘 */
+}
+
+.refresh-icon.spinning::before {
+  /* 동일한 크기의 회전 스피너 */
+}
+
+/* 자동 새로고침 아이콘 - 통일된 14px × 14px */
+.auto-refresh-icon.play::before {
+  /* CSS border로 구현한 재생 아이콘 (▶️ 대체) */
+}
+
+.auto-refresh-icon.pause::before {
+  /* CSS box-shadow로 구현한 정지 아이콘 (⏸️ 대체) */
+}
+```
+
+**C. JavaScript 로직 업데이트**
+```javascript
+// 새로고침 버튼
+// 일반: <span class="refresh-icon normal"></span>
+// 로딩: <span class="refresh-icon spinning"></span>
+
+// 자동 새로고침 버튼  
+// 시작: <span class="auto-refresh-icon play"></span>
+// 중지: <span class="auto-refresh-icon pause"></span>
+```
+
+#### 2. 버튼 텍스트 수직 정렬 완전 해결
+
+**A. 텍스트 정렬 수정**
+```css
+/* 기존 문제 코드 */
+.btn-text {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px; /* 문제 원인 */
+}
+
+/* 수정된 코드 */
+.btn-text {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+```
+
+**B. 버튼 내부 요소 정렬 개선**
+```css
+/* 버튼 스타일 개선 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* 버튼 내부 요소 정렬 */
+.btn .btn-icon,
+.btn .btn-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* 헤더 버튼 전용 텍스트 크기 */
+.header-controls .btn-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+```
+
+#### 3. 반응형 텍스트 숨김 개선
+```css
+/* 중간 화면에서 헤더 버튼 텍스트 숨김 */
+@media (max-width: 768px) {
+  .header-controls .btn .btn-text {
+    display: none;
+  }
+  
+  .header-controls .btn {
+    padding: 8px 12px;
+    min-width: auto;
+  }
+}
+```
+
+### ✅ 완성된 개선 시스템
+
+#### 1. 시각적 안정성 완전 달성
+- **통일된 아이콘 크기**: 모든 아이콘이 14px × 14px로 고정
+- **버튼 크기 불변**: 상태 변화 시에도 버튼 크기 변화 없음
+- **완벽한 정렬**: 아이콘과 텍스트가 정확히 중앙 정렬
+
+#### 2. 향상된 사용자 경험
+- **눈의 피로 해소**: 직선 로딩바 제거로 시각적 자극 감소
+- **자연스러운 상호작용**: 버튼 상태 변화가 부드럽고 안정적
+- **일관된 디자인**: CSS 기반 아이콘으로 통일된 디자인 시스템
+
+#### 3. 반응형 디자인 최적화
+- **768px 이하**: 헤더 버튼 텍스트 숨김으로 공간 절약
+- **480px 이하**: 모든 버튼 텍스트 숨김
+- **적응형 크기**: 화면 크기에 따른 최적화된 버튼 크기
+
+### 🎯 결과
+
+#### 즉시 해결된 문제
+- ✅ **시각적 피로 완전 해소**: 직선 로딩바 → 부드러운 버튼 스피너
+- ✅ **버튼 크기 안정화**: 모든 상태 변화에서 크기 불변
+- ✅ **완벽한 텍스트 정렬**: 아이콘과 텍스트의 정확한 중앙 정렬
+- ✅ **일관된 디자인**: CSS 아이콘으로 통일된 시각적 언어
+
+#### 장기적 개선 효과
+- 🎨 **확장 가능한 아이콘 시스템**: CSS 기반으로 쉬운 커스터마이징
+- 📱 **향상된 반응형 지원**: 다양한 화면 크기에서 최적화된 경험
+- 🔧 **유지보수성 향상**: 이모지 의존성 제거로 안정적인 UI
+
+### 📋 관련 파일
+- `src/renderer/index.js`: 새로고침 로직, 자동 새로고침 토글 로직 개선
+- `src/renderer/index.html`: CSS 클래스 기반 아이콘으로 초기값 변경
+- `src/styles/main.css`: 버튼 스타일, 아이콘 시스템, 반응형 스타일 추가
+- `src/styles/components.css`: 버튼 텍스트 정렬 문제 해결
+
+---
+
 **이전 업데이트 내용들은 이 위에 추가하세요**
