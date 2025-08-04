@@ -160,6 +160,9 @@ export class Sidebar {
     // 클릭된 링크에 active 클래스 추가
     clickedLink.classList.add('active');
 
+    // 그룹 선택 해제 (네비게이션 항목 클릭 시 항상 그룹 선택 해제)
+    this.clearGroupSelection();
+
     // 페이지 제목 업데이트
     const pageTitle = document.getElementById('page-title');
     
@@ -168,10 +171,8 @@ export class Sidebar {
       pageTitle.textContent = linkText;
     }
 
-    // 그룹 선택 해제 (원격 프로세스 탭으로 이동할 때)
+    // 프로세스 필터 초기화 이벤트 발생 (원격 프로세스 탭으로 이동할 때)
     if (clickedLink.id === 'nav-processes') {
-      this.clearGroupSelection();
-      // 프로세스 필터 초기화 이벤트 발생
       const clearFilterEvent = new CustomEvent('clear-group-filter');
       window.dispatchEvent(clearFilterEvent);
     }
@@ -434,6 +435,10 @@ export class Sidebar {
    * @param {string} groupId - 그룹 ID
    */
   selectGroup(groupId) {
+    // 네비게이션 링크 active 상태 해제 (그룹 선택 시 네비게이션 선택 해제)
+    const navLinks = this.element.querySelectorAll('.nav-link');
+    navLinks.forEach(link => link.classList.remove('active'));
+
     // 그룹 아이템 활성 상태 업데이트
     const groupItems = this.element.querySelectorAll('.group-item');
     groupItems.forEach(item => {

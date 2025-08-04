@@ -1,5 +1,161 @@
 # RemoteManager 업데이트 로그
 
+## 2025-08-04 - UI 동기화 및 하이라이팅 문제 해결
+
+### 🐛 해결된 문제
+1. **그룹 라벨 색상과 프로세스 리스트 그룹 배지 색상 동기화 문제**
+   - 사이드바의 그룹 라벨 색상과 프로세스 리스트에 표시되는 그룹 배지의 색상이 일치하지 않는 문제
+
+2. **사이드바 네비게이션과 그룹 선택 시 중복 하이라이팅 문제**
+   - 네비게이션 항목과 그룹 항목이 동시에 활성화되어 두 곳 모두 하이라이팅되는 문제
+   - 마지막에 클릭한 곳만 활성화되어야 하는데 기존에는 둘 다 활성 상태로 유지됨
+
+### 🔍 분석 결과
+1. **그룹 색상 동기화 문제**:
+   - `Sidebar.js`의 `renderGroupItem()` 함수에서는 그룹 색상을 올바르게 적용
+   - `ProcessList.js`의 `getGroupBadge()` 함수에서는 그룹 색상 정보를 사용하지 않음
+
+2. **중복 하이라이팅 문제**:
+   - `handleNavigation()` 함수에서 특정 조건에서만 그룹 선택 해제
+   - `selectGroup()` 함수에서 네비게이션 링크의 active 상태를 해제하지 않음
+
+### 🔧 수정 사항
+
+#### ProcessList.js (279-289라인)
+**기존 코드:**
+```javascript
+getGroupBadge(groupId) {
+  if (!groupId) {
+    return '';
+  }
+
+  // 그룹 서비스에서 실제 그룹 정보 가져오기
+  const group = this.groupService.groupStore.getGroup(groupId);
+  const groupName = group ? group.name : groupId.slice(-8);
+  
+  return `<span class="group-badge">${groupName}</span>`;
+}
+```
+
+**수정된 코드:**
+```javascript
+getGroupBadge(groupId) {
+  if (!groupId) {
+    return '';
+  }
+
+  // 그룹 서비스에서 실제 그룹 정보 가져오기
+  const group = this.groupService.groupStore.getGroup(groupId);
+  const groupName = group ? group.name : groupId.slice(-8);
+  const colorStyle = group && group.color ? `style="background-color: ${group.color};"` : '';
+  
+  return `<span class="group-badge" ${colorStyle}>${groupName}</span>`;
+}
+```
+
+#### Sidebar.js (155-186라인)
+**기존 코드:**
+```javascript
+handleNavigation(clickedLink) {
+  // 모든 링크에서 active 클래스 제거
+  const navLinks = this.element.querySelectorAll('.nav-link');
+  navLinks.forEach(link => link.classList.remove('active'));
+
+  // 클릭된 링크에 active 클래스 추가
+  clickedLink.classList.add('active');
+
+  // 그룹 선택 해제 (원격 프로세스 탭으로 이동할 때)
+  if (clickedLink.id === 'nav-processes') {
+    this.clearGroupSelection();
+    // 프로세스 필터 초기화 이벤트 발생
+    const clearFilterEvent = new CustomEvent('clear-group-filter');
+    window.dispatchEvent(clearFilterEvent);
+  }
+  // ... 나머지 코드
+}
+```
+
+**수정된 코드:**
+```javascript
+handleNavigation(clickedLink) {
+  // 모든 링크에서 active 클래스 제거
+  const navLinks = this.element.querySelectorAll('.nav-link');
+  navLinks.forEach(link => link.classList.remove('active'));
+
+  // 클릭된 링크에 active 클래스 추가
+  clickedLink.classList.add('active');
+
+  // 그룹 선택 해제 (네비게이션 항목 클릭 시 항상 그룹 선택 해제)
+  this.clearGroupSelection();
+
+  // 프로세스 필터 초기화 이벤트 발생 (원격 프로세스 탭으로 이동할 때)
+  if (clickedLink.id === 'nav-processes') {
+    const clearFilterEvent = new CustomEvent('clear-group-filter');
+    window.dispatchEvent(clearFilterEvent);
+  }
+  // ... 나머지 코드
+}
+```
+
+#### Sidebar.js (437-465라인)
+**기존 코드:**
+```javascript
+selectGroup(groupId) {
+  // 그룹 아이템 활성 상태 업데이트
+  const groupItems = this.element.querySelectorAll('.group-item');
+  groupItems.forEach(item => {
+    if (item.dataset.groupId === groupId) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+  // ... 나머지 코드
+}
+```
+
+**수정된 코드:**
+```javascript
+selectGroup(groupId) {
+  // 네비게이션 링크 active 상태 해제 (그룹 선택 시 네비게이션 선택 해제)
+  const navLinks = this.element.querySelectorAll('.nav-link');
+  navLinks.forEach(link => link.classList.remove('active'));
+
+  // 그룹 아이템 활성 상태 업데이트
+  const groupItems = this.element.querySelectorAll('.group-item');
+  groupItems.forEach(item => {
+    if (item.dataset.groupId === groupId) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+  // ... 나머지 코드
+}
+```
+
+### ✅ 완성된 UI 동기화 시스템
+
+1. **그룹 색상 동기화**:
+   - 사이드바 그룹 라벨과 프로세스 리스트 그룹 배지가 동일한 색상으로 표시
+   - 그룹 색상 변경 시 모든 UI 요소에 자동 반영
+
+2. **상호 배타적 하이라이팅**:
+   - 네비게이션 항목 클릭 시 → 모든 그룹 선택 해제
+   - 그룹 항목 클릭 시 → 모든 네비게이션 선택 해제
+   - 마지막에 클릭한 곳만 활성 상태 유지
+
+### 🎯 결과
+- 그룹 라벨과 프로세스 리스트의 그룹 배지 색상이 완벽하게 동기화됩니다
+- 네비게이션과 그룹 선택이 상호 배타적으로 작동하여 하나만 활성화됩니다
+- 사용자 경험이 더욱 직관적이고 일관성 있게 개선되었습니다
+
+### 📋 관련 파일
+- `src/renderer/components/ProcessList.js`: 그룹 배지 색상 동기화 로직 추가
+- `src/renderer/components/Sidebar.js`: 상호 배타적 하이라이팅 로직 수정
+
+---
+
 ## 2025-08-04 - 카테고리 지속성 문제 해결
 
 ### 🐛 해결된 문제

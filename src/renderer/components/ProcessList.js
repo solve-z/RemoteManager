@@ -284,8 +284,9 @@ export class ProcessList {
     // 그룹 서비스에서 실제 그룹 정보 가져오기
     const group = this.groupService.groupStore.getGroup(groupId);
     const groupName = group ? group.name : groupId.slice(-8);
+    const colorStyle = group && group.color ? `style="background-color: ${group.color};"` : '';
     
-    return `<span class="group-badge">${groupName}</span>`;
+    return `<span class="group-badge" ${colorStyle}>${groupName}</span>`;
   }
 
   /**
