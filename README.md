@@ -1,4 +1,4 @@
-# 🖥️ RemoteManager v4.0
+# 🖥️ RemoteManager v1.0
 
 > **원격지원 관리 도구** - ezHelp, TeamViewer 등 원격지원 프로그램을 효율적으로 관리하는 Electron 기반 데스크톱 애플리케이션
 
