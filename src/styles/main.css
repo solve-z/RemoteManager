@@ -588,7 +588,7 @@ html, body {
   top: 1px;
   width: 12px;
   height: 12px;
-  border: 2px solid currentColor;
+  border: 2px solid #ffffff;
   border-radius: 50%;
   border-right-color: transparent;
 }
@@ -600,7 +600,7 @@ html, body {
   top: 3px;
   width: 0;
   height: 0;
-  border-left: 4px solid currentColor;
+  border-left: 4px solid #ffffff;
   border-top: 3px solid transparent;
   border-bottom: 3px solid transparent;
 }
@@ -614,7 +614,7 @@ html, body {
   width: 12px;
   height: 12px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid currentColor;
+  border-top: 2px solid #ffffff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

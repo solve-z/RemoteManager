@@ -40,6 +40,13 @@ export class ProcessStore {
     // 1. 기존 프로세스 재연결 확인
     const existingHistory = this.processHistory.get(matchingKey);
     if (existingHistory) {
+      console.log('🔄 기존 프로세스 재연결 경로:', {
+        matchingKey: matchingKey,
+        stableKey: stableKey,
+        computerName: processInfo.computerName,
+        existingProcessId: existingHistory.processId,
+        existingStatus: existingHistory.status
+      });
       return this.handleReconnection(existingHistory, processInfo);
     }
 
@@ -269,6 +276,7 @@ export class ProcessStore {
       const group = this.groupStore.groups.get(savedGroupId);
       if (!group.processIds.includes(processId)) {
         group.processIds.push(processId);
+        this.groupStore.save(); // 변경사항 저장
         console.log('✅ 프로세스 생성 시 그룹에 즉시 추가:', {
           groupName: group.name,
           processId: processId,
@@ -299,6 +307,14 @@ export class ProcessStore {
    */
   handleReconnection(historyEntry, processInfo) {
     const process = this.processes.get(historyEntry.processId);
+    
+    console.log('🔄 handleReconnection 시작:', {
+      historyProcessId: historyEntry.processId,
+      processExists: !!process,
+      processGroupId: process?.groupId,
+      computerName: processInfo.computerName,
+      type: processInfo.type
+    });
     
     if (process) {
       // 기존 프로세스 업데이트
@@ -342,11 +358,30 @@ export class ProcessStore {
       historyEntry.lastSeen = new Date();
       historyEntry.disconnectedTime = null;
 
+      // 재연결 시 그룹의 processIds 배열에도 추가 (그룹이 할당되어 있고 배열에 없는 경우)
+      if (process.groupId && this.groupStore?.groups.has(process.groupId)) {
+        const group = this.groupStore.groups.get(process.groupId);
+        if (!group.processIds.includes(process.id)) {
+          group.processIds.push(process.id);
+          this.groupStore.save(); // 변경사항 저장
+          console.log('✅ 재연결 시 그룹에 프로세스 추가:', {
+            groupName: group.name,
+            processId: process.id,
+            groupProcessCount: group.processIds.length
+          });
+        }
+      }
+
       this.notifyListeners();
       return process;
     }
 
     // 프로세스가 없으면 새로 생성
+    console.log('🔄 재연결 중 프로세스 없음 → 새로 생성:', {
+      historyProcessId: historyEntry.processId,
+      computerName: processInfo.computerName,
+      type: processInfo.type
+    });
     return this.addNewProcess(processInfo);
   }
 

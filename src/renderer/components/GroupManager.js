@@ -83,6 +83,18 @@ export class GroupManager {
   }
 
   /**
+   * 확인 다이얼로그 DOM 요소들을 다시 찾기
+   */
+  findConfirmDialogElements() {
+    this.confirmDialog = document.getElementById('confirm-dialog');
+    this.confirmTitle = document.getElementById('confirm-dialog-title');
+    this.confirmMessage = document.getElementById('confirm-dialog-message');
+    this.confirmConfirmBtn = document.getElementById('confirm-dialog-confirm');
+    this.confirmCancelBtn = document.getElementById('confirm-dialog-cancel');
+    this.confirmCloseBtn = document.getElementById('confirm-dialog-close');
+  }
+
+  /**
    * 커스텀 확인 다이얼로그 표시
    * @param {string} title - 다이얼로그 제목
    * @param {string} message - 확인 메시지
@@ -90,7 +102,21 @@ export class GroupManager {
    * @param {Function} onCancel - 취소 버튼 클릭 시 콜백 (선택사항)
    */
   showCustomConfirm(title, message, onConfirm, onCancel = null) {
-    if (!this.confirmDialog) return;
+    // 다시 요소들을 찾기 (DOM이 변경되었을 수 있음)
+    this.findConfirmDialogElements();
+    
+    // 안전성 검사 - 모든 필수 요소가 있는지 확인
+    if (!this.confirmDialog || !this.confirmTitle || !this.confirmMessage || 
+        !this.confirmConfirmBtn || !this.confirmCancelBtn || !this.confirmCloseBtn) {
+      console.warn('확인 다이얼로그 요소들이 준비되지 않음, 기본 confirm 사용');
+      // 폴백: 기본 confirm 사용
+      if (confirm(message.replace(/<[^>]*>/g, ''))) {
+        if (onConfirm) onConfirm();
+      } else {
+        if (onCancel) onCancel();
+      }
+      return;
+    }
 
     // 다이얼로그 내용 설정
     this.confirmTitle.textContent = title;
@@ -99,14 +125,23 @@ export class GroupManager {
     // 다이얼로그 표시
     this.confirmDialog.style.display = 'flex';
 
-    // 기존 이벤트 리스너 제거 (클로닝으로)
-    const newConfirmBtn = this.confirmConfirmBtn.cloneNode(true);
-    const newCancelBtn = this.confirmCancelBtn.cloneNode(true);
-    const newCloseBtn = this.confirmCloseBtn.cloneNode(true);
+    // 기존 이벤트 리스너 제거 (클로닝으로) - parentNode 안전성 검사 추가
+    let newConfirmBtn = this.confirmConfirmBtn;
+    let newCancelBtn = this.confirmCancelBtn;
+    let newCloseBtn = this.confirmCloseBtn;
     
-    this.confirmConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.confirmConfirmBtn);
-    this.confirmCancelBtn.parentNode.replaceChild(newCancelBtn, this.confirmCancelBtn);
-    this.confirmCloseBtn.parentNode.replaceChild(newCloseBtn, this.confirmCloseBtn);
+    if (this.confirmConfirmBtn.parentNode) {
+      newConfirmBtn = this.confirmConfirmBtn.cloneNode(true);
+      this.confirmConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.confirmConfirmBtn);
+    }
+    if (this.confirmCancelBtn.parentNode) {
+      newCancelBtn = this.confirmCancelBtn.cloneNode(true);
+      this.confirmCancelBtn.parentNode.replaceChild(newCancelBtn, this.confirmCancelBtn);
+    }
+    if (this.confirmCloseBtn.parentNode) {
+      newCloseBtn = this.confirmCloseBtn.cloneNode(true);
+      this.confirmCloseBtn.parentNode.replaceChild(newCloseBtn, this.confirmCloseBtn);
+    }
     
     this.confirmConfirmBtn = newConfirmBtn;
     this.confirmCancelBtn = newCancelBtn;

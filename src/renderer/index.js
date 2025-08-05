@@ -115,7 +115,8 @@ class RemoteManagerApp {
       sidebarElement,
       this.stores.group,
       this.services.group,
-      this.components.groupManager
+      this.components.groupManager,
+      this.stores.process
     );
 
     // StatusBar 컴포넌트
@@ -128,6 +129,8 @@ class RemoteManagerApp {
     this.stores.process.subscribe((processes) => {
       this.components.processList.render(processes);
       this.components.statusBar.update(processes);
+      // 프로세스 변경 시 사이드바도 업데이트 (그룹 개수 동기화)
+      this.components.sidebar.updateGroups(this.stores.group.getAllGroups());
     });
 
     this.stores.group.subscribe((groups) => {
@@ -262,6 +265,13 @@ class RemoteManagerApp {
 
     // 초기 프로세스 로드
     await this.refreshProcesses();
+
+    // 그룹 데이터 정리 (프로그램 시작 시)
+    console.log('🧹 그룹 데이터 정리 시작...');
+    const cleanupResult = this.services.group.cleanupInvalidProcessIds();
+    if (cleanupResult.totalCleaned > 0) {
+      console.log('✅ 그룹 데이터 정리 완료:', cleanupResult);
+    }
 
     // 그룹 필터 옵션 초기화
     this.updateGroupFilterOptions();

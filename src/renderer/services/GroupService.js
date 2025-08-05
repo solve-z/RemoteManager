@@ -118,10 +118,29 @@ export class GroupService {
         );
       }
 
-      // 그룹에 속한 프로세스들의 그룹 할당 해제
+      // 그룹에 속한 프로세스들의 그룹 할당 해제 (현재 존재하는 프로세스만)
+      const validProcessIds = [];
+      const invalidProcessIds = [];
+      
       for (const processId of group.processIds) {
-        this.processStore.updateProcessSettings(processId, { groupId: null });
+        if (this.processStore.getProcess(processId)) {
+          // 존재하는 프로세스만 그룹 할당 해제
+          this.processStore.updateProcessSettings(processId, { groupId: null });
+          validProcessIds.push(processId);
+        } else {
+          // 존재하지 않는 프로세스 ID는 로그만 남김
+          invalidProcessIds.push(processId);
+        }
       }
+      
+      console.log('🗑️ 그룹 삭제 시 프로세스 정리:', {
+        groupName: group.name,
+        totalProcessIds: group.processIds.length,
+        validProcessIds: validProcessIds.length,
+        invalidProcessIds: invalidProcessIds.length,
+        validIds: validProcessIds,
+        invalidIds: invalidProcessIds
+      });
 
       const success = this.groupStore.deleteGroup(groupId);
       
@@ -365,6 +384,76 @@ export class GroupService {
       console.error('빈 그룹 정리 실패:', error);
       this.notificationService?.showError('그룹 정리 실패', error.message);
       return 0;
+    }
+  }
+
+  /**
+   * 그룹의 processIds 배열에서 존재하지 않는 프로세스들 정리
+   * @returns {Object} 정리 결과 통계
+   */
+  cleanupInvalidProcessIds() {
+    try {
+      const allGroups = this.groupStore.getAllGroups();
+      let totalCleanedCount = 0;
+      const cleanupResults = [];
+
+      for (const group of allGroups) {
+        const validProcessIds = [];
+        const invalidProcessIds = [];
+
+        // 각 processId가 실제로 존재하는지 확인
+        for (const processId of group.processIds) {
+          if (this.processStore.getProcess(processId)) {
+            validProcessIds.push(processId);
+          } else {
+            invalidProcessIds.push(processId);
+          }
+        }
+
+        // 유효하지 않은 processId들이 있으면 정리
+        if (invalidProcessIds.length > 0) {
+          group.processIds = validProcessIds;
+          totalCleanedCount += invalidProcessIds.length;
+          
+          cleanupResults.push({
+            groupId: group.id,
+            groupName: group.name,
+            cleaned: invalidProcessIds.length,
+            remaining: validProcessIds.length,
+            invalidIds: invalidProcessIds
+          });
+
+          console.log('🧹 그룹 processIds 정리:', {
+            groupName: group.name,
+            cleanedCount: invalidProcessIds.length,
+            remainingCount: validProcessIds.length,
+            cleanedIds: invalidProcessIds
+          });
+        }
+      }
+
+      // 변경사항이 있으면 저장
+      if (totalCleanedCount > 0) {
+        this.groupStore.save();
+        this.notificationService?.showSuccess(
+          `${totalCleanedCount}개의 유효하지 않은 프로세스 참조가 정리되었습니다.`
+        );
+      }
+
+      return {
+        totalCleaned: totalCleanedCount,
+        affectedGroups: cleanupResults.length,
+        details: cleanupResults
+      };
+    } catch (error) {
+      console.error('processIds 정리 실패:', error);
+      this.notificationService?.showError('프로세스 참조 정리 실패', error.message);
+      return {
+        totalCleaned: 0,
+        affectedGroups: 0,
+        details: [],
+        error: error.message
+      };
     }
   }
 

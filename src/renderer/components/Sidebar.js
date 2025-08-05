@@ -4,11 +4,12 @@
  */
 
 export class Sidebar {
-  constructor(sidebarElement, groupStore, groupService, groupManager) {
+  constructor(sidebarElement, groupStore, groupService, groupManager, processStore) {
     this.element = sidebarElement;
     this.groupStore = groupStore;
     this.groupService = groupService;
     this.groupManager = groupManager;
+    this.processStore = processStore;
     
     this.isCollapsed = false;
     this.isMobile = false;
@@ -230,7 +231,18 @@ export class Sidebar {
    * @returns {string} HTML 문자열
    */
   renderGroupItem(group) {
-    const processCount = group.processIds.length;
+    // 그룹에 속한 연결된 프로세스만 카운트
+    let processCount = 0;
+    
+    if (this.processStore && group.processIds) {
+      processCount = group.processIds
+        .map(id => this.processStore.getProcess(id))
+        .filter(p => p && p.groupId === group.id && p.status === 'connected')
+        .length;
+    } else {
+      // 폴백: processIds 길이 사용
+      processCount = group.processIds ? group.processIds.length : 0;
+    }
     const colorStyle = group.color ? `style="background-color: ${group.color};"` : '';
 
     return `

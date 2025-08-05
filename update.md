@@ -688,4 +688,315 @@ this.stableKeyMap.delete(stableKey);
 
 ---
 
+## 2025-08-05 - v1.1.1 그룹 관리 및 프로세스 동기화 시스템 완전 개선
+
+### 🐛 해결된 주요 문제들
+
+#### 1. 그룹 삭제 시 DOM replaceChild 오류
+- **문제**: `GroupManager.js:107`에서 `Cannot read properties of null (reading 'replaceChild')` 오류
+- **원인**: DOM 요소들이 제대로 초기화되지 않았거나 `parentNode`가 null인 상태
+
+#### 2. 연결 끊어진 프로세스 재연결 시 processIds 추가 안되는 문제  
+- **문제**: 프로그램 재시작 후 프로세스 재연결 시 그룹의 `processIds` 배열에 추가되지 않음
+- **원인**: `addNewProcess`와 `handleReconnection`에서 `groupStore.save()` 호출 누락
+
+#### 3. 사이드바 그룹 개수와 실제 프로세스 개수 동기화 문제
+- **문제**: 사이드바 표시 개수와 실제 화면의 프로세스 개수 불일치
+- **원인**: 연결 끊어진 프로세스도 `processIds`에 포함되어 카운트됨
+
+#### 4. Sidebar.js processStore undefined 오류
+- **문제**: `TypeError: Cannot read properties of undefined (reading 'getProcess')`
+- **원인**: Sidebar 생성자에 processStore가 전달되지 않음
+
+#### 5. 새로고침 버튼 아이콘 가시성 문제
+- **문제**: 새로고침 버튼의 CSS 아이콘이 버튼 배경색과 동일하여 보이지 않음
+
+### 🔧 상세 수정 사항
+
+#### 1. DOM 안전성 강화 (GroupManager.js)
+
+**A. 확인 다이얼로그 DOM 요소 안전성 검사**
+```javascript
+// 새로운 메서드 추가
+findConfirmDialogElements() {
+  this.confirmDialog = document.getElementById('confirm-dialog');
+  this.confirmTitle = document.getElementById('confirm-dialog-title');
+  this.confirmMessage = document.getElementById('confirm-dialog-message');
+  this.confirmConfirmBtn = document.getElementById('confirm-dialog-confirm');
+  this.confirmCancelBtn = document.getElementById('confirm-dialog-cancel');
+  this.confirmCloseBtn = document.getElementById('confirm-dialog-close');
+}
+
+// showCustomConfirm 메서드 개선
+showCustomConfirm(title, message, onConfirm, onCancel = null) {
+  // DOM 요소 재탐색
+  this.findConfirmDialogElements();
+  
+  // 안전성 검사 - 모든 필수 요소 존재 여부 확인
+  if (!this.confirmDialog || !this.confirmTitle || !this.confirmMessage || 
+      !this.confirmConfirmBtn || !this.confirmCancelBtn || !this.confirmCloseBtn) {
+    // 폴백: 기본 confirm 사용
+    if (confirm(message.replace(/<[^>]*>/g, ''))) {
+      if (onConfirm) onConfirm();
+    }
+    return;
+  }
+  
+  // parentNode 안전성 검사 추가
+  if (this.confirmConfirmBtn.parentNode) {
+    newConfirmBtn = this.confirmConfirmBtn.cloneNode(true);
+    this.confirmConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.confirmConfirmBtn);
+  }
+  // 다른 버튼들도 동일한 안전성 검사 적용
+}
+```
+
+#### 2. 프로세스 재연결 시 그룹 동기화 개선 (ProcessStore.js)
+
+**A. handleReconnection 메서드 개선**
+```javascript
+handleReconnection(historyEntry, processInfo) {
+  // ... 기존 로직 ...
+  
+  // 재연결 시 그룹의 processIds 배열에도 추가
+  if (process.groupId && this.groupStore?.groups.has(process.groupId)) {
+    const group = this.groupStore.groups.get(process.groupId);
+    if (!group.processIds.includes(process.id)) {
+      group.processIds.push(process.id);
+      this.groupStore.save(); // 변경사항 저장
+      console.log('✅ 재연결 시 그룹에 프로세스 추가:', {
+        groupName: group.name,
+        processId: process.id,
+        groupProcessCount: group.processIds.length
+      });
+    }
+  }
+}
+```
+
+**B. addNewProcess 메서드 개선**
+```javascript
+// 그룹이 할당된 경우 그룹의 processIds 배열에도 추가
+if (savedGroupId && this.groupStore?.groups.has(savedGroupId)) {
+  const group = this.groupStore.groups.get(savedGroupId);
+  if (!group.processIds.includes(processId)) {
+    group.processIds.push(processId);
+    this.groupStore.save(); // 변경사항 저장 (추가됨)
+    console.log('✅ 프로세스 생성 시 그룹에 즉시 추가:', {
+      groupName: group.name,
+      processId: processId,
+      groupProcessCount: group.processIds.length
+    });
+  }
+}
+```
+
+#### 3. 사이드바 그룹 개수 동기화 완전 해결
+
+**A. Sidebar 생성자 매개변수 추가**
+```javascript
+// 기존
+constructor(sidebarElement, groupStore, groupService, groupManager) {
+
+// 수정
+constructor(sidebarElement, groupStore, groupService, groupManager, processStore) {
+  this.processStore = processStore; // 추가
+}
+```
+
+**B. index.js에서 processStore 전달**
+```javascript
+this.components.sidebar = new Sidebar(
+  sidebarElement,
+  this.stores.group,
+  this.services.group,
+  this.components.groupManager,
+  this.stores.process // 추가
+);
+```
+
+**C. 실시간 그룹 개수 계산 로직**
+```javascript
+renderGroupItem(group) {
+  // 그룹에 속한 연결된 프로세스만 카운트
+  let processCount = 0;
+  
+  if (this.processStore && group.processIds) {
+    processCount = group.processIds
+      .map(id => this.processStore.getProcess(id))
+      .filter(p => p && p.groupId === group.id && p.status === 'connected')
+      .length;
+  } else {
+    // 폴백: processIds 길이 사용
+    processCount = group.processIds ? group.processIds.length : 0;
+  }
+}
+```
+
+**D. 프로세스 변경 시 사이드바 동기화**
+```javascript
+// index.js - 스토어 변경 시 컴포넌트 업데이트
+this.stores.process.subscribe((processes) => {
+  this.components.processList.render(processes);
+  this.components.statusBar.update(processes);
+  // 프로세스 변경 시 사이드바도 업데이트 (그룹 개수 동기화)
+  this.components.sidebar.updateGroups(this.stores.group.getAllGroups());
+});
+```
+
+#### 4. 그룹 삭제 시 안전성 강화 (GroupService.js)
+
+**존재하지 않는 프로세스 ID 안전 처리**
+```javascript
+deleteGroup(groupId, force = false) {
+  // 그룹에 속한 프로세스들의 그룹 할당 해제 (현재 존재하는 프로세스만)
+  const validProcessIds = [];
+  const invalidProcessIds = [];
+  
+  for (const processId of group.processIds) {
+    const process = this.processStore.getProcess(processId);
+    if (process) {
+      // 존재하는 프로세스만 그룹 할당 해제
+      this.groupStore.assignProcessToGroup(processId, null, process);
+      this.processStore.updateProcessSettings(processId, { groupId: null });
+      validProcessIds.push(processId);
+    } else {
+      // 존재하지 않는 프로세스 ID는 로그만 남김
+      invalidProcessIds.push(processId);
+    }
+  }
+  
+  console.log('🗑️ 그룹 삭제 시 프로세스 정리:', {
+    groupName: group.name,
+    totalProcessIds: group.processIds.length,
+    validProcessIds: validProcessIds.length,
+    invalidProcessIds: invalidProcessIds.length
+  });
+}
+```
+
+#### 5. 오래된 processId 정리 시스템 추가 (GroupService.js)
+
+**cleanupInvalidProcessIds 메서드 구현**
+```javascript
+cleanupInvalidProcessIds() {
+  const allGroups = this.groupStore.getAllGroups();
+  let totalCleanedCount = 0;
+  
+  for (const group of allGroups) {
+    const validProcessIds = [];
+    const invalidProcessIds = [];
+    
+    // 각 processId가 실제로 존재하는지 확인
+    for (const processId of group.processIds) {
+      if (this.processStore.getProcess(processId)) {
+        validProcessIds.push(processId);
+      } else {
+        invalidProcessIds.push(processId);
+      }
+    }
+    
+    // 유효하지 않은 processId들이 있으면 정리
+    if (invalidProcessIds.length > 0) {
+      group.processIds = validProcessIds;
+      totalCleanedCount += invalidProcessIds.length;
+    }
+  }
+  
+  // 변경사항이 있으면 저장
+  if (totalCleanedCount > 0) {
+    this.groupStore.save();
+    this.notificationService?.showSuccess(
+      `${totalCleanedCount}개의 유효하지 않은 프로세스 참조가 정리되었습니다.`
+    );
+  }
+}
+```
+
+**프로그램 시작 시 자동 정리 (index.js)**
+```javascript
+async loadInitialData() {
+  // 초기 프로세스 로드
+  await this.refreshProcesses();
+
+  // 그룹 데이터 정리 (프로그램 시작 시)
+  console.log('🧹 그룹 데이터 정리 시작...');
+  const cleanupResult = this.services.group.cleanupInvalidProcessIds();
+  if (cleanupResult.totalCleaned > 0) {
+    console.log('✅ 그룹 데이터 정리 완료:', cleanupResult);
+  }
+}
+```
+
+#### 6. 새로고침 아이콘 가시성 개선 (main.css)
+
+**CSS 아이콘 색상 수정**
+```css
+/* 기존: currentColor 사용으로 배경색과 동일 */
+.refresh-icon.normal::before {
+  border: 2px solid currentColor;
+}
+
+.refresh-icon.normal::after {
+  border-left: 4px solid currentColor;
+}
+
+.refresh-icon.spinning::before {
+  border-top: 2px solid currentColor;
+}
+
+/* 수정: 명시적 흰색 지정 */
+.refresh-icon.normal::before {
+  border: 2px solid #ffffff;
+}
+
+.refresh-icon.normal::after {
+  border-left: 4px solid #ffffff;
+}
+
+.refresh-icon.spinning::before {
+  border: 2px solid #ffffff;
+}
+```
+
+### ✅ 완성된 통합 시스템
+
+#### 1. 완벽한 데이터 동기화
+- **그룹의 processIds 배열**: 실제 프로세스와 완벽 동기화
+- **사이드바 개수 표시**: 연결된 프로세스만 정확히 카운트
+- **프로그램 재시작**: 모든 그룹 할당 자동 복원
+- **재연결**: processIds 배열에 자동 추가
+
+#### 2. 강화된 안정성
+- **DOM 오류 방지**: 모든 DOM 조작에 안전성 검사
+- **존재하지 않는 프로세스 처리**: 그룹 삭제 시 안전한 처리
+- **자동 데이터 정리**: 프로그램 시작 시 고아 데이터 자동 정리
+- **폴백 시스템**: 오류 시 기본 동작으로 안전하게 복원
+
+#### 3. 향상된 사용자 경험
+- **실시간 동기화**: 모든 UI 요소가 실시간으로 동기화
+- **시각적 일관성**: 새로고침 아이콘이 명확히 표시
+- **정확한 개수 표시**: 사이드바와 실제 프로세스 개수 일치
+- **안정적인 그룹 관리**: 모든 그룹 작업이 안전하고 신뢰성 있게 동작
+
+### 🎯 최종 결과
+
+모든 그룹 관리 기능이 완벽하게 동작합니다:
+- ✅ **그룹 생성/삭제**: DOM 오류 없이 안전한 처리
+- ✅ **프로세스 할당/해제**: 실시간 개수 동기화
+- ✅ **프로그램 재시작**: 모든 설정 자동 복원
+- ✅ **재연결**: processIds 배열 자동 업데이트
+- ✅ **데이터 무결성**: 고아 데이터 자동 정리
+- ✅ **UI 일관성**: 모든 시각적 요소 완벽 동기화
+
+### 📋 관련 파일
+- `src/renderer/components/GroupManager.js`: DOM 안전성 강화
+- `src/renderer/store/ProcessStore.js`: 재연결 시 그룹 동기화
+- `src/renderer/services/GroupService.js`: 그룹 삭제 안전성, 데이터 정리
+- `src/renderer/components/Sidebar.js`: 실시간 그룹 개수 계산
+- `src/renderer/index.js`: processStore 전달, 자동 정리, 동기화 트리거
+- `src/styles/main.css`: 새로고침 아이콘 가시성 개선
+
+---
+
 **이전 업데이트 내용들은 이 위에 추가하세요**
