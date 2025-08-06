@@ -171,7 +171,7 @@ export class KeyManager {
       return 'ezhelp';
     }
 
-    if (processName === 'teamviewer' && /\w+ - TeamViewer$/i.test(windowTitle)) {
+    if (processName === 'teamviewer' && /.+ - TeamViewer$/i.test(windowTitle)) {
       return 'teamviewer';
     }
 
@@ -180,7 +180,7 @@ export class KeyManager {
       if (windowTitle.includes('원격지 IP') || windowTitle.includes('Relay')) {
         return 'ezhelp';
       }
-      if (/\w+ - TeamViewer - Chrome$/i.test(windowTitle)) {
+      if (/.+ - TeamViewer - Chrome$/i.test(windowTitle)) {
         return 'teamviewer';
       }
     }

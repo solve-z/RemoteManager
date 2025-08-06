@@ -246,7 +246,7 @@ class ProcessDetector {
     }
 
     // TeamViewer 원격 세션 (단순 TeamViewer 제외)
-    if (name === 'teamviewer' && /\w+ - teamviewer$/i.test(title)) {
+    if (name === 'teamviewer' && /.+ - teamviewer$/i.test(title)) {
       return true;
     }
 
@@ -256,7 +256,7 @@ class ProcessDetector {
     }
 
     // 브라우저 테스트: Chrome에서 TeamViewer 시뮬레이션
-    if (name === 'chrome' && /\w+ - TeamViewer - Chrome$/i.test(title)) {
+    if (name === 'chrome' && /.+ - TeamViewer - Chrome$/i.test(title)) {
       return true;
     }
 
