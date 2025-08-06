@@ -123,7 +123,6 @@ html, body {
 
 /* 네비게이션 */
 .sidebar-nav {
-  flex: 1;
   padding: 16px 0;
 }
 
@@ -176,10 +175,6 @@ html, body {
 .groups-section {
   border-top: 1px solid #e5e7eb;
   padding: 16px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
 }
 
 .groups-header {
@@ -231,6 +226,30 @@ html, body {
   overflow-y: auto;
   min-height: 0;
   /* 스타일은 components.css에서 정의 */
+}
+
+/* 그룹 목록 스크롤바 스타일 */
+.groups-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.groups-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.groups-list::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.groups-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+.groups-list::-webkit-scrollbar-thumb:active {
+  background: rgba(107, 114, 128, 0.9);
 }
 
 .no-groups {
@@ -781,4 +800,101 @@ body.resizing .main-content {
 
 body.resizing .sidebar-resizer {
   transition: none;
+}
+
+/* =================================================================== */
+/* 네비게이션-그룹 사이 수직 리사이저 */
+/* =================================================================== */
+
+/* 네비게이션과 그룹 사이 리사이저 */
+.nav-groups-resizer {
+  height: 4px;
+  background: rgba(229, 231, 235, 0.3);
+  cursor: row-resize;
+  transition: background-color 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nav-groups-resizer:hover {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.nav-groups-resizer.active {
+  background-color: rgba(59, 130, 246, 0.6);
+}
+
+/* 리사이저 호버 효과 개선 */
+.nav-groups-resizer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 100%;
+  height: 8px;
+  background: transparent;
+}
+
+.nav-groups-resizer:hover::before {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* 세로 리사이징 중 커서와 선택 방지 */
+body.vertical-resizing {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+body.vertical-resizing * {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+/* 세로 리사이징 중에는 전환 효과 비활성화 */
+body.vertical-resizing .groups-section {
+  transition: none;
+}
+
+body.vertical-resizing .nav-groups-resizer {
+  transition: none;
+}
+
+/* 사이드바를 플렉스박스 레이아웃으로 조정 */
+.sidebar {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex-shrink: 0;
+  /* height는 JavaScript에서 동적으로 설정 */
+}
+
+.nav-groups-resizer {
+  flex-shrink: 0;
+}
+
+.groups-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  overflow: hidden;
+}
+
+.groups-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 50px;
+}
+
+.sidebar-footer {
+  flex-shrink: 0;
 }

@@ -92,16 +92,32 @@ export class ProcessStore {
       return this.createNewProcessWithSuffix(processInfo, stableKey);
     }
 
-    // IP 변경 감지
+    // IP 변경 및 상담원 번호 변경 감지
     const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);
-    if (!comparison.ipChanged && !comparison.sameComputer) {
+    if (!comparison.ipChanged && !comparison.counselorChanged && !comparison.sameComputer) {
       return null; // 실제로는 다른 프로세스
     }
 
-    if (comparison.ipChanged) {
-      // IP가 변경된 경우 사용자 확인 필요
-      const choice = await this.conflictDialog.showConflictDialog(comparison);
-      return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
+    if (comparison.ipChanged || comparison.counselorChanged) {
+      // IP 또는 상담원 번호가 변경된 경우
+      if (comparison.counselorChanged) {
+        console.log('👥 상담원 번호 변경 감지:', {
+          computerName: comparison.computerName,
+          oldCounselorId: comparison.oldCounselorId,
+          newCounselorId: comparison.newCounselorId,
+          windowTitle: processInfo.windowTitle
+        });
+      }
+      
+      // 사용자 확인이나 자동 업데이트 처리
+      if (comparison.ipChanged) {
+        // IP 변경은 사용자 확인 필요
+        const choice = await this.conflictDialog.showConflictDialog(comparison);
+        return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
+      } else if (comparison.counselorChanged) {
+        // 상담원 번호 변경은 자동 업데이트 (동일한 컴퓨터로 간주)
+        return this.updateExistingProcess(existingProcess, processInfo);
+      }
     }
 
     // 동일한 프로세스로 판단 (기존 프로세스 업데이트)
@@ -154,7 +170,9 @@ export class ProcessStore {
     existingProcess.ipAddress = newIpAddress || newProcessInfo.ipAddress || existingProcess.ipAddress;
     
     // 상담원 ID도 재추출 (ezHelp의 경우)
+    let oldCounselorId = null;
     if (existingProcess.type === 'ezhelp') {
+      oldCounselorId = existingProcess.counselorId;
       const newCounselorId = KeyManager.extractCounselorId(newProcessInfo);
       existingProcess.counselorId = newCounselorId || newProcessInfo.counselorId || existingProcess.counselorId;
     }
@@ -169,6 +187,17 @@ export class ProcessStore {
         windowTitle: newProcessInfo.windowTitle,
         extractedIP: newIpAddress,
         providedIP: newProcessInfo.ipAddress
+      });
+    }
+    
+    // 상담원 번호 변경 감지 로그
+    if (existingProcess.type === 'ezhelp' && oldCounselorId && oldCounselorId !== existingProcess.counselorId) {
+      console.log('👥 상담원 번호 업데이트 감지:', {
+        processId: existingProcess.id,
+        computerName: existingProcess.computerName,
+        oldCounselorId: oldCounselorId,
+        newCounselorId: existingProcess.counselorId,
+        windowTitle: newProcessInfo.windowTitle
       });
     }
     
@@ -328,7 +357,9 @@ export class ProcessStore {
       process.ipAddress = newIpAddress || processInfo.ipAddress || process.ipAddress;
       
       // 상담원 ID도 재추출 (ezHelp의 경우)
+      let oldCounselorId = null;
       if (process.type === 'ezhelp') {
+        oldCounselorId = process.counselorId;
         const newCounselorId = KeyManager.extractCounselorId(processInfo);
         process.counselorId = newCounselorId || processInfo.counselorId || process.counselorId;
       }
@@ -343,6 +374,17 @@ export class ProcessStore {
           windowTitle: processInfo.windowTitle,
           extractedIP: newIpAddress,
           providedIP: processInfo.ipAddress
+        });
+      }
+      
+      // 상담원 번호 변경 감지 로그 (재연결 시)
+      if (process.type === 'ezhelp' && oldCounselorId && oldCounselorId !== process.counselorId) {
+        console.log('👥 재연결 시 상담원 번호 업데이트 감지:', {
+          processId: process.id,
+          computerName: process.computerName,
+          oldCounselorId: oldCounselorId,
+          newCounselorId: process.counselorId,
+          windowTitle: processInfo.windowTitle
         });
       }
       

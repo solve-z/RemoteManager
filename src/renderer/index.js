@@ -246,6 +246,9 @@ class RemoteManagerApp {
 
     // 사이드바 리사이저 기능
     this.setupSidebarResizer();
+    
+    // 네비게이션-그룹 세로 리사이저 기능
+    this.setupNavGroupsResizer();
   }
 
   /**
@@ -344,6 +347,102 @@ class RemoteManagerApp {
       appContainer.style.setProperty('--sidebar-width', `${width}px`);
       sidebar.style.width = `${width}px`;
       resizer.style.left = `${width}px`;
+    }
+  }
+
+  /**
+   * 네비게이션-그룹 세로 리사이저 설정
+   */
+  setupNavGroupsResizer() {
+    const navSection = document.querySelector('.sidebar-nav');
+    const resizer = document.getElementById('nav-groups-resizer');
+    const groupsSection = document.querySelector('.groups-section');
+    
+    if (!navSection || !resizer || !groupsSection) {
+      console.warn('❌ 네비게이션-그룹 리사이저 요소를 찾을 수 없습니다');
+      return;
+    }
+
+    let isResizing = false;
+    let startY = 0;
+    let startNavHeight = 0;
+
+    // 저장된 네비게이션 높이 불러오기
+    const savedNavHeight = this.stores.settings.get('sidebar.navHeight', 200);
+    this.setNavHeight(savedNavHeight);
+
+    // 마우스 다운 이벤트
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startY = e.clientY;
+      startNavHeight = parseInt(document.defaultView.getComputedStyle(navSection).height, 10);
+      
+      // 세로 리사이징 중임을 표시
+      document.body.classList.add('vertical-resizing');
+      resizer.classList.add('active');
+      
+      // 선택 방지
+      document.body.style.userSelect = 'none';
+      
+      e.preventDefault();
+    });
+
+    // 마우스 이동 이벤트
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const deltaY = e.clientY - startY;
+      const newNavHeight = startNavHeight + deltaY;
+      
+      // 최소/최대 높이 제한
+      const minNavHeight = 120; // 네비게이션 최소 높이
+      const maxNavHeight = 400; // 네비게이션 최대 높이
+      
+      if (newNavHeight >= minNavHeight && newNavHeight <= maxNavHeight) {
+        this.setNavHeight(newNavHeight);
+      }
+      
+      e.preventDefault();
+    });
+
+    // 마우스 업 이벤트
+    document.addEventListener('mouseup', (e) => {
+      if (isResizing) {
+        isResizing = false;
+        
+        // 세로 리사이징 완료
+        document.body.classList.remove('vertical-resizing');
+        resizer.classList.remove('active');
+        document.body.style.userSelect = '';
+        
+        // 현재 네비게이션 높이 저장
+        const currentNavHeight = parseInt(document.defaultView.getComputedStyle(navSection).height, 10);
+        this.stores.settings.set('sidebar.navHeight', currentNavHeight);
+        
+        // 리사이즈 이벤트 발생
+        window.dispatchEvent(new Event('nav-groups-resized'));
+      }
+    });
+
+    // 더블클릭으로 기본 높이 복원
+    resizer.addEventListener('dblclick', () => {
+      const defaultNavHeight = 200;
+      this.setNavHeight(defaultNavHeight);
+      this.stores.settings.set('sidebar.navHeight', defaultNavHeight);
+      window.dispatchEvent(new Event('nav-groups-resized'));
+    });
+  }
+
+  /**
+   * 네비게이션 영역 높이 설정
+   * @param {number} height - 새로운 높이 (픽셀)
+   */
+  setNavHeight(height) {
+    const navSection = document.querySelector('.sidebar-nav');
+    
+    if (navSection) {
+      navSection.style.height = `${height}px`;
+      navSection.style.flexShrink = '0';
     }
   }
 

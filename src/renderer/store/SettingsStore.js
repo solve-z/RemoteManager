@@ -28,6 +28,7 @@ export class SettingsStore {
       // 사이드바 설정
       sidebar: {
         width: 280, // 기본 사이드바 폭 (픽셀)
+        navHeight: 300, // 기본 네비게이션 영역 높이 (픽셀)
       },
       
       // 자동 새로고침 설정

@@ -54,10 +54,10 @@ export class KeyManager {
   }
 
   /**
-   * IP 변경 감지를 위한 프로세스 정보 비교
+   * IP 변경 및 상담원 번호 변경 감지를 위한 프로세스 정보 비교
    * @param {Object} existingProcess - 기존 프로세스 정보
    * @param {Object} newProcess - 새로운 프로세스 정보
-   * @returns {Object} 비교 결과 { sameComputer, ipChanged, oldIP, newIP }
+   * @returns {Object} 비교 결과 { sameComputer, ipChanged, counselorChanged, oldIP, newIP, oldCounselorId, newCounselorId }
    */
   static compareProcessInfo(existingProcess, newProcess) {
     const existingKey = this.getStableIdentifier(existingProcess);
@@ -68,11 +68,19 @@ export class KeyManager {
     const newIP = newProcess.ipAddress || this.extractIpAddress(newProcess);
     const ipChanged = oldIP && newIP && oldIP !== newIP;
 
+    // 상담원 번호 변경 감지 (ezHelp의 경우)
+    const oldCounselorId = existingProcess.counselorId || this.extractCounselorId(existingProcess);
+    const newCounselorId = newProcess.counselorId || this.extractCounselorId(newProcess);
+    const counselorChanged = oldCounselorId && newCounselorId && oldCounselorId !== newCounselorId;
+
     return {
       sameComputer,
       ipChanged,
+      counselorChanged,
       oldIP,
       newIP,
+      oldCounselorId,
+      newCounselorId,
       computerName: this.extractComputerName(newProcess)
     };
   }

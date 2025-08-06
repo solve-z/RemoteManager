@@ -231,13 +231,13 @@ export class Sidebar {
    * @returns {string} HTML 문자열
    */
   renderGroupItem(group) {
-    // 그룹에 속한 연결된 프로세스만 카운트
+    // 그룹에 속한 모든 프로세스 카운트 (연결 상태와 관계없이)
     let processCount = 0;
     
     if (this.processStore && group.processIds) {
       processCount = group.processIds
         .map(id => this.processStore.getProcess(id))
-        .filter(p => p && p.groupId === group.id && p.status === 'connected')
+        .filter(p => p && p.groupId === group.id)
         .length;
     } else {
       // 폴백: processIds 길이 사용
