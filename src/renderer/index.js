@@ -243,6 +243,108 @@ class RemoteManagerApp {
     window.addEventListener('beforeunload', () => {
       this.cleanup();
     });
+
+    // 사이드바 리사이저 기능
+    this.setupSidebarResizer();
+  }
+
+  /**
+   * 사이드바 리사이저 설정
+   */
+  setupSidebarResizer() {
+    const sidebar = document.getElementById('sidebar');
+    const resizer = document.getElementById('sidebar-resizer');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (!sidebar || !resizer || !mainContent) {
+      console.warn('사이드바 리사이저 요소를 찾을 수 없습니다');
+      return;
+    }
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    // 저장된 사이드바 크기 불러오기
+    const savedWidth = this.stores.settings.get('sidebar.width', 280);
+    this.setSidebarWidth(savedWidth);
+
+    // 마우스 다운 이벤트
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+      
+      // 리사이징 중임을 표시
+      document.body.classList.add('resizing');
+      resizer.classList.add('active');
+      
+      // 선택 방지
+      document.body.style.userSelect = 'none';
+      
+      e.preventDefault();
+    });
+
+    // 마우스 이동 이벤트
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const newWidth = startWidth + e.clientX - startX;
+      
+      // 최소/최대 크기 제한
+      const minWidth = 200;
+      const maxWidth = Math.min(600, window.innerWidth * 0.4);
+      
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        this.setSidebarWidth(newWidth);
+      }
+      
+      e.preventDefault();
+    });
+
+    // 마우스 업 이벤트
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        
+        // 리사이징 완료
+        document.body.classList.remove('resizing');
+        resizer.classList.remove('active');
+        document.body.style.userSelect = '';
+        
+        // 현재 사이드바 크기 저장
+        const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+        this.stores.settings.set('sidebar.width', currentWidth);
+        
+        // 리사이즈 이벤트 발생 (다른 컴포넌트들이 필요시 반응)
+        window.dispatchEvent(new Event('sidebar-resized'));
+      }
+    });
+
+    // 더블클릭으로 기본 크기 복원
+    resizer.addEventListener('dblclick', () => {
+      const defaultWidth = 280;
+      this.setSidebarWidth(defaultWidth);
+      this.stores.settings.set('sidebar.width', defaultWidth);
+      window.dispatchEvent(new Event('sidebar-resized'));
+    });
+  }
+
+  /**
+   * 사이드바 크기 설정
+   * @param {number} width - 새로운 폭 (픽셀)
+   */
+  setSidebarWidth(width) {
+    const sidebar = document.getElementById('sidebar');
+    const resizer = document.getElementById('sidebar-resizer');
+    const appContainer = document.querySelector('.app-container');
+    
+    if (sidebar && resizer && appContainer) {
+      // CSS 변수로 사이드바 폭 설정
+      appContainer.style.setProperty('--sidebar-width', `${width}px`);
+      sidebar.style.width = `${width}px`;
+      resizer.style.left = `${width}px`;
+    }
   }
 
   /**

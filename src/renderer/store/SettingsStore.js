@@ -24,6 +24,11 @@ export class SettingsStore {
         language: 'ko',
         compactMode: false,
       },
+
+      // 사이드바 설정
+      sidebar: {
+        width: 280, // 기본 사이드바 폭 (픽셀)
+      },
       
       // 자동 새로고침 설정
       autoRefresh: {

@@ -722,3 +722,63 @@ html, body {
     display: none;
   }
 }
+
+/* =================================================================== */
+/* 사이드바 리사이저 스타일 */
+/* =================================================================== */
+
+/* 사이드바 리사이저 */
+.sidebar-resizer {
+  position: fixed;
+  top: 0;
+  left: 280px;
+  width: 4px;
+  height: 100vh;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 1001;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resizer:hover {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.sidebar-resizer.active {
+  background-color: rgba(59, 130, 246, 0.6);
+}
+
+/* 리사이징 중 커서와 선택 방지 */
+body.resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* 리사이저 호버 효과 개선 */
+.sidebar-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  width: 8px;
+  height: 100%;
+  background: transparent;
+}
+
+.sidebar-resizer:hover::before {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* 리사이징 중에는 전환 효과 비활성화 */
+body.resizing .main-content {
+  transition: none;
+}
+
+body.resizing .sidebar-resizer {
+  transition: none;
+}

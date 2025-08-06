@@ -1096,4 +1096,176 @@ if (/.+ - TeamViewer - Chrome$/i.test(windowTitle)) {
 
 ---
 
+## 2025-08-06 - 사이드바 크기 조절 기능 구현
+
+### ✨ 새로운 기능
+**사이드바 드래그 앤 드롭 크기 조절 기능 추가**
+- 그룹명이 길어질 때 잘리는 문제 해결을 위한 사용자 맞춤형 사이드바 크기 조절
+- 마우스 드래그로 직관적인 크기 조절 가능
+- 설정 자동 저장으로 프로그램 재시작 시에도 크기 유지
+
+### 🔧 구현 사항
+
+#### 1. HTML 구조 추가 (src/renderer/index.html)
+**사이드바 리사이저 요소 추가:**
+```html
+<!-- 사이드바 리사이저 -->
+<div id="sidebar-resizer" class="sidebar-resizer" title="드래그하여 사이드바 크기 조절"></div>
+```
+- 사이드바 오른쪽에 4px 폭의 리사이저 바 추가
+- 마우스 커서 변경과 툴팁으로 사용법 안내
+
+#### 2. JavaScript 드래그 로직 구현 (src/renderer/index.js)
+**setupSidebarResizer() 메서드 추가:**
+```javascript
+setupSidebarResizer() {
+  // 드래그 상태 관리
+  let isResizing = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  // 저장된 사이드바 크기 불러오기
+  const savedWidth = this.stores.settings.get('sidebar.width', 280);
+  this.setSidebarWidth(savedWidth);
+
+  // 마우스 이벤트 처리
+  // - mousedown: 드래그 시작
+  // - mousemove: 크기 조절 (최소 200px, 최대 600px 제한)
+  // - mouseup: 드래그 종료 및 설정 저장
+  // - dblclick: 기본 크기(280px)로 복원
+}
+```
+
+**크기 설정 메서드:**
+```javascript
+setSidebarWidth(width) {
+  const sidebar = document.getElementById('sidebar');
+  const resizer = document.getElementById('sidebar-resizer');
+  const appContainer = document.querySelector('.app-container');
+  
+  if (sidebar && resizer && appContainer) {
+    // CSS 변수로 사이드바 폭 설정 (플렉스박스 레이아웃 유지)
+    appContainer.style.setProperty('--sidebar-width', `${width}px`);
+    sidebar.style.width = `${width}px`;
+    resizer.style.left = `${width}px`;
+  }
+}
+```
+
+#### 3. CSS 스타일 시스템 (src/styles/main.css)
+**리사이저 스타일:**
+```css
+/* 사이드바 리사이저 */
+.sidebar-resizer {
+  position: fixed;
+  top: 0;
+  left: 280px;
+  width: 4px;
+  height: 100vh;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 1001;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resizer:hover {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.sidebar-resizer.active {
+  background-color: rgba(59, 130, 246, 0.6);
+}
+```
+
+**드래그 중 상태 관리:**
+```css
+/* 리사이징 중 커서와 선택 방지 */
+body.resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+```
+
+**호버 효과 개선:**
+```css
+/* 리사이저 호버 효과 개선 */
+.sidebar-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  width: 8px;
+  height: 100%;
+  background: transparent;
+}
+
+.sidebar-resizer:hover::before {
+  background: rgba(59, 130, 246, 0.1);
+}
+```
+
+#### 4. 설정 저장 시스템 (src/renderer/store/SettingsStore.js)
+**기본 설정에 사이드바 폭 추가:**
+```javascript
+// 사이드바 설정
+sidebar: {
+  width: 280, // 기본 사이드바 폭 (픽셀)
+},
+```
+
+### 🐛 메인 콘텐츠 CSS 충돌 문제 해결
+
+#### 문제 원인
+- 기존 `.main-content`는 `flex: 1`로 플렉스박스 레이아웃 사용
+- 리사이저 추가 시 `margin-left: 284px`로 덮어써서 플렉스박스 레이아웃 파괴
+
+#### 해결 방법
+1. **중복 CSS 제거**: `margin-left`를 강제로 설정하는 CSS 제거
+2. **JavaScript 로직 수정**: `margin-left` 대신 CSS 변수 사용
+3. **플렉스박스 레이아웃 복원**: `.main-content { flex: 1; }` 유지
+
+### ✅ 완성된 사이드바 크기 조절 시스템
+
+#### 1. 사용자 친화적 조작
+- **드래그 조절**: 마우스로 자연스러운 크기 조절
+- **시각적 피드백**: 호버 시 파란색 하이라이트, 드래그 중 색상 변경
+- **크기 제한**: 최소 200px, 최대 600px (또는 화면 폭의 40%)
+- **더블클릭 리셋**: 리사이저 더블클릭으로 기본 크기(280px) 복원
+
+#### 2. 자동 설정 관리
+- **즉시 저장**: 크기 변경 시 localStorage에 자동 저장
+- **자동 복원**: 프로그램 재시작 시 이전 크기로 자동 복원
+- **기본값 제공**: 설정이 없을 때 280px 기본 크기 사용
+
+#### 3. 안정적인 레이아웃
+- **플렉스박스 유지**: 기존 메인 콘텐츠 레이아웃 보존
+- **반응형 지원**: 화면 크기에 따른 최대 크기 제한
+- **부드러운 전환**: 리사이징 중 전환 효과 비활성화로 부드러운 조작
+
+#### 4. 향상된 접근성
+- **커서 변경**: col-resize 커서로 조작 가능함을 명확히 표시
+- **툴팁 제공**: "드래그하여 사이드바 크기 조절" 안내 메시지
+- **호버 영역 확장**: 8px 폭으로 호버 감지 영역 확장
+
+### 🎯 결과
+- ✅ **긴 그룹명 표시**: 그룹명이 길어져도 사용자가 직접 크기를 조절하여 완전히 표시 가능
+- ✅ **개인화된 작업환경**: 사용자의 모니터 크기와 작업 스타일에 맞춘 최적화
+- ✅ **직관적인 조작**: 드래그 앤 드롭으로 즉시 크기 조절 가능
+- ✅ **설정 지속성**: 프로그램 재시작 후에도 사용자 설정 유지
+- ✅ **기존 기능 보존**: 모든 기존 UI와 기능이 정상 작동
+- ✅ **반응형 호환**: 다양한 화면 크기에서 안정적 동작
+
+### 📋 관련 파일
+- `src/renderer/index.html`: 사이드바 리사이저 HTML 요소 추가
+- `src/renderer/index.js`: 드래그 앤 드롭 로직, 크기 설정 메서드, 이벤트 처리
+- `src/styles/main.css`: 리사이저 스타일, 호버 효과, 드래그 상태 CSS
+- `src/renderer/store/SettingsStore.js`: 사이드바 폭 기본 설정 추가
+
+---
+
 **이전 업데이트 내용들은 이 위에 추가하세요**
