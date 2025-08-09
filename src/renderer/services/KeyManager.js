@@ -15,12 +15,13 @@ export class KeyManager {
   }
 
   /**
-   * 안정적 식별자 생성 (프로그램 재시작 후에도 유지)
-   * - 컴퓨터명 기반으로 고유성 확보
-   * - 그룹/카테고리 정보 유지를 위한 핵심 키
-   * @param {Object} process - 프로세스 정보
-   * @returns {string} 안정적 식별자
-   */
+     * 안정적 식별자 생성 (프로그램 재시작 후에도 유지) - 수정 완료
+     * - 컴퓨터명 기반으로 고유성 확보
+     * - 그룹/카테고리 정보 유지를 위한 핵심 키
+     * - process.multipleId(suffix)까지 고려하여 다중 세션을 완벽하게 지원
+     * @param {Object} process - 프로세스 정보
+     * @returns {string} 안정적 식별자
+     */
   static getStableIdentifier(process) {
     const type = process.type || this.detectProcessType(process);
     const computerName = process.computerName || this.extractComputerName(process);
@@ -30,15 +31,38 @@ export class KeyManager {
       return `${type}_unknown_${process.pid}`;
     }
 
+    let baseIdentifier; // 기본 식별자 (suffix 제외)
+
+    // 1. 타입에 따라 기본 식별자를 먼저 결정합니다.
     if (type === 'ezhelp') {
-      // ezHelp: 컴퓨터명 기반
-      return `ezhelp_${computerName}`;
+      // ezHelp: 컴퓨터명 -> 상담원번호 -> IP 순으로 조합
+      const counselorId = process.counselorId || this.extractCounselorId(process);
+      const ipAddress = process.ipAddress || this.extractIpAddress(process);
+
+      baseIdentifier = `ezhelp_${computerName}`;
+
+      if (counselorId) {
+        baseIdentifier += `_counselor${counselorId}`;
+      } else if (ipAddress) { // 상담원 번호가 없을 때만 IP 사용
+        baseIdentifier += `_${ipAddress.replace(/\./g, '-')}`;
+      }
     } else if (type === 'teamviewer') {
-      // TeamViewer: 컴퓨터명 기반
-      return `teamviewer_${computerName}`;
+      // TeamViewer: 컴퓨터명만으로 기본 식별자 생성
+      baseIdentifier = `teamviewer_${computerName}`;
+    } else {
+      // 기타 타입: 타입명 + 컴퓨터명
+      baseIdentifier = `${type}_${computerName}`;
     }
 
-    return `${type}_${computerName}`;
+    // 2. ★★★ 핵심 로직 ★★★
+    //    기본 식별자가 결정된 후, multipleId(suffix)가 있으면 최종 키에 추가합니다.
+    //    이렇게 하면 모든 타입에 일관되게 suffix 로직이 적용됩니다.
+    if (process.multipleId) {
+      return `${baseIdentifier}_${process.multipleId}`;
+    }
+
+    // multipleId가 없으면 기본 식별자를 그대로 반환합니다.
+    return baseIdentifier;
   }
 
   /**
@@ -124,16 +148,33 @@ export class KeyManager {
       const computerName = process.computerName || this.extractComputerName(process);
       const ipAddress = process.ipAddress || this.extractIpAddress(process);
       const counselorId = process.counselorId || this.extractCounselorId(process);
+      const multipleId = process.multipleId;
 
       if (counselorId && computerName && ipAddress) {
-        return `(${counselorId}) ${computerName}[${ipAddress}]`;
+        let display = `(${counselorId}) ${computerName}[${ipAddress}]`;
+        // ezHelp에서도 suffix가 있으면 표시
+        if (multipleId) {
+          display += ` #${multipleId}`;
+        }
+        return display;
       } else if (computerName && ipAddress) {
-        return `${computerName}[${ipAddress}]`;
+        let display = `${computerName}[${ipAddress}]`;
+        if (multipleId) {
+          display += ` #${multipleId}`;
+        }
+        return display;
       }
     } else if (type === 'teamviewer') {
       const computerName = process.computerName || this.extractComputerName(process);
+      const multipleId = process.multipleId;
+
       if (computerName) {
-        return `[${computerName}] TeamViewer`;
+        // TeamViewer에서 suffix 표시 (동일 컴퓨터명 구분용)
+        if (multipleId) {
+          return `[${computerName} #${multipleId}] TeamViewer`;
+        } else {
+          return `[${computerName}] TeamViewer`;
+        }
       }
     }
 
@@ -208,19 +249,19 @@ export class KeyManager {
     if (type === 'ezhelp') {
       // ezHelp에서 컴퓨터명 추출: "ezHelp - desktop-6bcogpv(Relay)" 또는 Chrome 테스트용
       // 잠김, 녹화중 등의 상태 정보를 고려한 개선된 정규식
-      
+
       // 패턴 1: "ezHelp - 컴퓨터명 잠김(Relay)" 형태
       let match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\s+잠김\(/);
       if (match) {
         return match[1].trim();
       }
-      
+
       // 패턴 2: "ezHelp - 컴퓨터명(Relay)" 형태 (정상)
       match = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\(/);
       if (match) {
         return match[1].trim();
       }
-      
+
       // 기존 방식 (호환성 유지)
       const fallbackMatch = windowTitle.match(/ezHelp - ([^(]+)/);
       return fallbackMatch ? fallbackMatch[1].trim() : null;
@@ -244,7 +285,7 @@ export class KeyManager {
    */
   static extractIpAddress(process) {
     const windowTitle = process.windowTitle || '';
-    
+
     // "원격지 IP : 192.168.0.18(121.164.168.194)" 패턴에서 첫 번째 IP 추출
     const match = windowTitle.match(/원격지 IP : ([\d.]+)/);
     return match ? match[1] : null;
@@ -257,7 +298,7 @@ export class KeyManager {
    */
   static extractCounselorId(process) {
     const windowTitle = process.windowTitle || '';
-    
+
     // "상담원(46)" 패턴에서 번호 추출
     const match = windowTitle.match(/상담원\((\d+)\)/);
     return match ? match[1] : null;
@@ -270,15 +311,15 @@ export class KeyManager {
    */
   static normalizeProcessInfo(rawProcess) {
     const type = this.detectProcessType(rawProcess);
-    
+
     return {
       pid: rawProcess.Id || rawProcess.pid,
       processName: rawProcess.ProcessName || rawProcess.processName,
       windowTitle: rawProcess.MainWindowTitle || rawProcess.windowTitle,
       windowHandle: rawProcess.WindowHandle || rawProcess.windowHandle,
       isMinimized: rawProcess.IsMinimized || rawProcess.isMinimized || false,
-      isHidden: !rawProcess.IsVisible && rawProcess.IsVisible !== undefined 
-        ? true 
+      isHidden: !rawProcess.IsVisible && rawProcess.IsVisible !== undefined
+        ? true
         : (rawProcess.isHidden || false),
       type: type,
       computerName: this.extractComputerName(rawProcess),

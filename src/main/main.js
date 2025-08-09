@@ -59,7 +59,7 @@ function createMainWindow() {
       preload: join(__dirname, '../renderer/preload.js'), 
     },
     show: false, // 준비될 때까지 숨김
-    title: 'RemoteManager v1.0.0',
+    title: 'RemoteManager v1.1.2',
   });
 
   // 렌더러 프로세스 로드
@@ -119,16 +119,27 @@ function registerIpcHandlers() {
       let result;
       
       if (focusData.useHandle && focusData.id) {
-        // WindowHandle로 포커스
-        result = await WindowManager.focusWindowByHandle(focusData.id);
+        // WindowHandle로 포커스 (processType 전달)
+        result = await WindowManager.focusWindowByHandle(focusData.id, focusData.processType);
       } else {
-        // PID로 포커스
-        result = await WindowManager.focusWindow(focusData.id);
+        // PID로 포커스 (processType 전달)
+        result = await WindowManager.focusWindow(focusData.id, focusData.processType);
       }
       
       return { success: result, data: result };
     } catch (error) {
       console.error('윈도우 포커스 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // ezHelp 컨트롤바 표시 요청
+  ipcMain.handle('show-ezhelp-control-bar', async (event, processId) => {
+    try {
+      const result = await WindowManager.showEzHelpControlBar(processId);
+      return { success: result, data: result };
+    } catch (error) {
+      console.error('ezHelp 컨트롤바 표시 오류:', error);
       return { success: false, error: error.message };
     }
   });

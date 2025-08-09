@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DESKTOP-PC01 - TeamViewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0070f3;
+            color: white;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { color: white; text-align: center; }
+        .button {
+            background: #ff6b35;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .button:hover { 
+            background: #e55a2b; 
+            transform: translateY(-2px);
+        }
+        .status {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #ff6b35;
+        }
+        .session-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .info-item {
+            background: rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .test-controls {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .window-list {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .window-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 4px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .active { background: #22c55e; }
+        .minimized { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ TeamViewer 다중 세션 테스트</h1>
+        
+        <div class="status">
+            <strong>현재 세션:</strong> <span id="currentSession">DESKTOP-PC01</span><br>
+            <strong>연결 ID:</strong> <span id="connectionId">1 234 567 890</span><br>
+            <strong>상태:</strong> <span id="sessionStatus">활성 연결</span><br>
+            <strong>창 개수:</strong> <span id="windowCount">1</span>개
+        </div>
+        
+        <div class="session-info">
+            <div class="info-item">
+                <strong>해상도:</strong> 1920x1080
+            </div>
+            <div class="info-item">
+                <strong>색상:</strong> 32비트
+            </div>
+            <div class="info-item">
+                <strong>품질:</strong> 자동 최적화
+            </div>
+            <div class="info-item">
+                <strong>지연시간:</strong> <span id="latency">25ms</span>
+            </div>
+        </div>
+
+        <div class="test-controls">
+            <h3>🧪 테스트 컨트롤</h3>
+            <button class="button" onclick="createNewSession()">➕ 새 세션 생성</button>
+            <button class="button" onclick="switchSession()">🔄 세션 전환</button>
+            <button class="button" onclick="minimizeAll()">🗕 모든 창 최소화</button>
+            <button class="button" onclick="restoreAll()">🗖 모든 창 복원</button>
+            
+            <div class="window-list" id="windowList">
+                <h4>활성 창 목록:</h4>
+                <div class="window-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="status-indicator active"></div>
+                        <span>DESKTOP-PC01 - TeamViewer</span>
+                    </div>
+                    <small>PID: <span id="mainPid">TeamViewer</span></small>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-controls">
+            <h3>📋 사용법</h3>
+            <ol style="font-size: 14px; line-height: 1.6;">
+                <li><strong>"새 세션 생성"</strong> 버튼으로 다중 TeamViewer 세션 시뮬레이션</li>
+                <li><strong>"모든 창 최소화"</strong> 후 Remote Manager에서 확인</li>
+                <li><strong>각 세션이 개별적으로 감지</strong>되는지 확인</li>
+                <li><strong>다중세션 라벨</strong>이 표시되는지 확인</li>
+                <li><strong>세션별 독립적인 설정</strong> (그룹, 카테고리) 가능한지 테스트</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let sessionCount = 1;
+        let windows = [{
+            title: 'DESKTOP-PC01 - TeamViewer',
+            isMinimized: false,
+            id: 1
+        }];
+        
+        const computerNames = [
+            'DESKTOP-PC01', 'DESKTOP-PC01', 'DESKTOP-PC01', 
+            'DESKTOP-PC01', 'DESKTOP-PC01', 'DESKTOP-PC01'
+        ];
+        
+        function updateWindowList() {
+            const windowList = document.getElementById('windowList');
+            let html = '<h4>활성 창 목록:</h4>';
+            
+            windows.forEach(window => {
+                const statusClass = window.isMinimized ? 'minimized' : 'active';
+                const statusText = window.isMinimized ? '최소화됨' : '활성';
+                
+                html += `
+                    <div class="window-item">
+                        <div style="display: flex; align-items: center;">
+                            <div class="status-indicator ${statusClass}"></div>
+                            <span>${window.title}</span>
+                        </div>
+                        <small>${statusText} | Handle: ${window.id}</small>
+                    </div>
+                `;
+            });
+            
+            windowList.innerHTML = html;
+            document.getElementById('windowCount').textContent = windows.length;
+        }
+        
+        function createNewSession() {
+            sessionCount++;
+            const randomName = computerNames[Math.floor(Math.random() * computerNames.length)];
+            const newTitle = `${randomName} - TeamViewer`;
+            
+            // 같은 제목이어도 그대로 사용
+            let finalTitle = newTitle;
+            
+            windows.push({
+                title: finalTitle,
+                isMinimized: false,
+                id: Date.now() + Math.floor(Math.random() * 1000)
+            });
+            
+            // 새 창 열기 - URL에 컴퓨터명과 고유 WindowHandle 파라미터 전달
+            const computerName = finalTitle.replace(' - TeamViewer', '');
+            const uniqueWindowHandle = Date.now() + Math.floor(Math.random() * 1000);
+            const newWindow = window.open(
+                `test-teamviewer.html?computer=${encodeURIComponent(computerName)}&windowHandle=${uniqueWindowHandle}`, 
+                `teamviewer_${Date.now()}`,
+                'width=500,height=400'
+            );
+            
+            updateWindowList();
+            alert(`새 TeamViewer 세션이 생성되었습니다: ${finalTitle}`);
+        }
+        
+        function switchSession() {
+            if (windows.length > 1) {
+                const randomWindow = windows[Math.floor(Math.random() * windows.length)];
+                document.title = randomWindow.title;
+                document.getElementById('currentSession').textContent = randomWindow.title.replace(' - TeamViewer', '');
+                alert(`세션이 전환되었습니다: ${randomWindow.title}`);
+            } else {
+                alert('전환할 세션이 없습니다. 먼저 새 세션을 생성하세요.');
+            }
+        }
+        
+        function minimizeAll() {
+            windows.forEach(window => {
+                window.isMinimized = true;
+            });
+            updateWindowList();
+            alert('모든 TeamViewer 창이 최소화되었습니다. Remote Manager에서 확인하세요!');
+        }
+        
+        function restoreAll() {
+            windows.forEach(window => {
+                window.isMinimized = false;
+            });
+            updateWindowList();
+            alert('모든 TeamViewer 창이 복원되었습니다.');
+        }
+        
+        // 주기적 업데이트
+        setInterval(() => {
+            const latency = 20 + Math.floor(Math.random() * 20);
+            document.getElementById('latency').textContent = `${latency}ms`;
+        }, 3000);
+        
+        // 창 상태 변화 감지
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('TeamViewer 창이 숨겨짐/최소화됨');
+            } else {
+                console.log('TeamViewer 창이 활성화됨');
+            }
+        });
+        
+        // URL 파라미터에서 컴퓨터명과 WindowHandle 읽기
+        function initializeFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const computerName = urlParams.get('computer');
+            const windowHandle = urlParams.get('windowHandle');
+            
+            if (computerName) {
+                // 새 창인 경우 제목과 세션 정보 업데이트
+                const newTitle = `${computerName} - TeamViewer`;
+                document.title = newTitle;
+                document.getElementById('currentSession').textContent = computerName;
+                
+                // 연결 ID를 랜덤하게 생성
+                const randomId = Math.floor(Math.random() * 900000000) + 100000000;
+                const formattedId = randomId.toString().replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+                document.getElementById('connectionId').textContent = formattedId;
+                
+                // 지연시간도 다르게 설정
+                const latency = 15 + Math.floor(Math.random() * 30);
+                document.getElementById('latency').textContent = `${latency}ms`;
+                
+                // 고유한 WindowHandle 시뮬레이션
+                if (windowHandle) {
+                    console.log(`TeamViewer 세션 초기화: ${newTitle}, WindowHandle: ${windowHandle}`);
+                    // RemoteManager가 감지할 수 있도록 전역 변수 설정
+                    window.teamViewerWindowHandle = parseInt(windowHandle);
+                } else {
+                    // 기존 창(첫 번째 창)에도 고유한 WindowHandle 할당
+                    const defaultWindowHandle = Date.now();
+                    console.log(`TeamViewer 세션 초기화: ${newTitle}, 기본 WindowHandle: ${defaultWindowHandle}`);
+                    window.teamViewerWindowHandle = defaultWindowHandle;
+                }
+            }
+        }
+        
+        // 초기화
+        initializeFromUrl();
+        updateWindowList();
+    </script>
+</body>
+</html>

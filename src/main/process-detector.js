@@ -307,11 +307,15 @@ class ProcessDetector {
             isVisible,
           });
         } else if (/\w+ - TeamViewer - Chrome$/i.test(windowTitle)) {
+          // Chrome 테스트: 창 제목 기반으로 고유한 WindowHandle 생성
+          const cleanTitle = windowTitle.replace(' - Chrome', '');
+          const uniqueWindowHandle = this.generateUniqueWindowHandleForChrome(cleanTitle, windowHandle);
+          
           return this.parseTeamViewerProcess({
             processName: 'TeamViewer', // 실제 프로세스명으로 변환
-            windowTitle: windowTitle.replace(' - Chrome', ''), // Chrome 부분 제거
+            windowTitle: cleanTitle, // Chrome 부분 제거
             pid,
-            windowHandle,
+            windowHandle: uniqueWindowHandle, // 고유한 WindowHandle 사용
             isMinimized,
             isVisible,
           });
@@ -433,6 +437,61 @@ class ProcessDetector {
     }
     
     return Array.from(handleMap.values());
+  }
+
+  /**
+   * Chrome 테스트용 고유 WindowHandle 생성
+   * @param {string} windowTitle - 창 제목 (Chrome 제거 후)
+   * @param {number} originalHandle - 원본 Chrome WindowHandle
+   * @returns {number} 고유한 WindowHandle
+   */
+  static generateUniqueWindowHandleForChrome(windowTitle, originalHandle) {
+    // WindowHandle 맵 캐시 (창별로 고정된 값 유지)
+    if (!this.chromeWindowHandleCache) {
+      this.chromeWindowHandleCache = new Map();
+    }
+    
+    // 창 제목을 기반으로 고유 식별자 생성
+    const cacheKey = windowTitle + '_' + originalHandle;
+    
+    // 이미 생성된 WindowHandle이 있으면 재사용
+    if (this.chromeWindowHandleCache.has(cacheKey)) {
+      const cachedHandle = this.chromeWindowHandleCache.get(cacheKey);
+      console.log('🔄 Chrome 캐시된 WindowHandle 재사용:', {
+        windowTitle: windowTitle,
+        cacheKey: cacheKey,
+        cachedHandle: cachedHandle
+      });
+      return cachedHandle;
+    }
+    
+    // 새로운 고유 WindowHandle 생성
+    const computerName = windowTitle.replace(' - TeamViewer', '');
+    let nameHash = 0;
+    for (let i = 0; i < computerName.length; i++) {
+      const char = computerName.charCodeAt(i);
+      nameHash = ((nameHash << 5) - nameHash) + char;
+      nameHash = nameHash & nameHash;
+    }
+    
+    // 현재 캐시 크기를 기반으로 순차적 번호 추가 (같은 이름이라도 다른 WindowHandle)
+    const sequenceNumber = this.chromeWindowHandleCache.size + 1;
+    const uniqueHandle = Math.abs(nameHash) + Math.abs(originalHandle) + (sequenceNumber * 10000);
+    
+    // 캐시에 저장
+    this.chromeWindowHandleCache.set(cacheKey, uniqueHandle);
+    
+    console.log('🧪 Chrome 새 WindowHandle 생성 및 캐시:', {
+      windowTitle: windowTitle,
+      computerName: computerName,
+      cacheKey: cacheKey,
+      originalHandle: originalHandle,
+      sequenceNumber: sequenceNumber,
+      uniqueHandle: uniqueHandle,
+      cacheSize: this.chromeWindowHandleCache.size
+    });
+    
+    return uniqueHandle;
   }
 }
 

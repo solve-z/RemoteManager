@@ -192,7 +192,7 @@ export class ProcessService {
   }
 
   /**
-   * 프로세스 윈도우에 포커스
+   * 프로세스 윈도우에 포커스 (ezHelp 최소화 시 컨트롤바 자동 표시)
    * @param {string} processId - 프로세스 ID
    * @returns {Promise<boolean>} 성공 여부
    */
@@ -211,7 +211,8 @@ export class ProcessService {
         id: targetId,
         useHandle: useHandle,
         processName: process.processName,
-        windowTitle: process.windowTitle
+        windowTitle: process.windowTitle,
+        processType: process.type // ezHelp 컨트롤바 처리를 위한 프로세스 타입 전달
       });
       
       if (result.success) {

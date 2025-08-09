@@ -1,6 +1,5 @@
 /**
  * ConflictDialog - 프로세스 충돌 해결을 위한 사용자 확인 다이얼로그
- * IP 변경 등으로 인한 충돌 시 사용자 의사 확인
  */
 
 export class ConflictDialog {
@@ -8,34 +7,41 @@ export class ConflictDialog {
     this.dialog = null;
     this.resolve = null;
     this.isOpen = false;
+
+    // 생성자에서 handleKeydown을 미리 바인딩 (오류 해결)
+    this.handleKeydown = this.handleKeydown.bind(this);
+    console.log('✅ ConflictDialog 인스턴스 생성됨');
   }
 
   /**
    * 충돌 해결 다이얼로그 표시
-   * @param {Object} conflictInfo - 충돌 정보
-   * @returns {Promise<string>} 사용자 선택 ('same', 'different', 'always_new')
    */
-  async showConflictDialog(conflictInfo) {
+  showConflictDialog(conflictInfo) {
+    // --- 1. 이 함수가 호출되는지 확인 ---
+    console.log('1. showConflictDialog 호출됨. isOpen 상태:', this.isOpen);
+
     if (this.isOpen) {
-      return 'different'; // 이미 다이얼로그가 열려있으면 기본값 반환
+      console.warn('   -> 다이얼로그가 이미 열려있어, 새로운 요청을 무시합니다.');
+      return Promise.resolve('different');
     }
 
     return new Promise((resolve) => {
       this.resolve = resolve;
       this.isOpen = true;
+      console.log('   -> Promise 생성, 다이얼로그를 엽니다.');
       this.createDialog(conflictInfo);
     });
   }
 
   /**
    * 다이얼로그 HTML 생성
-   * @param {Object} conflictInfo - 충돌 정보
    */
   createDialog(conflictInfo) {
-    // 기존 다이얼로그가 있으면 제거
+    // --- 2. 다이얼로그가 실제로 생성되는지 확인 ---
+    console.log('2. createDialog 호출됨.');
+
     this.removeDialog();
 
-    // 다이얼로그 컨테이너 생성
     this.dialog = document.createElement('div');
     this.dialog.className = 'conflict-dialog-overlay';
     this.dialog.innerHTML = `
@@ -44,7 +50,6 @@ export class ConflictDialog {
           <h3>기존 연결 정보 발견</h3>
           <button class="conflict-dialog-close" aria-label="닫기">&times;</button>
         </div>
-        
         <div class="conflict-dialog-content">
           <div class="conflict-info">
             <div class="conflict-computer">
@@ -61,12 +66,8 @@ export class ConflictDialog {
               </div>
             ` : ''}
           </div>
-          
-          <div class="conflict-question">
-            <p>같은 컴퓨터입니까?</p>
-          </div>
+          <div class="conflict-question"><p>같은 컴퓨터입니까?</p></div>
         </div>
-        
         <div class="conflict-dialog-actions">
           <button class="conflict-btn conflict-btn-same" data-choice="same">
             <span class="btn-text">예</span>
@@ -84,28 +85,23 @@ export class ConflictDialog {
       </div>
     `;
 
-    // 이벤트 리스너 추가
     this.addEventListeners();
 
-    // DOM에 추가
+    // --- 3. DOM에 추가 직전인지 확인 ---
+    console.log('3. 다이얼로그를 document.body에 추가합니다.');
     document.body.appendChild(this.dialog);
+    console.log('4. 다이얼로그 추가 완료.');
 
-    // 포커스 설정
     const firstButton = this.dialog.querySelector('.conflict-btn-same');
     if (firstButton) {
       firstButton.focus();
     }
-
-    // ESC 키 이벤트 추가
-    this.handleKeydown = this.handleKeydown.bind(this);
-    document.addEventListener('keydown', this.handleKeydown);
   }
 
   /**
    * 이벤트 리스너 추가
    */
   addEventListeners() {
-    // 버튼 클릭 이벤트
     const buttons = this.dialog.querySelectorAll('[data-choice]');
     buttons.forEach(button => {
       button.addEventListener('click', (e) => {
@@ -114,32 +110,26 @@ export class ConflictDialog {
       });
     });
 
-    // 닫기 버튼
     const closeBtn = this.dialog.querySelector('.conflict-dialog-close');
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        this.handleChoice('different'); // 기본값으로 처리
-      });
+      closeBtn.addEventListener('click', () => this.handleChoice('different'));
     }
 
-    // 오버레이 클릭 (다이얼로그 외부 클릭)
     this.dialog.addEventListener('click', (e) => {
-      if (e.target === this.dialog) {
-        this.handleChoice('different'); // 기본값으로 처리
-      }
+      if (e.target === this.dialog) this.handleChoice('different');
     });
+
+    document.addEventListener('keydown', this.handleKeydown);
   }
 
   /**
-   * 키보드 이벤트 처리
-   * @param {KeyboardEvent} e - 키보드 이벤트
+   * 키보드 이벤트 처리 (변경 없음)
    */
   handleKeydown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
       this.handleChoice('different');
     } else if (e.key === 'Enter') {
-      // 포커스된 버튼 클릭
       const focusedButton = this.dialog.querySelector('[data-choice]:focus');
       if (focusedButton) {
         e.preventDefault();
@@ -147,13 +137,9 @@ export class ConflictDialog {
         this.handleChoice(choice);
       }
     } else if (e.key === 'Tab') {
-      // 탭 순환을 다이얼로그 내부로 제한
-      const focusableElements = this.dialog.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
-      );
+      const focusableElements = this.dialog.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
       const firstElement = focusableElements[0];
       const lastElement = focusableElements[focusableElements.length - 1];
-
       if (e.shiftKey && document.activeElement === firstElement) {
         e.preventDefault();
         lastElement.focus();
@@ -166,9 +152,10 @@ export class ConflictDialog {
 
   /**
    * 사용자 선택 처리
-   * @param {string} choice - 사용자 선택
    */
   handleChoice(choice) {
+    // --- 5. 선택이 처리되는지 확인 ---
+    console.log('5. handleChoice 호출됨, 선택:', choice);
     if (this.resolve) {
       this.resolve(choice);
       this.resolve = null;
@@ -180,14 +167,11 @@ export class ConflictDialog {
    * 다이얼로그 닫기
    */
   close() {
+    // --- 6. 다이얼로그가 닫히는지 확인 ---
+    console.log('6. close 호출됨.');
+    document.removeEventListener('keydown', this.handleKeydown);
     this.removeDialog();
     this.isOpen = false;
-    
-    // 키보드 이벤트 리스너 제거
-    if (this.handleKeydown) {
-      document.removeEventListener('keydown', this.handleKeydown);
-      this.handleKeydown = null;
-    }
   }
 
   /**
@@ -202,7 +186,6 @@ export class ConflictDialog {
 
   /**
    * 다이얼로그가 열려있는지 확인
-   * @returns {boolean} 열림 상태
    */
   isDialogOpen() {
     return this.isOpen;

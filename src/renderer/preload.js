@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   focusWindow: (focusData) => ipcRenderer.invoke('focus-window', focusData),
 
   /**
+   * ezHelp 컨트롤바 표시 요청
+   * @param {number} processId - ezHelp 프로세스 ID
+   * @returns {Promise<Object>} 컨트롤바 표시 결과
+   */
+  showEzHelpControlBar: (processId) => ipcRenderer.invoke('show-ezhelp-control-bar', processId),
+
+  /**
    * 애플리케이션 정보 가져오기
    * @returns {Promise<Object>} 앱 정보
    */

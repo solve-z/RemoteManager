@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ezHelp - TestPC(Relay) - 원격지 IP : 192.168.1.121(121.164.168.200) - 원격제어 경과시간 : 00:05:23 - 상담원(47)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+            margin: 0;
+        }
+        .main-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2196F3; 
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover { background: #1976D2; }
+        .button.danger { background: #f44336; }
+        .button.danger:hover { background: #d32f2f; }
+        .button.success { background: #4caf50; }
+        .button.success:hover { background: #388e3c; }
+        
+        .status {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .test-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .control-bar-info {
+            background: #e1f5fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #01579b;
+        }
+        
+        #windowInfo {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .warning {
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #f44336;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>🖥️ ezHelp 컨트롤바 테스트 환경</h1>
+        
+        <div class="status">
+            <strong>연결 상태:</strong> <span id="connectionStatus">활성</span> <br>
+            <strong>원격 IP:</strong> 192.168.1.100 <br>
+            <strong>컴퓨터명:</strong> TestPC <br>
+            <strong>세션 시간:</strong> <span id="time">00:00:00</span> <br>
+            <strong>프로세스 ID:</strong> <span id="processId">시뮬레이션</span>
+        </div>
+
+        <div class="control-bar-info">
+            <h3>🎛️ 컨트롤바 시뮬레이션 정보</h3>
+            <p><strong>시뮬레이션 상태:</strong> <span id="controlBarStatus">표시됨</span></p>
+            <p><strong>메인 창 상태:</strong> <span id="mainWindowStatus">활성</span></p>
+            <p>이 페이지는 <strong>ezHelp 메인 창</strong>을 시뮬레이션합니다. 컨트롤바는 별도 창에서 시뮬레이션됩니다.</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>📋 테스트 시나리오</h2>
+            <h3>1단계: 컨트롤바 창 생성</h3>
+            <button class="button success" onclick="createControlBar()">🎛️ 컨트롤바 창 열기</button>
+            <p><small>HiRemoteMenuBar를 시뮬레이션하는 컨트롤바 창을 생성합니다.</small></p>
+            
+            <h3>2단계: 메인 창 최소화</h3>
+            <button class="button" onclick="minimizeWindow()">🗕 메인 창 최소화</button>
+            <p><small>이 창(ezHelp 메인 창)을 최소화합니다.</small></p>
+            
+            <h3>3단계: RemoteManager에서 포커스 테스트</h3>
+            <p>
+                1. RemoteManager를 실행하고 프로세스 감지<br>
+                2. 이 Chrome 프로세스를 찾기 (ezHelp로 표시됨)<br>
+                3. 🎯 <strong>포커스 버튼</strong> 클릭<br>
+                4. 메인 창과 컨트롤바가 모두 복원되는지 확인
+            </p>
+        </div>
+        
+        <h2>🛠️ 테스트 도구</h2>
+        <button class="button" onclick="changeTitle()">🏷️ 제목 변경</button>
+        <button class="button" onclick="toggleVisibility()">👁️ 가시성 토글</button>
+        <button class="button danger" onclick="closeControlBar()">❌ 컨트롤바 닫기</button>
+        
+        <h2>📊 현재 창 정보</h2>
+        <div id="windowInfo"></div>
+        
+        <div class="warning">
+            <h3>⚠️ 테스트 주의사항</h3>
+            <ul>
+                <li>컨트롤바 창을 먼저 열어야 합니다</li>
+                <li>Chrome 브라우저의 제한으로 실제 최소화 상태는 완벽히 시뮬레이션되지 않습니다</li>
+                <li>RemoteManager의 프로세스 감지에서 이 프로세스가 ezHelp로 인식되는지 확인하세요</li>
+                <li>Windows API 호출은 실제 환경에서만 테스트됩니다</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let startTime = Date.now();
+        let controlBarWindow = null;
+        let isMinimized = false;
+        
+        function updateTime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('time').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        
+        function createControlBar() {
+            if (controlBarWindow && !controlBarWindow.closed) {
+                controlBarWindow.focus();
+                return;
+            }
+            
+            // 컨트롤바 창 생성 (HiRemoteMenuBar 시뮬레이션)
+            const controlBarHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HiRemoteMenuBar - Control Panel</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 8px;
+            background: #2196F3;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: white;
+            min-width: 300px;
+            max-width: 400px;
+        }
+        .control-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .status-text {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <button class="control-btn" onclick="parent.postMessage('minimize', '*')">최소화</button>
+        <div class="status-text">ezHelp 원격 제어 중 - 192.168.1.100</div>
+        <button class="control-btn" onclick="parent.postMessage('disconnect', '*')">연결 끊기</button>
+        <button class="control-btn" onclick="window.close()">닫기</button>
+    </div>
+    <script>
+        // 부모 창과의 통신
+        window.addEventListener('message', function(e) {
+            if (e.data === 'hide') {
+                document.body.style.display = 'none';
+            } else if (e.data === 'show') {
+                document.body.style.display = 'block';
+            }
+        });
+        
+        // 창이 닫힐 때 부모에게 알림
+        window.addEventListener('beforeunload', function() {
+            if (window.opener) {
+                window.opener.postMessage('controlbar-closed', '*');
+            }
+        });
+    <\/script>
+</body>
+</html>`;
+            
+            // Blob URL로 컨트롤바 HTML 생성
+            const blob = new Blob([controlBarHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            // 컨트롤바 창 열기 (작고 항상 위에)
+            controlBarWindow = window.open(
+                url, 
+                'ezhelp-controlbar',
+                'width=400,height=60,top=100,left=100,toolbar=no,menubar=no,scrollbars=no,resizable=yes,status=no'
+            );
+            
+            if (controlBarWindow) {
+                updateControlBarStatus('표시됨 (시뮬레이션)');
+                console.log('컨트롤바 창 생성됨');
+            } else {
+                alert('팝업이 차단되었습니다. 팝업을 허용해주세요.');
+            }
+        }
+        
+        function minimizeWindow() {
+            // 브라우저에서는 실제 최소화가 불가능하므로 시뮬레이션
+            isMinimized = true;
+            updateMainWindowStatus('최소화됨 (시뮬레이션)');
+            updateConnectionStatus('최소화됨');
+            
+            // 컨트롤바가 있다면 숨김 (실제 ezHelp에서는 부모 창 최소화 시 컨트롤바도 숨겨짐)
+            if (controlBarWindow && !controlBarWindow.closed) {
+                controlBarWindow.postMessage('hide', '*');
+                updateControlBarStatus('숨겨짐 (부모 창 최소화)');
+            }
+            
+            alert('실제 환경에서는 이 창이 최소화됩니다. 이제 RemoteManager에서 포커스 버튼을 테스트해보세요!');
+        }
+        
+        function toggleVisibility() {
+            if (isMinimized) {
+                // 복원 시뮬레이션
+                isMinimized = false;
+                updateMainWindowStatus('활성');
+                updateConnectionStatus('활성');
+                
+                // 컨트롤바 복원
+                if (controlBarWindow && !controlBarWindow.closed) {
+                    controlBarWindow.postMessage('show', '*');
+                    updateControlBarStatus('표시됨');
+                    controlBarWindow.focus();
+                }
+            } else {
+                minimizeWindow();
+            }
+        }
+        
+        function closeControlBar() {
+            if (controlBarWindow && !controlBarWindow.closed) {
+                controlBarWindow.close();
+                controlBarWindow = null;
+                updateControlBarStatus('닫힘');
+            }
+        }
+        
+        function changeTitle() {
+            const titles = [
+                'ezHelp - TestPC-01(Relay) - 원격지 IP : 192.168.1.150(1.2.3.4) - 변경됨',
+                'ezHelp - SERVER-WIN10(Relay) - 원격지 IP : 10.0.0.200(5.6.7.8) - 테스트',
+                'ezHelp - OFFICE-PC(Relay) - 원격지 IP : 172.16.0.100(9.10.11.12) - 컨트롤바 테스트'
+            ];
+            document.title = titles[Math.floor(Math.random() * titles.length)];
+            updateWindowInfo();
+        }
+        
+        function updateMainWindowStatus(status) {
+            document.getElementById('mainWindowStatus').textContent = status;
+        }
+        
+        function updateControlBarStatus(status) {
+            document.getElementById('controlBarStatus').textContent = status;
+        }
+        
+        function updateConnectionStatus(status) {
+            document.getElementById('connectionStatus').textContent = status;
+        }
+        
+        function updateWindowInfo() {
+            const info = {
+                title: document.title,
+                hidden: document.hidden,
+                minimized: isMinimized,
+                windowSize: `${window.innerWidth} x ${window.innerHeight}`,
+                controlBarExists: controlBarWindow && !controlBarWindow.closed,
+                processId: 'Chrome-' + Math.floor(Math.random() * 9999)
+            };
+            
+            document.getElementById('windowInfo').innerHTML = `
+                <strong>현재 제목:</strong> ${info.title}<br>
+                <strong>창 상태:</strong> ${info.hidden ? '숨김' : '활성'}<br>
+                <strong>시뮬레이션 상태:</strong> ${info.minimized ? '최소화됨' : '활성'}<br>
+                <strong>화면 크기:</strong> ${info.windowSize}<br>
+                <strong>컨트롤바 창:</strong> ${info.controlBarExists ? '열림' : '닫힘'}<br>
+                <strong>시뮬레이션 PID:</strong> ${info.processId}
+            `;
+            
+            document.getElementById('processId').textContent = info.processId;
+        }
+        
+        // 컨트롤바 창에서의 메시지 수신
+        window.addEventListener('message', function(e) {
+            if (e.data === 'controlbar-closed') {
+                controlBarWindow = null;
+                updateControlBarStatus('닫힘');
+                console.log('컨트롤바 창이 닫혔습니다.');
+            }
+        });
+        
+        // 주기적 업데이트
+        setInterval(updateTime, 1000);
+        setInterval(updateWindowInfo, 2000);
+        updateWindowInfo();
+        
+        // 창 상태 변화 감지
+        document.addEventListener('visibilitychange', function() {
+            updateWindowInfo();
+            if (document.hidden) {
+                console.log('창이 숨겨짐');
+                updateMainWindowStatus('숨겨짐');
+            } else {
+                console.log('창이 활성화됨');
+                if (!isMinimized) {
+                    updateMainWindowStatus('활성');
+                    updateConnectionStatus('활성');
+                }
+            }
+        });
+        
+        // 페이지 로드 시 안내
+        window.addEventListener('load', function() {
+            console.log('ezHelp 컨트롤바 테스트 환경이 로드되었습니다.');
+            console.log('테스트 순서: 1) 컨트롤바 창 열기 → 2) 메인 창 최소화 → 3) RemoteManager에서 포커스 테스트');
+        });
+    </script>
+</body>
+</html>
