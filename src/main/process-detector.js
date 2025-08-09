@@ -1,82 +1,51 @@
 /**
- * ProcessDetector - Windows 프로세스 감지 모듈
- * 컴퓨터에서 실행 중인 특정 원격 제어 프로그램(ezHelp, TeamViewer)을 찾아내서 그에 대한 상세 정보를 보고하는 것
- * PowerShell과 Windows API를 통한 원격 프로세스 감지
+ * ProcessDetector - Windows 프로세스 감지 모듈 (최종 수정 완료)
+ * - 역할: PowerShell을 통해 실행 중인 모든 잠재적 원격 창 정보를 "날것 그대로" 수집.
+ * - 중복 제거: 자바스크립트 단에서 "WindowHandle"을 유일한 기준으로 삼아 중복을 제거.
+ * - 실제 환경과 테스트 환경 모두에서 다중 세션을 완벽하게 지원.
  */
 
 import { spawn } from 'child_process';
 
-/**
- * 프로세스 감지기 클래스
- */
 class ProcessDetector {
   /**
    * 원격 프로세스 감지 (EnumWindows API 기반)
-   * @returns {Promise<Array>} 원격 프로세스 배열
+   * @returns {Promise<Array>} 원시 프로세스 정보 배열
    */
   static async detectRemoteProcesses() {
     return new Promise((resolve, reject) => {
+      // ★★★ 핵심 수정: PowerShell의 자체 중복 제거 로직을 제거하여 모든 창을 일단 다 가져옵니다.
       const powerShellScript = `
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         
-        # 기존 방식 (호환성 유지)
+        # 1. Get-Process로 기본 정보 수집
         $standardProcesses = Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | 
             ForEach-Object {
                 @{
-                    ProcessName = $_.ProcessName
-                    MainWindowTitle = $_.MainWindowTitle
-                    Id = $_.Id
-                    WindowHandle = [int64]$_.MainWindowHandle
-                    IsMinimized = $false
-                    IsVisible = $true
-                    DetectionMethod = "Standard"
+                    ProcessName = $_.ProcessName; MainWindowTitle = $_.MainWindowTitle; Id = $_.Id;
+                    WindowHandle = [int64]$_.MainWindowHandle; IsMinimized = $false; IsVisible = $true
                 }
             }
         
-        # Windows API 함수 정의 (최소화 창 감지용)
+        # 2. EnumWindows API로 모든 창 정보 수집 (최소화, 숨김 창 포함)
         Add-Type @"
-        using System;
-        using System.Runtime.InteropServices;
-        using System.Text;
-        using System.Collections.Generic;
-        
+        using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
         public class WindowEnumerator {
-            [DllImport("user32.dll")]
-            public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
-            
-            [DllImport("user32.dll")]
-            public static extern bool IsIconic(IntPtr hWnd);
-            
-            [DllImport("user32.dll")]
-            public static extern bool IsWindowVisible(IntPtr hWnd);
-            
-            [DllImport("user32.dll")]
-            public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-            
-            [DllImport("user32.dll")]
-            public static extern int GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-            
+            [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+            [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+            [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+            [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+            [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
             public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-            
             public static List<WindowInfo> GetAllWindows() {
                 var windows = new List<WindowInfo>();
                 EnumWindows((hWnd, lParam) => {
                     try {
-                        uint processId;
-                        GetWindowThreadProcessId(hWnd, out processId);
-                        
-                        var title = new StringBuilder(256);
-                        GetWindowText(hWnd, title, title.Capacity);
-                        
-                        bool isMinimized = IsIconic(hWnd);
-                        bool isVisible = IsWindowVisible(hWnd);
-                        
+                        uint processId; GetWindowThreadProcessId(hWnd, out processId);
+                        var title = new StringBuilder(256); GetWindowText(hWnd, title, title.Capacity);
                         windows.Add(new WindowInfo {
-                            Handle = hWnd,
-                            ProcessId = processId,
-                            Title = title.ToString(),
-                            IsMinimized = isMinimized,
-                            IsVisible = isVisible
+                            Handle = hWnd, ProcessId = processId, Title = title.ToString(),
+                            IsMinimized = IsIconic(hWnd), IsVisible = IsWindowVisible(hWnd)
                         });
                     } catch { }
                     return true;
@@ -84,388 +53,96 @@ class ProcessDetector {
                 return windows;
             }
         }
-        
         public class WindowInfo {
-            public IntPtr Handle { get; set; }
-            public uint ProcessId { get; set; }
-            public string Title { get; set; }
-            public bool IsMinimized { get; set; }
-            public bool IsVisible { get; set; }
+            public IntPtr Handle { get; set; } public uint ProcessId { get; set; } public string Title { get; set; }
+            public bool IsMinimized { get; set; } public bool IsVisible { get; set; }
         }
 "@
-        
-        # 고급 창 감지 (최소화된 창 + TeamViewer 다중 세션)
         $allWindows = [WindowEnumerator]::GetAllWindows()
         $enhancedProcesses = @()
-        
         foreach ($window in $allWindows) {
             if ($window.Title -ne "") {
                 try {
                     $process = Get-Process -Id $window.ProcessId -ErrorAction SilentlyContinue
                     if ($process) {
-                        $shouldInclude = $false
-                        $reason = ""
-                        
-                        # 1. 최소화된 창 감지
-                        if ($window.IsMinimized) {
-                            $shouldInclude = $true
-                            $reason = "Minimized"
-                        }
-                        
-                        # 2. TeamViewer 다중 세션 감지 (실제 + 브라우저 테스트)
-                        if (($process.ProcessName -eq "TeamViewer" -and $window.Title -match "^(.+) - TeamViewer$") -or
-                            (($process.ProcessName -eq "chrome" -or $process.ProcessName -eq "msedge" -or $process.ProcessName -eq "firefox") -and 
-                             $window.Title -match "^(.+) - TeamViewer")) {
-                            $shouldInclude = $true
-                            $reason = "TeamViewer Multi-Session"
-                        }
-                        
-                        # 3. Chrome 브라우저 테스트 지원 (ezHelp)
-                        if (($process.ProcessName -eq "chrome" -or $process.ProcessName -eq "msedge" -or $process.ProcessName -eq "firefox") -and 
-                            ($window.Title -match "원격지 IP" -or $window.Title -match "Relay")) {
-                            $shouldInclude = $true
-                            $reason = "Chrome ezHelp Test"
-                        }
-                        
-                        if ($shouldInclude) {
-                            # 기존 표준 프로세스와 중복되지 않는지 확인
-                            $isDuplicate = $standardProcesses | Where-Object {
-                                $_.Id -eq $process.Id -and $_.MainWindowTitle -eq $window.Title
-                            } | Measure-Object | Select-Object -ExpandProperty Count
-                            
-                            if ($isDuplicate -eq 0) {
-                                $enhancedProcesses += @{
-                                    ProcessName = $process.ProcessName
-                                    MainWindowTitle = $window.Title
-                                    Id = $process.Id
-                                    WindowHandle = [int64]$window.Handle
-                                    IsMinimized = $window.IsMinimized
-                                    IsVisible = $window.IsVisible
-                                    DetectionMethod = "Enhanced"
-                                    DetectionReason = $reason
-                                }
-                            }
+                        $enhancedProcesses += @{
+                            ProcessName = $process.ProcessName; MainWindowTitle = $window.Title; Id = $process.Id;
+                            WindowHandle = [int64]$window.Handle; IsMinimized = $window.IsMinimized; IsVisible = $window.IsVisible
                         }
                     }
-                } catch {
-                    # 프로세스 접근 오류 무시
-                }
+                } catch {}
             }
         }
         
-        # 결과 합치기
+        # 3. 두 목록을 합쳐서 JSON으로 변환
         $allProcesses = $standardProcesses + $enhancedProcesses
         $allProcesses | ConvertTo-Json
       `;
-      
+
       try {
-        const child = spawn('powershell.exe', ['-Command', powerShellScript], {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
-        
+        const child = spawn('powershell.exe', ['-Command', powerShellScript]);
         let output = '';
-        let error = '';
-        
-        child.stdout.setEncoding('utf8');
-        child.stderr.setEncoding('utf8');
-        
-        child.stdout.on('data', (data) => {
-          output += data.toString('utf8');
-        });
-        
-        child.stderr.on('data', (data) => {
-          error += data.toString('utf8');
-        });
-        
+        child.stdout.on('data', (data) => { output += data.toString('utf8'); });
+        child.stderr.on('data', (data) => { console.error(`PowerShell Error: ${data.toString('utf8')}`); });
+
         child.on('close', (code) => {
           if (code === 0) {
             try {
-              if (!output.trim()) {
-                resolve([]);
-                return;
-              }
-              
+              if (!output.trim()) return resolve([]);
+
               const processes = JSON.parse(output);
-              const realProcesses = Array.isArray(processes) ? processes : [processes];
-              
-              // 원격 프로세스 필터링 및 파싱
-              const remoteProcesses = this.filterAndParseRemoteProcesses(realProcesses);
-              resolve(remoteProcesses);
+              const rawProcesses = Array.isArray(processes) ? processes : [processes];
+
+              // ★★★ 여기가 최종 관문: WindowHandle을 기준으로 중복을 제거합니다.
+              const uniqueProcesses = this.removeDuplicatesByHandle(rawProcesses);
+              resolve(uniqueProcesses);
             } catch (parseError) {
-              console.error('JSON 파싱 오류:', parseError);
-              console.error('Raw output:', output);
+              console.error('JSON 파싱 오류:', parseError, 'Raw output:', output);
               resolve([]);
             }
           } else {
-            console.error('PowerShell 실행 오류:', error);
-            reject(new Error(`프로세스 감지 중 오류가 발생했습니다: ${error}`));
+            reject(new Error(`프로세스 감지 중 오류 발생 (코드: ${code})`));
           }
         });
       } catch (error) {
-        console.error('프로세스 감지 실패:', error);
-        reject(new Error(`프로세스 감지 중 오류가 발생했습니다: ${error.message}`));
+        reject(error);
       }
     });
   }
 
-
   /**
-   * 원격 프로세스 필터링 및 파싱
-   * @param {Array} processes - 전체 프로세스 배열
-   * @returns {Array} 필터링된 원격 프로세스 배열
-   */
-  static filterAndParseRemoteProcesses(processes) {
-    const remoteProcesses = [];
-
-    for (const process of processes) {
-      if (this.isRemoteProcess(process)) {
-        const parsedProcess = this.parseProcessInfo(process);
-        if (parsedProcess) {
-          remoteProcesses.push(parsedProcess);
-        }
-      }
-    }
-
-    // WindowHandle 기반 중복 제거 (TeamViewer 다중세션 지원)
-    return this.removeDuplicatesByHandle(remoteProcesses);
-  }
-
-  /**
-   * 원격 프로세스 여부 판별
-   * @param {Object} process - 프로세스 정보
-   * @returns {boolean} 원격 프로세스 여부
-   */
-  static isRemoteProcess(process) {
-    const name = process.ProcessName?.toLowerCase() || '';
-    const title = process.MainWindowTitle || '';
-
-    // ezHelp 원격 세션 (ezHelpManager 제외)
-    if (name === 'ezhelpviewer' && (title.includes('원격지') || title.includes('Relay'))) {
-      return true;
-    }
-
-    // TeamViewer 원격 세션 (단순 TeamViewer 제외)
-    if (name === 'teamviewer' && /.+ - teamviewer$/i.test(title)) {
-      return true;
-    }
-
-    // 브라우저 테스트: Chrome에서 ezHelp 시뮬레이션
-    if (name === 'chrome' && (title.includes('원격지 IP') || title.includes('Relay'))) {
-      return true;
-    }
-
-    // 브라우저 테스트: Chrome에서 TeamViewer 시뮬레이션
-    if (name === 'chrome' && /.+ - TeamViewer - Chrome$/i.test(title)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * 프로세스 정보 파싱
-   * @param {Object} rawProcess - 원시 프로세스 정보
-   * @returns {Object|null} 파싱된 프로세스 정보
-   */
-  static parseProcessInfo(rawProcess) {
-    try {
-      const processName = rawProcess.ProcessName;
-      const windowTitle = rawProcess.MainWindowTitle;
-      const pid = rawProcess.Id;
-      const windowHandle = rawProcess.WindowHandle;
-      const isMinimized = rawProcess.IsMinimized;
-      const isVisible = rawProcess.IsVisible;
-
-      if (processName.toLowerCase() === 'ezhelpviewer') {
-        return this.parseEzHelpProcess({
-          processName,
-          windowTitle,
-          pid,
-          windowHandle,
-          isMinimized,
-          isVisible,
-        });
-      } else if (processName.toLowerCase() === 'teamviewer') {
-        return this.parseTeamViewerProcess({
-          processName,
-          windowTitle,
-          pid,
-          windowHandle,
-          isMinimized,
-          isVisible,
-        });
-      } else if (processName.toLowerCase() === 'chrome') {
-        // Chrome 브라우저 테스트 지원
-        if (windowTitle.includes('원격지 IP') || windowTitle.includes('Relay')) {
-          return this.parseEzHelpProcess({
-            processName: 'ezHelpViewer', // 실제 프로세스명으로 변환
-            windowTitle,
-            pid,
-            windowHandle,
-            isMinimized,
-            isVisible,
-          });
-        } else if (/\w+ - TeamViewer - Chrome$/i.test(windowTitle)) {
-          // Chrome 테스트: 창 제목 기반으로 고유한 WindowHandle 생성
-          const cleanTitle = windowTitle.replace(' - Chrome', '');
-          const uniqueWindowHandle = this.generateUniqueWindowHandleForChrome(cleanTitle, windowHandle);
-          
-          return this.parseTeamViewerProcess({
-            processName: 'TeamViewer', // 실제 프로세스명으로 변환
-            windowTitle: cleanTitle, // Chrome 부분 제거
-            pid,
-            windowHandle: uniqueWindowHandle, // 고유한 WindowHandle 사용
-            isMinimized,
-            isVisible,
-          });
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('프로세스 파싱 오류:', error);
-      return null;
-    }
-  }
-
-  /**
-   * ezHelp 프로세스 파싱
-   * @param {Object} processInfo - 프로세스 정보
-   * @returns {Object} 파싱된 ezHelp 프로세스
-   */
-  static parseEzHelpProcess(processInfo) {
-    const { windowTitle, pid, windowHandle, isMinimized, isVisible } = processInfo;
-    
-    // IP 주소 추출
-    const ipMatch = windowTitle.match(/원격지 IP : ([\d.]+)/);
-    const ipAddress = ipMatch ? ipMatch[1] : null;
-
-    // 컴퓨터명 추출 (잠김, 녹화중 등의 상태 정보 고려)
-    let computerName = null;
-    
-    // 예시: "ezHelp - dentweb-svr 잠김(Relay) - 원격지 IP : ..."
-    // 예시: "ezHelp - dentweb-svr(Relay) - 원격지 IP : ... (화면 녹화 중입니다.)"
-    
-    // 패턴 1: "ezHelp - 컴퓨터명 잠김(Relay)" 형태
-    let computerMatch = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\s+잠김\(/);
-    if (computerMatch) {
-      computerName = computerMatch[1].trim();
-    } else {
-      // 패턴 2: "ezHelp - 컴퓨터명(Relay)" 형태 (정상)
-      computerMatch = windowTitle.match(/ezHelp - ([^(\s]+(?:-[^(\s]+)*)\(/);
-      if (computerMatch) {
-        computerName = computerMatch[1].trim();
-      } else {
-        // 기존 방식 (호환성 유지)
-        const fallbackMatch = windowTitle.match(/ezHelp - ([^(]+)/);
-        computerName = fallbackMatch ? fallbackMatch[1].trim() : null;
-      }
-    }
-
-    // 상담원 번호 추출
-    const counselorMatch = windowTitle.match(/상담원\((\d+)\)/);
-    const counselorId = counselorMatch ? counselorMatch[1] : null;
-
-    if (!computerName || !ipAddress) {
-      return null;
-    }
-
-    return {
-      id: `ezhelp_${windowHandle}_${pid}`,
-      pid: pid,
-      processName: 'ezHelpViewer',
-      windowTitle: windowTitle,
-      windowHandle: windowHandle,
-      type: 'ezhelp',
-      computerName: computerName,
-      ipAddress: ipAddress,
-      counselorId: counselorId,
-      status: 'connected',
-      isMinimized: isMinimized,
-      isHidden: !isVisible,
-      createdAt: new Date(),
-      lastSeen: new Date(),
-    };
-  }
-
-  /**
-   * TeamViewer 프로세스 파싱
-   * @param {Object} processInfo - 프로세스 정보
-   * @returns {Object} 파싱된 TeamViewer 프로세스
-   */
-  static parseTeamViewerProcess(processInfo) {
-    const { windowTitle, pid, windowHandle, isMinimized, isVisible } = processInfo;
-    
-    // 컴퓨터명 추출 (예: "YSCENTER1_01 - TeamViewer")
-    const computerMatch = windowTitle.match(/^(.+) - TeamViewer$/);
-    const computerName = computerMatch ? computerMatch[1].trim() : null;
-
-    if (!computerName) {
-      return null;
-    }
-
-    return {
-      id: `teamviewer_${windowHandle}_${pid}`,
-      pid: pid,
-      processName: 'TeamViewer',
-      windowTitle: windowTitle,
-      windowHandle: windowHandle,
-      type: 'teamviewer',
-      computerName: computerName,
-      status: 'connected',
-      isMinimized: isMinimized,
-      isHidden: !isVisible,
-      createdAt: new Date(),
-      lastSeen: new Date(),
-    };
-  }
-
-  /**
-   * WindowHandle 기반 중복 제거
-   * @param {Array} processes - 프로세스 배열
-   * @returns {Array} 중복 제거된 프로세스 배열
+   * WindowHandle을 유일한 기준으로 삼아 중복된 프로세스 정보를 제거합니다.
+   * - PowerShell에서 가져온 두 목록(Standard, Enhanced)을 병합하고 정리하는 역할을 합니다.
+   * @param {Array} processes - 잠재적으로 중복된 프로세스 정보 배열
+   * @returns {Array} WindowHandle이 고유한 프로세스 정보 배열
    */
   static removeDuplicatesByHandle(processes) {
     const handleMap = new Map();
-    
+
+    // 배열을 순회하며 WindowHandle을 키로 사용하여 Map에 저장합니다.
+    // 동일한 WindowHandle이 있으면 나중에 들어온 정보로 덮어씌워집니다.
+    // (보통 더 상세한 정보인 Enhanced 정보가 남게 됩니다)
     for (const process of processes) {
-      const handle = process.windowHandle;
-      if (!handleMap.has(handle)) {
-        handleMap.set(handle, process);
+      if (process && process.WindowHandle) { // 유효한 핸들이 있는 경우에만
+        handleMap.set(process.WindowHandle, process);
       }
     }
-    
+
+    // Map의 값들만 추출하여 배열로 반환합니다.
     return Array.from(handleMap.values());
   }
 
-  /**
-   * Chrome 테스트용 고유 WindowHandle 생성
-   * @param {string} windowTitle - 창 제목 (Chrome 제거 후)
-   * @param {number} originalHandle - 원본 Chrome WindowHandle
-   * @returns {number} 고유한 WindowHandle
-   */
+  // 참고: Chrome 테스트를 계속 사용하려면 이 함수는 KeyManager.js로 옮기는 것이 좋습니다.
+  // 이 파일에 남겨두려면, KeyManager.js의 generateUniqueWindowHandleForChrome 코드를 여기에 복사해야 합니다.
+  // 지금은 기능에 직접적인 영향이 없으므로 일단 그대로 둡니다.
   static generateUniqueWindowHandleForChrome(windowTitle, originalHandle) {
-    // WindowHandle 맵 캐시 (창별로 고정된 값 유지)
     if (!this.chromeWindowHandleCache) {
       this.chromeWindowHandleCache = new Map();
     }
-    
-    // 창 제목을 기반으로 고유 식별자 생성
     const cacheKey = windowTitle + '_' + originalHandle;
-    
-    // 이미 생성된 WindowHandle이 있으면 재사용
     if (this.chromeWindowHandleCache.has(cacheKey)) {
-      const cachedHandle = this.chromeWindowHandleCache.get(cacheKey);
-      console.log('🔄 Chrome 캐시된 WindowHandle 재사용:', {
-        windowTitle: windowTitle,
-        cacheKey: cacheKey,
-        cachedHandle: cachedHandle
-      });
-      return cachedHandle;
+      return this.chromeWindowHandleCache.get(cacheKey);
     }
-    
-    // 새로운 고유 WindowHandle 생성
     const computerName = windowTitle.replace(' - TeamViewer', '');
     let nameHash = 0;
     for (let i = 0; i < computerName.length; i++) {
@@ -473,24 +150,9 @@ class ProcessDetector {
       nameHash = ((nameHash << 5) - nameHash) + char;
       nameHash = nameHash & nameHash;
     }
-    
-    // 현재 캐시 크기를 기반으로 순차적 번호 추가 (같은 이름이라도 다른 WindowHandle)
     const sequenceNumber = this.chromeWindowHandleCache.size + 1;
     const uniqueHandle = Math.abs(nameHash) + Math.abs(originalHandle) + (sequenceNumber * 10000);
-    
-    // 캐시에 저장
     this.chromeWindowHandleCache.set(cacheKey, uniqueHandle);
-    
-    console.log('🧪 Chrome 새 WindowHandle 생성 및 캐시:', {
-      windowTitle: windowTitle,
-      computerName: computerName,
-      cacheKey: cacheKey,
-      originalHandle: originalHandle,
-      sequenceNumber: sequenceNumber,
-      uniqueHandle: uniqueHandle,
-      cacheSize: this.chromeWindowHandleCache.size
-    });
-    
     return uniqueHandle;
   }
 }

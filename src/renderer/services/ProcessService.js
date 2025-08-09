@@ -31,10 +31,12 @@ export class ProcessService {
     }
 
     this.isLoading = true;
-    
+
     try {
+      // 1. Detector로부터 "날것"의 프로세스 정보를 가져옵니다.
       const result = await window.electronAPI.detectProcesses();
       if (result.success) {
+        // 2. 가져온 정보를 바탕으로 상태를 업데이트합니다.
         this.updateProcessStatuses(result.data);
         this.lastLoadTime = new Date();
       } else {
@@ -53,71 +55,69 @@ export class ProcessService {
    * 프로세스 상태 업데이트 (안정적 키 기반 그룹 정보 복원 포함)
    * @param {Array} currentProcesses - 현재 감지된 프로세스 목록
    */
-  async updateProcessStatuses(currentProcesses) {
-    const normalizedProcesses = currentProcesses.map(p => 
-      KeyManager.normalizeProcessInfo(p)
+  async updateProcessStatuses(rawProcesses) {
+    // --- 1. 입력 데이터 확인 ---
+    // console.log(`[1단계] 입력: Detector로부터 ${rawProcesses.length}개의 원시 프로세스 받음`);
+    console.log(JSON.stringify(rawProcesses, null, 2)); // 필요하면 이 주석을 풀어 상세 데이터 확인
+    const handleMap = this.processStore.handleToMultipleIdMap;
+    // 2. KeyManager를 사용하여 "날것"의 데이터를 완전한 객체로 변환합니다.
+    const normalizedProcesses = rawProcesses.map(p =>
+      KeyManager.normalizeProcessInfo(p, handleMap)
     );
+    // --- 2. 정규화 결과 확인 ---
+    console.log(`[2단계] 정규화: ${normalizedProcesses.length}개의 프로세스 정보 정규화 완료`);
 
-    // 유효한 원격 프로세스만 필터링
-    const remoteProcesses = normalizedProcesses.filter(p => 
+    // 3. 정규화된 정보를 바탕으로 유효한 원격 프로세스만 필터링합니다.
+    const remoteProcesses = normalizedProcesses.filter(p =>
       this.isValidRemoteProcess(p)
     );
+    // --- 3. 필터링 결과 확인 ---
+    console.log(`[3단계] 필터링: ${remoteProcesses.length}개의 유효한 원격 프로세스 필터링됨`);
+    if (remoteProcesses.length === 0 && normalizedProcesses.length > 0) {
+      console.warn('[경고] 모든 프로세스가 "isValidRemoteProcess" 필터에서 걸러졌습니다. 아래는 필터링 전 데이터입니다:');
+      console.log(normalizedProcesses.map(p => ({
+        type: p.type,
+        computerName: p.computerName,
+        ipAddress: p.ipAddress,
+        isValid: this.isValidRemoteProcess(p)
+      })));
+    }
 
     const currentProcessIds = new Set();
     const connectionEvents = [];
 
-    // 현재 프로세스들 처리
+    // 4. 유효한 프로세스들만 Store에 업데이트를 요청합니다.
+    console.log(`[4단계] 업데이트 시작: ${remoteProcesses.length}개의 프로세스를 Store에 업데이트합니다.`);
     for (const processInfo of remoteProcesses) {
       try {
         const process = await this.processStore.updateProcess(processInfo);
         currentProcessIds.add(process.id);
 
-        // 그룹/카테고리 정보는 이미 프로세스 생성 시점에 설정됨 (중복 방지)
-        // this.restoreProcessMetadata(process);
-
-        // 연결 상태 변경 감지
+        // (이하 로직은 동일)
         if (process.status === 'reconnected') {
-          connectionEvents.push({
-            type: 'reconnection',
-            process: process,
-            message: `${KeyManager.getDisplayKey(process)} 재연결됨`,
-          });
-        } else if (process.createdAt && 
-                   Date.now() - process.createdAt.getTime() < 1000) {
-          // 새로 감지된 프로세스 (1초 이내 생성)
-          connectionEvents.push({
-            type: 'connection',
-            process: process,
-            message: `${KeyManager.getDisplayKey(process)} 연결됨`,
-          });
+          connectionEvents.push({ type: 'reconnection', process: process, message: `${KeyManager.getDisplayKey(process)} 재연결됨` });
+        } else if (process.createdAt && Date.now() - process.createdAt.getTime() < 1000) {
+          connectionEvents.push({ type: 'connection', process: process, message: `${KeyManager.getDisplayKey(process)} 연결됨` });
         }
       } catch (error) {
         console.error('프로세스 업데이트 실패:', error);
       }
     }
 
-    // 사라진 프로세스들을 끊어진 상태로 표시
-    const disconnectedProcesses = this.processStore.markMissingAsDisconnected(currentProcessIds);
-    
-    // 끊어진 프로세스 알림
-    for (const processId of disconnectedProcesses || []) {
+    // 5. 사라진 프로세스들을 처리합니다.
+    const disconnectedProcessIds = this.processStore.markMissingAsDisconnected(currentProcessIds);
+    console.log(`[5단계] 연결 해제 처리: ${disconnectedProcessIds?.length || 0}개의 프로세스를 연결 해제합니다.`);
+
+    for (const processId of disconnectedProcessIds || []) {
       const process = this.processStore.getProcess(processId);
       if (process) {
-        connectionEvents.push({
-          type: 'disconnection',
-          process: process,
-          message: `${KeyManager.getDisplayKey(process)} 연결 끊김`,
-        });
+        connectionEvents.push({ type: 'disconnection', process: process, message: `${KeyManager.getDisplayKey(process)} 연결 끊김` });
       }
     }
 
-    // 연결 상태 변경 알림
     this.notifyConnectionEvents(connectionEvents);
-
-    // 오래된 프로세스 정리
     this.processStore.cleanupOldProcesses();
   }
-
   /**
    * 유효한 원격 프로세스인지 확인
    * @param {Object} process - 프로세스 정보
@@ -127,17 +127,12 @@ export class ProcessService {
     if (!process.computerName) {
       return false;
     }
-
     const type = process.type;
-    
     if (type === 'ezhelp') {
-      // ezHelp는 IP 주소가 있어야 함
       return !!process.ipAddress;
     } else if (type === 'teamviewer') {
-      // TeamViewer는 컴퓨터명만 있으면 됨
       return true;
     }
-
     return false;
   }
 
@@ -153,7 +148,7 @@ export class ProcessService {
     try {
       // 안정적 키 기반으로 그룹/카테고리 정보 복원
       const restored = this.groupStore.restoreProcessGroupInfo(process);
-      
+
       if (restored.groupId || restored.category) {
         console.log(`프로세스 ${process.id} 메타데이터 복원:`, {
           groupId: restored.groupId,
@@ -206,7 +201,7 @@ export class ProcessService {
       // WindowHandle이 있으면 우선 사용, 없으면 PID 사용
       const targetId = process.windowHandle || process.pid;
       const useHandle = !!process.windowHandle;
-      
+
       const result = await window.electronAPI.focusWindow({
         id: targetId,
         useHandle: useHandle,
@@ -214,7 +209,7 @@ export class ProcessService {
         windowTitle: process.windowTitle,
         processType: process.type // ezHelp 컨트롤바 처리를 위한 프로세스 타입 전달
       });
-      
+
       if (result.success) {
         this.notificationService?.showSuccess(
           `${KeyManager.getDisplayKey(process)} 창이 포커스되었습니다.`
@@ -243,7 +238,7 @@ export class ProcessService {
       }
 
       const copyText = KeyManager.getCopyText(process);
-      
+
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(copyText);
       } else {
@@ -360,15 +355,15 @@ export class ProcessService {
 
       // 먼저 ProcessStore에서 프로세스 제거 (그룹에서 제거 포함)
       const success = this.processStore.removeProcess(processId, false); // 히스토리도 삭제
-      
+
       // 수동 제거 시에는 안정적 키 기반 설정도 완전 삭제
       if (success && this.groupStore) {
         const stableKey = KeyManager.getStableIdentifier(process);
-        
+
         // 그룹과 카테고리 안정적 키 매핑 삭제 (ProcessStore에서 이미 그룹에서는 제거됨)
         this.groupStore.stableKeyGroupMap.delete(stableKey);
         this.groupStore.stableKeyCategoryMap.delete(stableKey);
-        
+
         console.log('🗑️ 수동 제거로 안정적 키 설정 완전 삭제:', {
           processId: processId,
           computerName: process.computerName,
@@ -378,11 +373,11 @@ export class ProcessService {
           remainingGroupMappings: this.groupStore.stableKeyGroupMap.size,
           remainingCategoryMappings: this.groupStore.stableKeyCategoryMap.size
         });
-        
+
         // GroupStore 저장
         this.groupStore.save();
       }
-      
+
       if (success) {
         this.notificationService?.showSuccess(
           `${KeyManager.getDisplayKey(process)} 완전히 제거되었습니다.`
@@ -421,8 +416,8 @@ export class ProcessService {
    */
   getRecentActiveProcesses(minutes = 30) {
     const cutoffTime = Date.now() - (minutes * 60 * 1000);
-    
-    return this.processStore.getAllProcesses().filter(p => 
+
+    return this.processStore.getAllProcesses().filter(p =>
       p.lastSeen && p.lastSeen.getTime() > cutoffTime
     );
   }
@@ -442,19 +437,19 @@ export class ProcessService {
       // PID 중복 확인
       const existingProcess = this.processStore.getAllProcesses()
         .find(p => p.pid === processInfo.pid);
-      
+
       if (existingProcess) {
         throw new Error(`PID ${processInfo.pid}는 이미 사용 중입니다.`);
       }
 
       const normalizedInfo = KeyManager.normalizeProcessInfo(processInfo);
-      
+
       if (!this.isValidRemoteProcess(normalizedInfo)) {
         throw new Error('유효하지 않은 원격 프로세스 정보입니다.');
       }
 
       const process = this.processStore.addNewProcess(normalizedInfo);
-      
+
       this.notificationService?.showSuccess(
         `${KeyManager.getDisplayKey(process)} 수동으로 추가되었습니다.`
       );
