@@ -59,7 +59,7 @@ export class ProcessService {
     // --- 1. 입력 데이터 확인 ---
     // console.log(`[1단계] 입력: Detector로부터 ${rawProcesses.length}개의 원시 프로세스 받음`);
     console.log(JSON.stringify(rawProcesses, null, 2)); // 필요하면 이 주석을 풀어 상세 데이터 확인
-    const handleMap = this.processStore.handleToMultipleIdMap;
+    const handleMap = this.processStore.multipleIdStore.handleToMultipleIdMap;
     // 2. KeyManager를 사용하여 "날것"의 데이터를 완전한 객체로 변환합니다.
     const normalizedProcesses = rawProcesses.map(p =>
       KeyManager.normalizeProcessInfo(p, handleMap)

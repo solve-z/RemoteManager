@@ -6,6 +6,7 @@
 
 import { KeyManager } from '../services/KeyManager.js';
 import { ConflictDialog } from '../components/ConflictDialog.js';
+import { PersistentMultipleIdStore } from './PersistentMultipleIdStore.js';
 
 /**
  * 프로세스 스토어 클래스
@@ -15,12 +16,11 @@ export class ProcessStore {
     this.processes = new Map(); // id -> RemoteProcess
     this.processHistory = new Map(); // matchingKey -> HistoryEntry
     this.stableKeyMap = new Map(); // stableKey -> processId (충돌 해결용)
-    this.userPreferences = new Map(); // stableKey -> preference ('same', 'different', 'always_new')
     this.listeners = new Set();
     this.groupStore = null;
     this.conflictDialog = new ConflictDialog();
-    // ★★★ 핵심 수정: WindowHandle과 multipleId를 매핑하는 "기억 저장소" 추가
-    this.handleToMultipleIdMap = new Map(); // windowHandle -> multipleId
+    // ★★★ 핵심 수정: 영구 저장 가능한 multipleId 매핑 저장소로 교체
+    this.multipleIdStore = new PersistentMultipleIdStore();
 
     // 세션 기반 중복 방지 시스템
     this.conflictDialogShown = new Set(); // 이 세션에서 이미 확인한 충돌들 (stableKey_WindowHandle 형태)
@@ -117,10 +117,6 @@ export class ProcessStore {
       return null;
     }
 
-    const userPref = this.userPreferences.get(stableKey);
-    if (userPref === 'always_new') {
-      return this.createNewProcessWithSuffix(processInfo, stableKey);
-    }
 
     const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);
     if (comparison.counselorChanged && !comparison.ipChanged) {
@@ -136,7 +132,45 @@ export class ProcessStore {
       const conflictKey = `${stableKey}_${processInfo.windowHandle}`;
       this.conflictDialogShown.add(conflictKey);
 
-      const choice = await this.conflictDialog.showConflictDialog(comparison);
+      // 동일한 컴퓨터명을 가진 모든 기존 프로세스 찾기
+      const existingProcessesWithSameComputer = this.findProcessesByComputerName(processInfo.computerName);
+      
+      // 상세한 충돌 정보 구성 (기존/새 프로세스 정보 + 선택 가능한 프로세스 목록)
+      const detailedConflictInfo = {
+        ...comparison, // 기존 comparison 정보 유지
+        existingProcess: {
+          id: existingProcess.id,
+          windowHandle: existingProcess.windowHandle,
+          pid: existingProcess.pid,
+          createdAt: existingProcess.createdAt,
+          lastSeen: existingProcess.lastSeen,
+          customLabel: existingProcess.customLabel,
+          ipAddress: existingProcess.ipAddress,
+          counselorId: existingProcess.counselorId
+        },
+        newProcess: {
+          windowHandle: processInfo.windowHandle,
+          pid: processInfo.pid,
+          ipAddress: processInfo.ipAddress,
+          counselorId: processInfo.counselorId,
+          detectedAt: new Date()
+        },
+        // 선택 가능한 기존 프로세스 목록
+        availableExistingProcesses: existingProcessesWithSameComputer.map(proc => ({
+          id: proc.id,
+          windowHandle: proc.windowHandle,
+          pid: proc.pid,
+          customLabel: proc.customLabel,
+          createdAt: proc.createdAt,
+          lastSeen: proc.lastSeen,
+          ipAddress: proc.ipAddress,
+          counselorId: proc.counselorId,
+          multipleId: proc.multipleId,
+          displayName: this.getDisplayNameForProcess(proc)
+        }))
+      };
+
+      const choice = await this.conflictDialog.showConflictDialog(detailedConflictInfo);
       return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
     }
 
@@ -145,11 +179,45 @@ export class ProcessStore {
   }
 
   /**
-   * 사용자 선택 처리
+   * 사용자 선택 처리 (확장된 선택 옵션 지원 + 선택된 프로세스 처리)
    */
-  handleUserChoice(choice, existingProcess, newProcessInfo, stableKey) {
+  handleUserChoice(choiceData, existingProcess, newProcessInfo, stableKey) {
+    // choice가 객체인지 문자열인지 확인
+    const isChoiceObject = typeof choiceData === 'object' && choiceData !== null;
+    const choice = isChoiceObject ? choiceData.choice : choiceData;
+    const selectedProcessId = isChoiceObject ? choiceData.selectedProcessId : null;
+    
+    console.log('🎯 사용자 선택 처리:', { 
+      choice, 
+      selectedProcessId, 
+      stableKey,
+      isChoiceObject 
+    });
+
     switch (choice) {
-      case 'same':
+      case 'keep_existing':
+        // 사용자가 선택한 기존 연결을 새 정보로 업데이트
+        if (selectedProcessId) {
+          const selectedProcess = this.processes.get(selectedProcessId);
+          if (selectedProcess) {
+            console.log('📍 선택된 기존 연결을 새 정보로 업데이트:', {
+              selectedId: selectedProcessId,
+              processName: selectedProcess.computerName,
+              multipleId: selectedProcess.multipleId
+            });
+            return this.updateExistingProcess(selectedProcess, newProcessInfo);
+          } else {
+            console.warn('⚠️ 선택된 프로세스를 찾을 수 없음:', selectedProcessId);
+          }
+        }
+        
+        // 선택된 프로세스가 없으면 기본적으로 기존 프로세스를 새 정보로 업데이트
+        console.log('📍 기존 연결을 새 정보로 업데이트 (기본값)');
+        return this.updateExistingProcess(existingProcess, newProcessInfo);
+
+      case 'update_existing':
+        // 기존 연결을 새로 감지된 정보로 교체
+        console.log('🔄 새 연결로 업데이트 선택 - 기존 프로세스 정보 교체');
         return this.updateExistingProcess(existingProcess, newProcessInfo);
 
       case 'different':
@@ -161,8 +229,9 @@ export class ProcessStore {
         const newProcess = this.addNewProcess(enhancedNewProcessInfo);
         this.stableKeyMap.set(newUniqueKey, newProcess.id);
 
-        // ★★★ 핵심 수정: 어떤 WindowHandle이 #2인지 기억합니다.
-        this.handleToMultipleIdMap.set(newProcess.windowHandle, newSuffix);
+        // ★★★ 핵심 수정: 어떤 WindowHandle이 #2인지 영구 저장합니다.
+        const stableKey = KeyManager.getStableIdentifier(newProcess);
+        this.multipleIdStore.setMultipleId(stableKey, newProcess.windowHandle, newSuffix);
 
         existingProcess.conflictProtected = Date.now() + 15000;
         existingProcess.lastSeen = new Date();
@@ -174,11 +243,8 @@ export class ProcessStore {
         this.notifyListeners();
         return newProcess;
 
-      case 'always_new':
-        this.userPreferences.set(stableKey, 'always_new');
-        return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
-
       default:
+        console.log('⚠️ 알 수 없는 선택:', choice, '- 기본값으로 새 프로세스 생성');
         return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
     }
   }
@@ -356,6 +422,11 @@ export class ProcessStore {
       this.processes.delete(processId);
       const stableKey = KeyManager.getStableIdentifier(process);
       this.stableKeyMap.delete(stableKey);
+      
+      // multipleId 매핑도 정리 (windowHandle 기반)
+      if (process.windowHandle) {
+        this.multipleIdStore.removeMapping(process.windowHandle);
+      }
       if (!keepHistory) {
         const matchingKey = KeyManager.getMatchingKey(process);
         this.processHistory.delete(matchingKey);
@@ -427,12 +498,51 @@ export class ProcessStore {
   clear() {
     this.processes.clear();
     this.processHistory.clear();
+    this.multipleIdStore.clear(); // multipleId 매핑도 초기화
     this.notifyListeners();
+  }
+
+  /**
+   * 동일한 컴퓨터명을 가진 모든 프로세스 찾기
+   * @param {string} computerName - 컴퓨터명
+   * @returns {Array} 동일 컴퓨터명을 가진 프로세스 배열
+   */
+  findProcessesByComputerName(computerName) {
+    return this.getAllProcesses().filter(process => 
+      process.computerName === computerName
+    );
+  }
+
+  /**
+   * 프로세스의 표시용 이름 생성 (충돌 다이얼로그용)
+   * @param {Object} process - 프로세스 객체
+   * @returns {string} 표시용 이름
+   */
+  getDisplayNameForProcess(process) {
+    let displayName = process.computerName || 'Unknown';
+    
+    // multipleId가 있으면 추가
+    if (process.multipleId) {
+      displayName += ` #${process.multipleId}`;
+    }
+    
+    // 커스텀 라벨이 있으면 추가
+    if (process.customLabel) {
+      displayName += ` (${process.customLabel})`;
+    }
+    
+    // IP 정보가 있으면 추가 (ezHelp의 경우)
+    if (process.ipAddress) {
+      displayName += ` - ${process.ipAddress}`;
+    }
+    
+    return displayName;
   }
 
   cleanup() {
     this.listeners.clear();
     this.processes.clear();
     this.processHistory.clear();
+    // multipleIdStore는 영구 저장소이므로 cleanup에서는 건드리지 않음
   }
 }

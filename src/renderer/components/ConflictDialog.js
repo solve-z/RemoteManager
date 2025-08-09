@@ -29,6 +29,10 @@ export class ConflictDialog {
       this.resolve = resolve;
       this.isOpen = true;
       console.log('   -> Promise 생성, 다이얼로그를 엽니다.');
+      
+      // 자동 새로고침 일시 정지 알림
+      window.dispatchEvent(new CustomEvent('conflict-dialog-opened'));
+      
       this.createDialog(conflictInfo);
     });
   }
@@ -51,36 +55,52 @@ export class ConflictDialog {
           <button class="conflict-dialog-close" aria-label="닫기">&times;</button>
         </div>
         <div class="conflict-dialog-content">
-          <div class="conflict-info">
-            <div class="conflict-computer">
-              <strong>컴퓨터명:</strong> ${conflictInfo.computerName}
-            </div>
+          <div class="conflict-summary">
+            <p><strong>${conflictInfo.computerName}</strong> 
+            <span class="process-details-compact">${conflictInfo.existingProcess.type ? conflictInfo.existingProcess.type.toUpperCase() : 'UNKNOWN'} | PID: ${conflictInfo.existingProcess.pid}</span></p>
             ${conflictInfo.ipChanged ? `
-              <div class="conflict-ip-change">
-                <div class="conflict-old-ip">
-                  <strong>기존 IP:</strong> ${conflictInfo.oldIP || '알 수 없음'}
-                </div>
-                <div class="conflict-new-ip">
-                  <strong>현재 IP:</strong> ${conflictInfo.newIP || '알 수 없음'}
+              <p class="ip-change-notice">${conflictInfo.oldIP} → ${conflictInfo.newIP}</p>
+            ` : ''}
+          </div>
+        </div>
+        <div class="conflict-dialog-actions">
+          <div class="same-computer-options">
+            <h5>어떻게 처리할까요?</h5>
+            
+            ${conflictInfo.availableExistingProcesses && conflictInfo.availableExistingProcesses.length > 0 ? `
+              <div class="existing-process-selector">
+                <h6>유지할 기존 연결을 선택하세요:</h6>
+                <div class="existing-process-list">
+                  ${conflictInfo.availableExistingProcesses.map(proc => `
+                    <div class="existing-process-item" data-process-id="${proc.id}">
+                      <input type="radio" name="selectedExisting" value="${proc.id}" id="existing_${proc.id}">
+                      <label for="existing_${proc.id}" class="process-item-label">
+                        <div class="process-item-main">
+                          <span class="process-name">${proc.customLabel || proc.displayName}</span>
+                          <span class="process-handle">창 ID: ${proc.windowHandle}</span>
+                        </div>
+                        <div class="process-item-details">
+                          <span class="process-time">등록: ${new Date(proc.createdAt).toLocaleString()}</span>
+                          <span class="process-pid">PID: ${proc.pid}</span>
+                        </div>
+                      </label>
+                    </div>
+                  `).join('')}
                 </div>
               </div>
             ` : ''}
+            
+            <div class="same-options-group">
+              <button class="conflict-btn conflict-btn-keep-existing" data-choice="keep_existing" disabled>
+                <span class="btn-text">📍 기존 연결 유지</span>
+                <span class="btn-desc">새 정보로 업데이트</span>
+              </button>
+              <button class="conflict-btn conflict-btn-different" data-choice="different">
+                <span class="btn-text">🆕 새 원격지로 등록</span>
+                <span class="btn-desc">별도 프로세스로 관리</span>
+              </button>
+            </div>
           </div>
-          <div class="conflict-question"><p>같은 컴퓨터입니까?</p></div>
-        </div>
-        <div class="conflict-dialog-actions">
-          <button class="conflict-btn conflict-btn-same" data-choice="same">
-            <span class="btn-text">예</span>
-            <span class="btn-desc">기존 그룹/카테고리 정보 유지</span>
-          </button>
-          <button class="conflict-btn conflict-btn-different" data-choice="different">
-            <span class="btn-text">아니오</span>
-            <span class="btn-desc">새로운 원격지로 등록</span>
-          </button>
-          <button class="conflict-btn conflict-btn-always" data-choice="always_new">
-            <span class="btn-text">항상 새로 등록</span>
-            <span class="btn-desc">이후 자동으로 새 원격지로 처리</span>
-          </button>
         </div>
       </div>
     `;
@@ -106,7 +126,37 @@ export class ConflictDialog {
     buttons.forEach(button => {
       button.addEventListener('click', (e) => {
         const choice = e.currentTarget.getAttribute('data-choice');
-        this.handleChoice(choice);
+        
+        // keep_existing 선택 시 선택된 프로세스 ID 포함
+        if (choice === 'keep_existing') {
+          const selectedProcess = this.getSelectedExistingProcess();
+          if (!selectedProcess) {
+            // 선택된 프로세스가 없으면 무시
+            return;
+          }
+          this.handleChoice(choice, { selectedProcessId: selectedProcess });
+        } else {
+          this.handleChoice(choice);
+        }
+      });
+    });
+
+    // 라디오 버튼 선택 시 keep_existing 버튼 활성화/비활성화
+    const radioButtons = this.dialog.querySelectorAll('input[name="selectedExisting"]');
+    const keepExistingBtn = this.dialog.querySelector('.conflict-btn-keep-existing');
+    
+    radioButtons.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (keepExistingBtn) {
+          keepExistingBtn.disabled = !this.getSelectedExistingProcess();
+          
+          // 선택되었을 때 스타일 변경
+          if (!keepExistingBtn.disabled) {
+            keepExistingBtn.classList.add('enabled');
+          } else {
+            keepExistingBtn.classList.remove('enabled');
+          }
+        }
       });
     });
 
@@ -115,8 +165,17 @@ export class ConflictDialog {
       closeBtn.addEventListener('click', () => this.handleChoice('different'));
     }
 
+    // 다이얼로그 밖 클릭 무시
     this.dialog.addEventListener('click', (e) => {
-      if (e.target === this.dialog) this.handleChoice('different');
+      if (e.target === this.dialog) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // 다이얼로그 내부 클릭 시 이벤트 버블링 방지
+    this.dialog.querySelector('.conflict-dialog').addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     document.addEventListener('keydown', this.handleKeydown);
@@ -151,13 +210,22 @@ export class ConflictDialog {
   }
 
   /**
-   * 사용자 선택 처리
+   * 선택된 기존 프로세스 ID 가져오기
    */
-  handleChoice(choice) {
+  getSelectedExistingProcess() {
+    const selectedRadio = this.dialog.querySelector('input[name="selectedExisting"]:checked');
+    return selectedRadio ? selectedRadio.value : null;
+  }
+
+  /**
+   * 사용자 선택 처리 (추가 데이터 지원)
+   */
+  handleChoice(choice, additionalData = null) {
     // --- 5. 선택이 처리되는지 확인 ---
-    console.log('5. handleChoice 호출됨, 선택:', choice);
+    console.log('5. handleChoice 호출됨, 선택:', choice, '추가 데이터:', additionalData);
     if (this.resolve) {
-      this.resolve(choice);
+      const result = additionalData ? { choice, ...additionalData } : choice;
+      this.resolve(result);
       this.resolve = null;
     }
     this.close();
@@ -172,6 +240,9 @@ export class ConflictDialog {
     document.removeEventListener('keydown', this.handleKeydown);
     this.removeDialog();
     this.isOpen = false;
+    
+    // 자동 새로고침 재개 알림
+    window.dispatchEvent(new CustomEvent('conflict-dialog-closed'));
   }
 
   /**

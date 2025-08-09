@@ -24,6 +24,7 @@ class RemoteManagerApp {
     this.components = {};
     this.isAutoRefreshEnabled = false;
     this.autoRefreshInterval = null;
+    this.isConflictDialogOpen = false; // 충돌 다이얼로그 상태 추적
   }
 
   /**
@@ -182,6 +183,12 @@ class RemoteManagerApp {
       this.components.processList.setTypeFilter(e.target.value);
     });
 
+    // 다중 연결 정보 초기화
+    const resetMultipleIdsBtn = document.getElementById('reset-multiple-ids');
+    resetMultipleIdsBtn?.addEventListener('click', () => {
+      this.resetMultipleIds();
+    });
+
     // 전체 필터 초기화
     clearAllFiltersBtn?.addEventListener('click', () => {
       this.clearAllFilters();
@@ -195,6 +202,21 @@ class RemoteManagerApp {
     // 키보드 단축키
     document.addEventListener('keydown', (e) => {
       this.handleKeyboardShortcuts(e);
+    });
+
+    // 충돌 다이얼로그 열림/닫힘 이벤트 처리
+    window.addEventListener('conflict-dialog-opened', () => {
+      if (this.isAutoRefreshEnabled) {
+        console.log('⏸️ 충돌 다이얼로그 열림 - 자동 새로고침 일시 정지');
+        this.isConflictDialogOpen = true;
+      }
+    });
+
+    window.addEventListener('conflict-dialog-closed', () => {
+      if (this.isAutoRefreshEnabled && this.isConflictDialogOpen) {
+        console.log('▶️ 충돌 다이얼로그 닫힘 - 자동 새로고침 재개');
+        this.isConflictDialogOpen = false;
+      }
     });
 
     // 그룹 선택 이벤트 (사이드바에서 그룹 클릭 시)
@@ -566,6 +588,11 @@ class RemoteManagerApp {
 
     this.isAutoRefreshEnabled = true;
     this.autoRefreshInterval = setInterval(() => {
+      // 충돌 다이얼로그가 열려있으면 새로고침 건너뛰기
+      if (this.isConflictDialogOpen) {
+        console.log('⏸️ 충돌 다이얼로그 열림 중 - 자동 새로고침 건너뛰기');
+        return;
+      }
       this.refreshProcesses();
     }, 5000); // 5초 간격
 
@@ -592,6 +619,7 @@ class RemoteManagerApp {
     }
 
     this.isAutoRefreshEnabled = false;
+    this.isConflictDialogOpen = false; // 자동 새로고침 중지 시 다이얼로그 상태도 초기화
 
     // UI 업데이트
     const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
@@ -626,6 +654,37 @@ class RemoteManagerApp {
     
     // 사이드바 그룹 선택도 해제
     this.components.sidebar?.clearGroupSelection();
+  }
+
+  /**
+   * 다중 연결 정보 초기화
+   */
+  resetMultipleIds() {
+    if (confirm('다중 연결 정보를 모두 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 현재 프로그램에서 관리 중인 모든 #2, #3... 등의 다중 세션 정보가 삭제됩니다.\n\n초기화 후 프로그램이 자동으로 재시작됩니다.')) {
+      try {
+        // PersistentMultipleIdStore 초기화
+        this.stores.process.multipleIdStore.clear();
+        
+        // 알림 표시
+        this.services.notification.showSuccess('다중 연결 정보가 초기화되었습니다. 프로그램을 재시작합니다.');
+        
+        console.log('✅ 다중 연결 정보 초기화 완료 - 재시작 요청');
+        
+        // 2초 후 강제 재시작
+        setTimeout(() => {
+          if (window.electronAPI && window.electronAPI.restartApp) {
+            window.electronAPI.restartApp();
+          } else {
+            // fallback: 페이지 새로고침
+            window.location.reload();
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('❌ 다중 연결 정보 초기화 실패:', error);
+        this.services.notification.showError('초기화 실패', error.message);
+      }
+    }
   }
 
   /**
