@@ -1,4 +1,4 @@
-# RemoteManager v4.0 업데이트 3차 수정사항
+# RemoteManager 업데이트 3차 수정사항
 
 ## 개요
 2025-08-09 업데이트 - ConflictDialog UI 개선 및 MultipleId 관리 기능 강화

@@ -343,7 +343,7 @@ export class SettingsStore {
    */
   exportData() {
     return {
-      version: '4.0',
+      version: '1.2.0',
       timestamp: new Date().toISOString(),
       settings: this.getAll(),
     };

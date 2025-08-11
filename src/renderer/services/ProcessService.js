@@ -57,15 +57,17 @@ export class ProcessService {
    */
   async updateProcessStatuses(rawProcesses) {
     // --- 1. 입력 데이터 확인 ---
-    // console.log(`[1단계] 입력: Detector로부터 ${rawProcesses.length}개의 원시 프로세스 받음`);
+    console.log(`[1단계] 입력: Detector로부터 ${rawProcesses.length}개의 원시 프로세스 받음`);
     console.log(JSON.stringify(rawProcesses, null, 2)); // 필요하면 이 주석을 풀어 상세 데이터 확인
     const handleMap = this.processStore.multipleIdStore.handleToMultipleIdMap;
+
     // 2. KeyManager를 사용하여 "날것"의 데이터를 완전한 객체로 변환합니다.
     const normalizedProcesses = rawProcesses.map(p =>
       KeyManager.normalizeProcessInfo(p, handleMap)
     );
     // --- 2. 정규화 결과 확인 ---
     console.log(`[2단계] 정규화: ${normalizedProcesses.length}개의 프로세스 정보 정규화 완료`);
+    // console.log(normalizedProcesses, "정규화된 데이터")
 
     // 3. 정규화된 정보를 바탕으로 유효한 원격 프로세스만 필터링합니다.
     const remoteProcesses = normalizedProcesses.filter(p =>
@@ -118,6 +120,7 @@ export class ProcessService {
     this.notifyConnectionEvents(connectionEvents);
     this.processStore.cleanupOldProcesses();
   }
+
   /**
    * 유효한 원격 프로세스인지 확인
    * @param {Object} process - 프로세스 정보
@@ -129,37 +132,11 @@ export class ProcessService {
     }
     const type = process.type;
     if (type === 'ezhelp') {
-      return !!process.ipAddress;
+      return !!process.ipAddress; // 이중 부정, 결국 ip가 있으면 true
     } else if (type === 'teamviewer') {
       return true;
     }
     return false;
-  }
-
-  /**
-   * 프로세스 메타데이터 복원 (그룹/카테고리 정보)
-   * @param {Object} process - 프로세스 객체
-   */
-  restoreProcessMetadata(process) {
-    if (!this.groupStore) {
-      return;
-    }
-
-    try {
-      // 안정적 키 기반으로 그룹/카테고리 정보 복원
-      const restored = this.groupStore.restoreProcessGroupInfo(process);
-
-      if (restored.groupId || restored.category) {
-        console.log(`프로세스 ${process.id} 메타데이터 복원:`, {
-          groupId: restored.groupId,
-          category: restored.category,
-          computerName: process.computerName,
-          stableKey: KeyManager.getStableIdentifier(process)
-        });
-      }
-    } catch (error) {
-      console.error('프로세스 메타데이터 복원 실패:', error);
-    }
   }
 
   /**
@@ -420,46 +397,6 @@ export class ProcessService {
     return this.processStore.getAllProcesses().filter(p =>
       p.lastSeen && p.lastSeen.getTime() > cutoffTime
     );
-  }
-
-  /**
-   * 수동으로 프로세스 추가 (테스트/디버깅용)
-   * @param {Object} processInfo - 프로세스 정보
-   * @returns {Object|null} 추가된 프로세스
-   */
-  addManualProcess(processInfo) {
-    try {
-      // 유효성 검사
-      if (!processInfo.processName || !processInfo.windowTitle) {
-        throw new Error('프로세스명과 윈도우 제목은 필수입니다.');
-      }
-
-      // PID 중복 확인
-      const existingProcess = this.processStore.getAllProcesses()
-        .find(p => p.pid === processInfo.pid);
-
-      if (existingProcess) {
-        throw new Error(`PID ${processInfo.pid}는 이미 사용 중입니다.`);
-      }
-
-      const normalizedInfo = KeyManager.normalizeProcessInfo(processInfo);
-
-      if (!this.isValidRemoteProcess(normalizedInfo)) {
-        throw new Error('유효하지 않은 원격 프로세스 정보입니다.');
-      }
-
-      const process = this.processStore.addNewProcess(normalizedInfo);
-
-      this.notificationService?.showSuccess(
-        `${KeyManager.getDisplayKey(process)} 수동으로 추가되었습니다.`
-      );
-
-      return process;
-    } catch (error) {
-      console.error('수동 프로세스 추가 실패:', error);
-      this.notificationService?.showError('프로세스 추가 실패', error.message);
-      return null;
-    }
   }
 
   /**

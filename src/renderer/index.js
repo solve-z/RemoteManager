@@ -1,5 +1,5 @@
 /**
- * RemoteManager v4.0 - 렌더러 프로세스 메인 엔트리포인트
+ * RemoteManager v1.2.0 - 렌더러 프로세스 메인 엔트리포인트
  * 모듈화된 아키텍처의 시작점
  */
 
@@ -32,7 +32,7 @@ class RemoteManagerApp {
    */
   async initialize() {
     try {
-      console.log('🚀 RemoteManager v4.0 초기화 시작');
+      console.log('🚀 RemoteManager v1.2.0 초기화 시작');
       
       // 1. 스토어 초기화
       await this.initializeStores();
@@ -49,7 +49,7 @@ class RemoteManagerApp {
       // 5. 초기 데이터 로드
       await this.loadInitialData();
       
-      console.log('✅ RemoteManager v4.0 초기화 완료');
+      console.log('✅ RemoteManager v1.2.0 초기화 완료');
     } catch (error) {
       console.error('❌ 애플리케이션 초기화 실패:', error);
       this.services.notification?.showError('애플리케이션 초기화에 실패했습니다.');

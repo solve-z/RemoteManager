@@ -508,7 +508,7 @@ export class GroupStore {
    */
   exportData() {
     return {
-      version: '4.0',
+      version: '1.2.0',
       timestamp: new Date().toISOString(),
       groups: Array.from(this.groups.values()),
     };

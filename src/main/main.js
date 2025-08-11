@@ -1,5 +1,5 @@
 /**
- * RemoteManager v4.0 - Electron 메인 프로세스
+ * RemoteManager - Electron 메인 프로세스
  * Windows 전용 원격지원 관리 도구의 메인 엔트리포인트
  */
 
@@ -59,7 +59,7 @@ function createMainWindow() {
       preload: join(__dirname, '../renderer/preload.js'), 
     },
     show: false, // 준비될 때까지 숨김
-    title: 'RemoteManager v1.1.2',
+    title: 'RemoteManager v1.2.0',
   });
 
   // 렌더러 프로세스 로드
@@ -76,7 +76,7 @@ function createMainWindow() {
     mainWindow.show();
     
     if (isDev) {
-      console.log('🚀 RemoteManager v4.0 개발 모드로 시작됨');
+      console.log('🚀 RemoteManager 개발 모드로 시작됨');
     }
   });
 

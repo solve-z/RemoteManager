@@ -36,7 +36,7 @@ RemoteManager는 Windows 환경에서 ezHelp, TeamViewer 등의 원격지원 프
 ### 전체 구조도
 
 ```
-🏗️ RemoteManager v4.0 Architecture
+🏗️ RemoteManager v1.1.1 Architecture
 ├── 📱 Main Process (Electron)
 │   ├── main.js (엔트리포인트)
 │   ├── process-detector.js (PowerShell + WinAPI)
