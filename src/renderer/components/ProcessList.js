@@ -318,10 +318,15 @@ export class ProcessList {
    * @returns {string} 표시명
    */
   getDisplayName(process) {
+    // 기본 정보는 항상 표시
+    const baseInfo = KeyManager.getDisplayKey(process);
+    
+    // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
     if (process.customLabel) {
-      return process.customLabel;
+      return `${baseInfo} - ${process.customLabel}`;
     }
-    return KeyManager.getDisplayKey(process);
+    
+    return baseInfo;
   }
 
   /**
@@ -531,7 +536,7 @@ export class ProcessList {
     const process = this.processes.find(p => p.id === processId);
     if (!process) return;
 
-    const currentLabel = process.customLabel || KeyManager.getDisplayKey(process);
+    const currentLabel = process.customLabel || '';
     this.createLabelEditModal(processId, currentLabel);
   }
 

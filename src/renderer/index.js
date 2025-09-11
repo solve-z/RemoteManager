@@ -911,6 +911,7 @@ class RemoteManagerApp {
       // 프로세스에 표시용 정보를 미리 계산해서 추가
       const processesWithDisplay = processes.map(process => {
         const displayText = process.customLabel || KeyManager.getDisplayKey(process);
+        
         return {
           ...process,
           displayText: displayText

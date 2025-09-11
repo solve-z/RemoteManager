@@ -327,11 +327,9 @@ export class MiniTreeView extends EventEmitter {
    * 프로세스 이름 포맷팅
    */
   formatProcessName(process) {
-    // 커스텀 라벨이 있으면 우선 사용
-    if (process.customLabel) {
-      return this.escapeHtml(process.customLabel);
-    }
-
+    // 기본 정보 생성
+    let baseInfo = '';
+    
     // ezHelp인 경우 실시간 데이터로 직접 조합
     if (process.type === 'ezhelp') {
       const computerName = process.computerName;
@@ -339,24 +337,35 @@ export class MiniTreeView extends EventEmitter {
       const counselorId = process.counselorId;
 
       if (counselorId && computerName && ipAddress) {
-        return this.escapeHtml(`(${counselorId}) ${computerName}[${ipAddress}]`);
+        baseInfo = `(${counselorId}) ${computerName}[${ipAddress}]`;
       } else if (computerName && ipAddress) {
-        return this.escapeHtml(`${computerName}[${ipAddress}]`);
+        baseInfo = `${computerName}[${ipAddress}]`;
       } else if (computerName) {
-        return this.escapeHtml(computerName);
+        baseInfo = computerName;
+      } else {
+        baseInfo = 'Unknown Process';
       }
-    }
-
-    // TeamViewer인 경우 [컴퓨터명]만 표시
-    if (process.type === 'teamviewer') {
+    } 
+    // TeamViewer인 경우
+    else if (process.type === 'teamviewer') {
       const computerName = process.computerName;
       if (computerName) {
-        return this.escapeHtml(`[${computerName}]`);
+        baseInfo = `[${computerName}] TeamViewer`;
+      } else {
+        baseInfo = 'Unknown Process';
       }
     }
-
     // 기본값
-    return this.escapeHtml(process.windowTitle || process.processName || 'Unknown Process');
+    else {
+      baseInfo = process.windowTitle || process.processName || 'Unknown Process';
+    }
+
+    // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
+    if (process.customLabel) {
+      return this.escapeHtml(`${baseInfo} - ${process.customLabel}`);
+    }
+    
+    return this.escapeHtml(baseInfo);
   }
 
   /**

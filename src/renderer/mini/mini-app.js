@@ -471,7 +471,9 @@ class MiniApp {
       type: process.type || 'UNKNOWN',
       status: process.status || 'connected',
       computerName: process.computerName || process.name || 'Unknown',
+      customLabel: process.customLabel, // 누락된 customLabel 필드 추가
       ip: process.ip,
+      ipAddress: process.ipAddress, // ipAddress 필드도 추가
       counselorId: process.counselorId,
       pid: process.pid,
       windowHandle: process.windowHandle,
