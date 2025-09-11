@@ -1,5 +1,5 @@
 /**
- * RemoteManager v1.2.1 - 렌더러 프로세스 메인 엔트리포인트
+ * RemoteManager v2.0 - 렌더러 프로세스 메인 엔트리포인트
  * 모듈화된 아키텍처의 시작점
  */
 
@@ -250,6 +250,16 @@ class RemoteManagerApp {
       }
     });
 
+    // 그룹 필터 초기화 이벤트 (원격 프로세스 탭으로 이동 시)
+    window.addEventListener('set-group-filter', () => {
+      this.components.processList.setGroupFilter('ungrouped');
+      // 그룹 필터 드롭다운도 초기화
+      const groupFilterSelect = document.getElementById('group-filter');
+      if (groupFilterSelect) {
+        groupFilterSelect.value = 'ungrouped';
+      }
+    });
+
     // 그룹 생성 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
     window.addEventListener('group-created', (e) => {
       this.updateGroupFilterOptions();
@@ -300,7 +310,7 @@ class RemoteManagerApp {
     // 미니창에서 삭제 요청 수신
     if (window.electronAPI?.onDeleteRequest) {
       window.electronAPI.onDeleteRequest((processId) => {
-       this.services.process.removeDisconnectedProcess(processId);
+        this.services.process.removeDisconnectedProcess(processId);
       });
     }
 
@@ -911,7 +921,7 @@ class RemoteManagerApp {
       // 프로세스에 표시용 정보를 미리 계산해서 추가
       const processesWithDisplay = processes.map(process => {
         const displayText = process.customLabel || KeyManager.getDisplayKey(process);
-        
+
         return {
           ...process,
           displayText: displayText

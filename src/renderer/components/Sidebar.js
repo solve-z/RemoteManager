@@ -10,11 +10,11 @@ export class Sidebar {
     this.groupService = groupService;
     this.groupManager = groupManager;
     this.processStore = processStore;
-    
+
     this.isCollapsed = false;
     this.isMobile = false;
     this.groups = [];
-    
+
     this.initialize();
   }
 
@@ -25,7 +25,7 @@ export class Sidebar {
     this.checkMobileView();
     this.setupEventListeners();
     this.loadGroups();
-    
+
     // 초기 상태 설정
     this.updateCollapseState();
   }
@@ -35,7 +35,7 @@ export class Sidebar {
    */
   checkMobileView() {
     this.isMobile = window.innerWidth <= 768;
-    
+
     if (this.isMobile) {
       this.element.classList.add('mobile');
       this.element.classList.remove('collapsed');
@@ -166,7 +166,7 @@ export class Sidebar {
 
     // 페이지 제목 업데이트
     const pageTitle = document.getElementById('page-title');
-    
+
     if (pageTitle) {
       const linkText = clickedLink.querySelector('.nav-text').textContent;
       pageTitle.textContent = linkText;
@@ -176,6 +176,14 @@ export class Sidebar {
     if (clickedLink.id === 'nav-processes') {
       const clearFilterEvent = new CustomEvent('clear-group-filter');
       window.dispatchEvent(clearFilterEvent);
+    }
+
+    if (clickedLink.id === 'nav-empty') {
+      // 그룹 필터를 "그룹없음"으로 설정하는 이벤트 발생
+      const setGroupFilterEvent = new CustomEvent('set-group-filter', {
+        detail: { filterValue: 'ungrouped' }
+      });
+      window.dispatchEvent(setGroupFilterEvent);
     }
 
     // 모바일에서는 사이드바 자동 닫기
@@ -233,7 +241,7 @@ export class Sidebar {
   renderGroupItem(group) {
     // 그룹에 속한 모든 프로세스 카운트 (연결 상태와 관계없이)
     let processCount = 0;
-    
+
     if (this.processStore && group.processIds) {
       processCount = group.processIds
         .map(id => this.processStore.getProcess(id))
@@ -272,10 +280,10 @@ export class Sidebar {
   attachGroupEventListeners() {
     const groupItems = this.element.querySelectorAll('.group-item');
     const groupsList = this.element.querySelector('#groups-list');
-    
+
     groupItems.forEach(item => {
       const groupId = item.dataset.groupId;
-      
+
       // 그룹 클릭 (그룹 필터링)
       const groupHeader = item.querySelector('.group-header');
       groupHeader.addEventListener('click', (e) => {
@@ -323,7 +331,7 @@ export class Sidebar {
       e.dataTransfer.setData('text/plain', item.dataset.groupId);
       e.dataTransfer.effectAllowed = 'move';
       item.classList.add('dragging');
-      
+
       const groupsList = this.element.querySelector('#groups-list');
       if (groupsList) {
         groupsList.classList.add('drag-active');
@@ -333,12 +341,12 @@ export class Sidebar {
     // 드래그 종료
     item.addEventListener('dragend', (e) => {
       item.classList.remove('dragging');
-      
+
       const groupsList = this.element.querySelector('#groups-list');
       if (groupsList) {
         groupsList.classList.remove('drag-active');
       }
-      
+
       // 모든 드롭 타겟 표시 제거
       const allItems = this.element.querySelectorAll('.group-item');
       allItems.forEach(i => i.classList.remove('drop-target'));
@@ -348,7 +356,7 @@ export class Sidebar {
     item.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      
+
       const draggingItem = this.element.querySelector('.group-item.dragging');
       if (draggingItem && draggingItem !== item) {
         item.classList.add('drop-target');
@@ -368,11 +376,11 @@ export class Sidebar {
       e.preventDefault();
       const draggedGroupId = e.dataTransfer.getData('text/plain');
       const dropTargetGroupId = item.dataset.groupId;
-      
+
       if (draggedGroupId !== dropTargetGroupId) {
         this.reorderGroups(draggedGroupId, dropTargetGroupId);
       }
-      
+
       item.classList.remove('drop-target');
     });
   }
@@ -390,7 +398,7 @@ export class Sidebar {
     groupsList.addEventListener('drop', (e) => {
       e.preventDefault();
       const draggedGroupId = e.dataTransfer.getData('text/plain');
-      
+
       // 마지막 위치로 이동
       if (draggedGroupId) {
         this.moveGroupToEnd(draggedGroupId);
@@ -406,16 +414,16 @@ export class Sidebar {
   reorderGroups(draggedGroupId, dropTargetGroupId) {
     const draggedIndex = this.groups.findIndex(g => g.id === draggedGroupId);
     const targetIndex = this.groups.findIndex(g => g.id === dropTargetGroupId);
-    
+
     if (draggedIndex === -1 || targetIndex === -1) return;
-    
+
     // 배열에서 순서 변경
     const [draggedGroup] = this.groups.splice(draggedIndex, 1);
     this.groups.splice(targetIndex, 0, draggedGroup);
-    
+
     // UI 업데이트
     this.renderGroups();
-    
+
     // 순서 변경 이벤트 발생
     const event = new CustomEvent('groups-reordered', {
       detail: { groups: this.groups }
@@ -430,12 +438,12 @@ export class Sidebar {
   moveGroupToEnd(groupId) {
     const groupIndex = this.groups.findIndex(g => g.id === groupId);
     if (groupIndex === -1 || groupIndex === this.groups.length - 1) return;
-    
+
     const [group] = this.groups.splice(groupIndex, 1);
     this.groups.push(group);
-    
+
     this.renderGroups();
-    
+
     const event = new CustomEvent('groups-reordered', {
       detail: { groups: this.groups }
     });
@@ -542,13 +550,13 @@ export class Sidebar {
     const dialog = document.getElementById('group-dialog');
     const title = document.getElementById('group-dialog-title');
     const input = document.getElementById('group-name-input');
-    
+
     if (!dialog || !title || !input) return;
 
     title.textContent = '그룹 수정';
     input.value = group.name;
     input.placeholder = '그룹명을 입력하세요';
-    
+
     this.showDialog(dialog, (groupName) => {
       if (groupName.trim() && groupName.trim() !== group.name) {
         this.groupService.updateGroup(group.id, { name: groupName.trim() });
@@ -690,7 +698,7 @@ export class Sidebar {
     groupItems.forEach(item => {
       item.classList.remove('active');
     });
-    
+
     // 페이지 제목을 기본값으로 복원
     this.updatePageTitleForGroup(null);
   }

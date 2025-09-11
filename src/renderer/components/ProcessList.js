@@ -285,7 +285,7 @@ export class ProcessList {
               🎯 포커스
             </button>
             <button class="btn btn-sm btn-outline" data-action="edit-label" title="라벨 편집">
-              ✏️ 편집
+              ✏️ 라벨
             </button>
           </div>
           

@@ -60,7 +60,7 @@ function createMainWindow() {
       preload: join(__dirname, '../renderer/preload.js'),
     },
     show: false, // 준비될 때까지 숨김
-    title: 'RemoteManager v1.2.1',
+    title: 'RemoteManager v2.0',
   });
 
   // 렌더러 프로세스 로드
