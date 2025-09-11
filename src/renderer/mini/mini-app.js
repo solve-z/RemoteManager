@@ -548,10 +548,11 @@ class MiniApp {
    * 복사할 텍스트 형식 생성
    */
   formatCopyText(process) {
-    if (process.type === 'EZHELP' && process.ip && process.computerName) {
-      return `${process.ip}[${process.computerName}]`;
-    } else if (process.type === 'TEAMVIEWER' && process.computerName) {
-      return `[${process.computerName}]`;
+    console.log(process, "test")
+    if (process.type === 'ezhelp' && process.ip && process.computerName) {
+      return `${process.ip}[${process.computerName.toLowerCase()}]`;
+    } else if (process.type === 'teamviewer' && process.computerName) {
+      return `[${process.computerName.toLowerCase()}]`;
     } else {
       return process.title || process.computerName || 'Unknown';
     }

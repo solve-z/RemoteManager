@@ -3,7 +3,7 @@
  * AlwaysOnTop, 투명도, 트리 구조 리스트를 위한 별도 창
  */
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, Menu } from 'electron';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -65,6 +65,9 @@ export class MiniWindowManager {
       this.miniWindow.show();
       this.isVisible = true;
     });
+
+    // 미니창에서도 기본 메뉴와 단축키 비활성화
+    this.miniWindow.setMenu(null);
 
     // 창이 닫히면 정리
     this.miniWindow.on('closed', () => {

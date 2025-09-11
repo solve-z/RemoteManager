@@ -556,8 +556,7 @@ class RemoteManagerApp {
     // 그룹 필터 옵션 초기화
     this.updateGroupFilterOptions();
 
-    // 자동 새로고침 시작 (기본값)
-    this.startAutoRefresh();
+    // 자동 새로고침은 기본적으로 OFF (사용자가 수동으로 시작)
   }
 
   /**

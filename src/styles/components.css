@@ -1389,16 +1389,30 @@
 
 .sidebar.collapsed .group-item {
   justify-content: center;
+  width: 100%;
+  min-height: 32px;
+  margin: 0 0 4px 0;
+  padding: 4px;
+  overflow: hidden;
 }
 
 .sidebar.collapsed .group-info {
   justify-content: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .sidebar.collapsed .group-name,
 .sidebar.collapsed .group-count,
 .sidebar.collapsed .group-actions {
   display: none;
+}
+
+.sidebar.collapsed .group-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* 다이얼로그 스타일 */

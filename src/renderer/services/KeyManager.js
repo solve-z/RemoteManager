@@ -189,7 +189,7 @@ export class KeyManager {
     } else if (type === 'teamviewer') {
       const computerName = process.computerName || this.extractComputerName(process);
       if (computerName) {
-        return `[${computerName}]`;
+        return `[${computerName.toLowerCase()}]`;
       }
     }
 

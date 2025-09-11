@@ -53,6 +53,7 @@ html, body {
 
 .sidebar.collapsed {
   width: 70px;
+  overflow: hidden;
 }
 
 .sidebar.mobile {
@@ -194,6 +195,10 @@ html, body {
   display: none;
 }
 
+.sidebar.collapsed .group-header-actions {
+  display: none;
+}
+
 .btn-icon {
   background: none;
   border: none;
@@ -290,6 +295,12 @@ html, body {
 
 .sidebar.collapsed .status-info {
   display: none;
+}
+
+.sidebar.collapsed .groups-list {
+  padding: 8px 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 메인 콘텐츠 */

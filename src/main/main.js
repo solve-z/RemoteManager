@@ -3,7 +3,7 @@
  * Windows 전용 원격지원 관리 도구의 메인 엔트리포인트
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import ProcessDetector from './process-detector.js';
@@ -80,6 +80,9 @@ function createMainWindow() {
       console.log('🚀 RemoteManager 개발 모드로 시작됨');
     }
   });
+
+  // Electron 기본 메뉴와 단축키 비활성화 (Ctrl+M, Ctrl+W 등)
+  Menu.setApplicationMenu(null);
 
   // 윈도우가 닫히면 애플리케이션 종료
   mainWindow.on('closed', () => {
