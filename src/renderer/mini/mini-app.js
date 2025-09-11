@@ -264,11 +264,15 @@ class MiniApp {
       type: mainProcess.type,
       status: mainProcess.status,
       computerName: mainProcess.computerName || mainProcess.name,
-      ip: mainProcess.ip,
+      customLabel: mainProcess.customLabel,
+      ip: mainProcess.ipAddress, // 실제 필드명 사용
+      ipAddress: mainProcess.ipAddress, // KeyManager가 사용하는 필드
       counselorId: mainProcess.counselorId,
       pid: mainProcess.pid,
       windowHandle: mainProcess.windowHandle,
-      title: mainProcess.title,
+      windowTitle: mainProcess.windowTitle, // KeyManager가 detectProcessType에 필요
+      processName: mainProcess.processName, // KeyManager가 detectProcessType에 필요
+      title: mainProcess.windowTitle, // 실제 필드명 사용
       multipleId: mainProcess.multipleId,
       category: mainProcess.category || 'uncategorized',
       groupId: mainProcess.groupId,

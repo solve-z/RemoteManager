@@ -9,6 +9,7 @@ import { SettingsStore } from './store/SettingsStore.js';
 import { ProcessService } from './services/ProcessService.js';
 import { GroupService } from './services/GroupService.js';
 import { NotificationService } from './services/NotificationService.js';
+import { KeyManager } from './services/KeyManager.js';
 import { ProcessList } from './components/ProcessList.js';
 import { Sidebar } from './components/Sidebar.js';
 import { StatusBar } from './components/StatusBar.js';
@@ -270,6 +271,11 @@ class RemoteManagerApp {
         groupFilterSelect.value = '';
         this.components.processList.setGroupFilter('');
       }
+      this.sendDataToMiniWindow();
+    });
+
+    // 프로세스 라벨 변경 이벤트 - 미니창 동기화
+    window.addEventListener('process-label-updated', (e) => {
       this.sendDataToMiniWindow();
     });
 
@@ -903,9 +909,18 @@ class RemoteManagerApp {
       const processes = this.stores.process.getAllProcesses();
       const groups = this.stores.group.getAllGroups();
 
+      // 프로세스에 표시용 정보를 미리 계산해서 추가
+      const processesWithDisplay = processes.map(process => {
+        const displayText = process.customLabel || KeyManager.getDisplayKey(process);
+        return {
+          ...process,
+          displayText: displayText
+        };
+      });
+
       // 미니창에 전송할 데이터 구성
       const data = {
-        processes: processes,
+        processes: processesWithDisplay,
         groups: groups,
         timestamp: Date.now()
       };

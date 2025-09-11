@@ -3,6 +3,8 @@
  * 그룹별로 접기/펼치기 가능한 계층 구조로 원격 프로세스 표시
  */
 
+import { KeyManager } from '../services/KeyManager.js';
+
 /**
  * 이벤트 에미터 클래스 (간단한 구현)
  */
@@ -301,17 +303,60 @@ export class MiniTreeView extends EventEmitter {
   }
 
   /**
+   * 카테고리 표시명 반환
+   */
+  getCategoryDisplayName(category) {
+    if (!category) return '미분류';
+    
+    const categoryMap = {
+      'old-server': '구서버',
+      'new-server': '새서버',
+      'x-ray': '엑스레이',
+      'xray': '엑스레이',
+      'other-server': '타서버',
+      'another-server': '타서버',
+      'external-server': '타서버',
+      'uncategorized': '미분류'
+    };
+
+    const normalizedCategory = category.toLowerCase().replace(/[_\s]/g, '-');
+    return categoryMap[normalizedCategory] || category;
+  }
+
+  /**
    * 프로세스 이름 포맷팅
    */
   formatProcessName(process) {
-    let name = process.computerName || 'Unknown';
-
-    // 다중 세션 번호 추가
-    if (process.multipleId && process.multipleId > 1) {
-      name += ` #${process.multipleId}`;
+    // 커스텀 라벨이 있으면 우선 사용
+    if (process.customLabel) {
+      return this.escapeHtml(process.customLabel);
     }
 
-    return this.escapeHtml(name);
+    // ezHelp인 경우 실시간 데이터로 직접 조합
+    if (process.type === 'ezhelp') {
+      const computerName = process.computerName;
+      const ipAddress = process.ipAddress || process.ip;
+      const counselorId = process.counselorId;
+
+      if (counselorId && computerName && ipAddress) {
+        return this.escapeHtml(`(${counselorId}) ${computerName}[${ipAddress}]`);
+      } else if (computerName && ipAddress) {
+        return this.escapeHtml(`${computerName}[${ipAddress}]`);
+      } else if (computerName) {
+        return this.escapeHtml(computerName);
+      }
+    }
+
+    // TeamViewer인 경우 [컴퓨터명]만 표시
+    if (process.type === 'teamviewer') {
+      const computerName = process.computerName;
+      if (computerName) {
+        return this.escapeHtml(`[${computerName}]`);
+      }
+    }
+
+    // 기본값
+    return this.escapeHtml(process.windowTitle || process.processName || 'Unknown Process');
   }
 
   /**
@@ -320,20 +365,21 @@ export class MiniTreeView extends EventEmitter {
   formatProcessDetails(process) {
     const details = [];
 
-    // 대소문자 구분 없이 프로세스 타입 확인
-    const normalizedType = process.type?.toLowerCase();
+    // 연결 시간이나 다른 유용한 정보가 있으면 표시
+    if (process.createdAt) {
+      const createdTime = new Date(process.createdAt).toLocaleTimeString();
+      details.push(`연결: ${createdTime}`);
+    }
 
-    if (normalizedType === 'ezhelp' && process.counselorId) {
-      // counselorId가 있으면 초록 배경에 흰색 텍스트로 표시
-      details.push(`<span class="counselor-id">${process.counselorId}</span>`);
-    } else if (normalizedType === 'ezhelp' && process.ip) {
-      details.push(`원격번호: ${process.ip}`);
-    } else if (normalizedType === 'teamviewer') {
-      details.push('원격 종류: TeamViewer');
-    } else if (normalizedType === 'ezhelp') {
-      details.push('원격 종류: ezHelp');
-    } else {
-      details.push('원격 종류: 알 수 없음');
+    // 카테고리 정보가 있으면 표시 (uncategorized 제외)
+    if (process.category && process.category !== 'uncategorized') {
+      const categoryDisplayName = this.getCategoryDisplayName(process.category);
+      details.push(`카테고리: ${categoryDisplayName}`);
+    }
+
+    // PID 정보 (디버깅 시 유용)
+    if (process.pid) {
+      details.push(`PID: ${process.pid}`);
     }
 
     return details.join(' • ');

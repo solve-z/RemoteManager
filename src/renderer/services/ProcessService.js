@@ -255,6 +255,11 @@ export class ProcessService {
 
       if (success) {
         this.notificationService?.showSuccess('라벨이 변경되었습니다.');
+        
+        // 라벨 변경 이벤트 발생 (미니창 동기화용)
+        window.dispatchEvent(new CustomEvent('process-label-updated', {
+          detail: { processId, customLabel }
+        }));
       }
 
       return success;
