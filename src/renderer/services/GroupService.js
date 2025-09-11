@@ -76,6 +76,11 @@ export class GroupService {
         this.notificationService?.showSuccess(
           `그룹 '${oldName}'이 '${newName}'으로 수정되었습니다.`
         );
+
+        // 그룹 수정 이벤트 발생
+        window.dispatchEvent(new CustomEvent('group-updated', {
+          detail: { groupId, oldName, newName }
+        }));
       }
 
       return success;

@@ -235,14 +235,20 @@ class MiniApp {
         groupCount: data.groups?.length || 0
       });
 
-      // 메인창의 프로세스 데이터를 미니창 형식으로 변환
-      const transformedProcesses = data.processes.map(process => this.transformMainProcessData(process));
-
-      // 그룹 정보 저장
+      // 그룹 정보를 먼저 저장
       this.mainGroups = data.groups || [];
+
+      // 메인창의 프로세스 데이터를 미니창 형식으로 변환 (최신 그룹 정보 반영)
+      const transformedProcesses = data.processes.map(process => this.transformMainProcessData(process));
 
       await this.updateProcessData(transformedProcesses);
       this.updateStatusBar(transformedProcesses);
+
+      // TreeView 강제 새로고침 (그룹 정보 변경 반영)
+      if (this.treeView) {
+        const groupedProcesses = this.groupProcesses(transformedProcesses);
+        await this.treeView.updateData(groupedProcesses);
+      }
 
     } catch (error) {
       console.error('메인창 데이터 처리 실패:', error);
@@ -418,6 +424,18 @@ class MiniApp {
    */
   groupProcesses(processes) {
     const groups = new Map();
+
+    // 먼저 모든 그룹을 추가 (프로세스가 없어도 표시)
+    if (this.mainGroups && this.mainGroups.length > 0) {
+      this.mainGroups.forEach(group => {
+        groups.set(group.name, {
+          name: group.name,
+          id: group.id,
+          color: group.color,
+          processes: []
+        });
+      });
+    }
 
     processes.forEach(process => {
       // 프로세스 데이터 구조 변환

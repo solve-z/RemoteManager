@@ -249,12 +249,19 @@ class RemoteManagerApp {
       }
     });
 
-    // 그룹 생성 이벤트 - 필터 드롭다운 업데이트
+    // 그룹 생성 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
     window.addEventListener('group-created', (e) => {
       this.updateGroupFilterOptions();
+      this.sendDataToMiniWindow();
     });
 
-    // 그룹 삭제 이벤트 - 필터 드롭다운 업데이트
+    // 그룹 수정 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화  
+    window.addEventListener('group-updated', (e) => {
+      this.updateGroupFilterOptions();
+      this.sendDataToMiniWindow();
+    });
+
+    // 그룹 삭제 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
     window.addEventListener('group-deleted', (e) => {
       this.updateGroupFilterOptions();
       // 삭제된 그룹이 현재 선택된 필터였다면 초기화
@@ -263,6 +270,7 @@ class RemoteManagerApp {
         groupFilterSelect.value = '';
         this.components.processList.setGroupFilter('');
       }
+      this.sendDataToMiniWindow();
     });
 
 
