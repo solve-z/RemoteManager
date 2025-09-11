@@ -83,3 +83,40 @@
 - Electron 메인 프로세스에 `restartApp` API 구현 필요
 - 추가적인 MultipleId 정리 자동화 로직 검토
 - 충돌 해결 패턴 학습 기능 고려
+
+---
+
+# RemoteManager 업데이트 4차 수정사항
+
+## 개요
+2025-08-11 업데이트 - 이지헬프 컨트롤바 잔존 문제 완전 해결
+
+## 주요 수정사항
+
+### 1. 이지헬프 컨트롤바 문제 완전 해결
+- **문제**: 최소화된 이지헬프를 포커스한 후 다른 창으로 변경 시 컨트롤바가 화면에 남아있음
+- **원인**: `HWND_TOPMOST`로 설정된 컨트롤바가 독립적으로 동작하여 메인창과 연동되지 않음
+- **해결**: 모든 원격 프로그램 포커스 시 ezHelp 컨트롤바 전체 정리 → 필요 시에만 메인창 종속적으로 표시
+
+### 2. 통합된 포커스 로직 구현
+- **1단계**: 모든 원격 프로그램(ezHelp/TeamViewer) 포커스 시 ezHelp 컨트롤바 전체 정리
+- **2단계**: 메인 창 포커스 (기존 로직 유지)  
+- **3단계**: ezHelp이고 최소화되었던 경우에만 컨트롤바를 메인창에 종속적으로 표시
+
+### 3. 핵심 개선사항
+- **`HideAllEzHelpControlBars()`**: 프로세스 구분 없이 모든 ezHelp 컨트롤바 숨김
+- **`ShowCurrentEzHelpControlBar()`**: 부모-자식 관계 확인 후 메인창 종속적 표시
+- **HWND_TOPMOST 제거**: `SetWindowPos(currentBar, mainWindowHandle, ...)` 사용
+- **완벽한 시나리오 커버**: ezHelp↔ezHelp, ezHelp↔TeamViewer, ezHelp↔브라우저 모든 경우
+
+## 수정된 파일
+- `src/main/window-manager.js`: 
+  - `FocusProcessWindowWithControlBar()` 함수 완전 개선
+  - `FocusWindowByHandleWithControlBar()` 함수 통합
+  - `GetWindowThreadProcessId`, `GetParent` API 추가
+  - 통일된 컨트롤바 관리 로직 구현
+
+## 주요 개선점
+- **완벽한 컨트롤바 제어**: 모든 상황에서 컨트롤바가 적절히 표시/숨김
+- **자연스러운 동작**: Windows 표준 창 관리 방식 준수
+- **안정성 확보**: WinSpy 데이터 기반 정확한 부모-자식 관계 활용
