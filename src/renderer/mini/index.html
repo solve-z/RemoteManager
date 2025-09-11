@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoteManager Mini</title>
+    <link rel="stylesheet" href="../../styles/main.css">
+    <link rel="stylesheet" href="../../styles/components.css">
+    <link rel="stylesheet" href="../../styles/themes.css">
+    <link rel="stylesheet" href="mini.css">
+</head>
+<body class="mini-window">
+    <div id="mini-app" class="mini-app-container">
+        <!-- 커스텀 타이틀바 -->
+        <div class="mini-titlebar">
+            <div class="titlebar-left">
+                <div class="mini-logo">
+                    <span class="logo-icon">🔧</span>
+                    <span class="logo-text">RemoteManager Mini</span>
+                </div>
+            </div>
+            <div class="titlebar-right">
+                <button id="mini-help-btn" class="titlebar-btn" title="키보드 단축키 도움말">
+                    <span>?</span>
+                </button>
+                <button id="mini-opacity-btn" class="titlebar-btn" title="투명도 조절">
+                    <span>🔍</span>
+                </button>
+                <button id="mini-close-btn" class="titlebar-btn close-btn" title="닫기">
+                    <span>×</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 투명도 조절 패널 (숨김 상태) -->
+        <div id="opacity-panel" class="opacity-panel" style="display: none;">
+            <div class="opacity-control">
+                <label for="opacity-slider">투명도:</label>
+                <input type="range" id="opacity-slider" min="50" max="100" value="90" class="opacity-slider">
+                <span id="opacity-value">90%</span>
+            </div>
+        </div>
+
+        <!-- 도움말 패널 (숨김 상태) -->
+        <div id="help-panel" class="help-panel" style="display: none;">
+            <div class="help-content">
+                <h4>⌨️ 키보드 단축키</h4>
+                <div class="help-shortcuts">
+                    <div class="shortcut-item">
+                        <kbd>1-9</kbd> <span>번호로 빠른 포커스</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Space</kbd> / <kbd>Enter</kbd> <span>선택된 프로세스 포커스</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl+C</kbd> <span>프로세스 정보 복사</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl+A</kbd> <span>모든 그룹 펼치기</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl+Shift+A</kbd> <span>모든 그룹 접기</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>F5</kbd> / <kbd>Ctrl+R</kbd> <span>새로고침</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl+W</kbd> <span>미니창 닫기</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Esc</kbd> <span>패널/메뉴 닫기</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 트리 뷰 컨테이너 -->
+        <div class="mini-content">
+            <div id="mini-tree-view" class="mini-tree-view">
+                <!-- 로딩 상태 -->
+                <div id="mini-loading" class="mini-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>로딩 중...</p>
+                </div>
+                
+                <!-- 빈 상태 -->
+                <div id="mini-empty" class="mini-empty" style="display: none;">
+                    <div class="empty-icon">📱</div>
+                    <p>원격 프로세스가 없습니다</p>
+                </div>
+                
+                <!-- 트리 리스트 -->
+                <div id="tree-container" class="tree-container">
+                    <!-- 트리 노드들이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 상태 표시 -->
+        <div class="mini-footer">
+            <div class="mini-status">
+                <span id="mini-status-text">연결된 원격지: 0개</span>
+                <span id="mini-last-update" class="last-update"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 컨텍스트 메뉴 -->
+    <div id="mini-context-menu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" id="context-focus">
+            <span class="menu-icon">🎯</span>
+            <span class="menu-text">포커스</span>
+        </div>
+        <div class="context-menu-item" id="context-copy">
+            <span class="menu-icon">📋</span>
+            <span class="menu-text">IP 복사</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="context-expand-all">
+            <span class="menu-icon">📂</span>
+            <span class="menu-text">모든 그룹 펼치기</span>
+        </div>
+        <div class="context-menu-item" id="context-collapse-all">
+            <span class="menu-icon">📁</span>
+            <span class="menu-text">모든 그룹 접기</span>
+        </div>
+    </div>
+
+    <!-- JavaScript 모듈 로드 -->
+    <script type="module" src="mini-app.js"></script>
+</body>
+</html>

@@ -3,11 +3,12 @@
  * Windows 전용 원격지원 관리 도구의 메인 엔트리포인트
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron'; 
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import ProcessDetector from './process-detector.js';
 import WindowManager from './window-manager.js';
+import { miniWindowManager } from './mini-window.js';
 
 const __filename = fileURLToPath(import.meta.url); // 현재 모듈의 파일 경로를 file:/// 형식으로 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main\main.js'
 const __dirname = dirname(__filename);  // 위치한 디렉터리 경로를 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main'
@@ -26,8 +27,8 @@ let mainWindow = null;
 /** process는 Node.js에서 자동으로 제공되는 전역 객체 , process.argv는 Node.js 애플리케이션 실행 시 명령줄에서 전달된 인자들을 배열로 담음 
  * 터미널에서 node app.js hello --dev 실행 👉 hello, --dev 가 사용자 인자로 포함
  * 결국 실행시 --dev를 넣는지 파악하는 용도
- * */ 
-const isDev = process.argv.includes('--dev');  
+ * */
+const isDev = process.argv.includes('--dev');
 
 /**
  * Windows 플랫폼 확인
@@ -56,7 +57,7 @@ function createMainWindow() {
       // 화면(UI)과 메인 프로세스(이 파일) 사이의 안전한 다리 역할 , 
       // 보안상의 이유로 화면 쪽에서 직접적으로 시스템 기능을 호출할 수 없게 막혀있는데, 
       // preload 스크립트를 통해 허용된 기능만 사용할 수 있도록 통로를 열어주는 것이죠.
-      preload: join(__dirname, '../renderer/preload.js'), 
+      preload: join(__dirname, '../renderer/preload.js'),
     },
     show: false, // 준비될 때까지 숨김
     title: 'RemoteManager v1.2.1',
@@ -74,7 +75,7 @@ function createMainWindow() {
   // 윈도우가 준비되면 표시
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
+
     if (isDev) {
       console.log('🚀 RemoteManager 개발 모드로 시작됨');
     }
@@ -117,7 +118,7 @@ function registerIpcHandlers() {
   ipcMain.handle('focus-window', async (event, focusData) => {
     try {
       let result;
-      
+
       if (focusData.useHandle && focusData.id) {
         // WindowHandle로 포커스 (processType 전달)
         result = await WindowManager.focusWindowByHandle(focusData.id, focusData.processType);
@@ -125,10 +126,23 @@ function registerIpcHandlers() {
         // PID로 포커스 (processType 전달)
         result = await WindowManager.focusWindow(focusData.id, focusData.processType);
       }
-      
+
       return { success: result, data: result };
     } catch (error) {
       console.error('윈도우 포커스 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+
+  ipcMain.handle('request-process-delete', (event, processId) => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('request-delete-process', processId);
+        return { success: true };
+      }
+      return { success: false, error: '메인창을 찾을 수 없습니다.' };
+    } catch (error) {
       return { success: false, error: error.message };
     }
   });
@@ -152,6 +166,125 @@ function registerIpcHandlers() {
       isDev: isDev,
       platform: process.platform,
     };
+  });
+
+  // 미니창 관리 IPC 핸들러들
+  ipcMain.handle('toggle-mini-window', () => {
+    try {
+      miniWindowManager.toggleMiniWindow();
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 토글 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('show-mini-window', () => {
+    try {
+      miniWindowManager.showMiniWindow();
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 표시 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('hide-mini-window', () => {
+    try {
+      miniWindowManager.hideMiniWindow();
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 숨김 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('close-mini-window', () => {
+    try {
+      miniWindowManager.closeMiniWindow();
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 닫기 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('set-mini-opacity', (event, opacity) => {
+    try {
+      miniWindowManager.setOpacity(opacity);
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 투명도 설정 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('get-mini-status', () => {
+    try {
+      return { success: true, data: miniWindowManager.getStatus() };
+    } catch (error) {
+      console.error('미니창 상태 조회 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창에 데이터 전송
+  ipcMain.handle('send-data-to-mini', (event, data) => {
+    try {
+      const miniWindow = miniWindowManager.miniWindow;
+      if (miniWindow && !miniWindow.isDestroyed()) {
+        miniWindow.webContents.send('main-data-update', data);
+        return { success: true };
+      }
+      return { success: false, error: '미니창이 열려있지 않습니다.' };
+    } catch (error) {
+      console.error('미니창 데이터 전송 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창에서 메인창으로 데이터 요청
+  ipcMain.handle('request-main-data', () => {
+    try {
+      // 메인창에 데이터 요청
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        return new Promise((resolve) => {
+          mainWindow.webContents.send('request-current-data');
+
+          // 응답 대기 (5초 타임아웃)
+          const timeout = setTimeout(() => {
+            resolve({ success: false, error: '데이터 요청 타임아웃' });
+          }, 5000);
+
+          // 한번만 응답 받기 - on + removeAllListeners 사용
+          const responseHandler = (event, data) => {
+            clearTimeout(timeout);
+            ipcMain.removeListener('main-data-response', responseHandler);
+            resolve({ success: true, data: data });
+          };
+
+          ipcMain.on('main-data-response', responseHandler);
+        });
+      }
+      return { success: false, error: '메인창을 찾을 수 없습니다.' };
+    } catch (error) {
+      console.error('메인 데이터 요청 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창에서 메인창에 새로고침 요청
+  ipcMain.handle('request-main-refresh', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('request-refresh-from-mini');
+        return { success: true, message: '메인창에 새로고침 요청을 전송했습니다.' };
+      }
+      return { success: false, error: '메인창을 찾을 수 없습니다.' };
+    } catch (error) {
+      console.error('메인창 새로고침 요청 오류:', error);
+      return { success: false, error: error.message };
+    }
   });
 }
 

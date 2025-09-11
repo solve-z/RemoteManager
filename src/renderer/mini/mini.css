@@ -1,0 +1,802 @@
+/**
+ * Mini Window 전용 스타일
+ * 트리 구조 및 컴팩트한 레이아웃을 위한 CSS
+ */
+
+/* ==================== 기본 레이아웃 ==================== */
+
+.mini-window {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-color, #ffffff);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  user-select: none;
+}
+
+.mini-app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+/* ==================== 커스텀 타이틀바 ==================== */
+
+.mini-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0 8px;
+  cursor: move;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+}
+
+.mini-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.logo-icon {
+  font-size: 12px;
+}
+
+.logo-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 18px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.titlebar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-btn.close-btn:hover {
+  background-color: #e74c3c;
+}
+
+/* ==================== 투명도 조절 패널 ==================== */
+
+.opacity-panel {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.opacity-slider {
+  flex: 1;
+  height: 4px;
+}
+
+#opacity-value {
+  min-width: 35px;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ==================== 메인 콘텐츠 ==================== */
+
+.mini-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-tree-view {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.tree-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+}
+
+/* 스크롤바 스타일 */
+.tree-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tree-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.tree-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.tree-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* ==================== 로딩 및 빈 상태 ==================== */
+
+.mini-loading, .mini-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+}
+
+.mini-loading .loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+.mini-empty .empty-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.mini-loading p, .mini-empty p {
+  font-size: 11px;
+  margin: 0;
+}
+
+/* ==================== 트리 노드 스타일 ==================== */
+
+.tree-node {
+  margin-bottom: 2px;
+}
+
+.tree-group {
+  margin-bottom: 4px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 11px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.group-header:hover {
+  background: #e9ecef;
+  transform: translateX(1px);
+}
+
+.group-header.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  font-size: 8px;
+  transition: transform 0.2s ease;
+}
+
+.group-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.group-name {
+  flex: 1;
+}
+
+.group-count {
+  background: #007bff;
+  color: white;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+.group-children {
+  border-left: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+  border-bottom: 1px solid #dee2e6;
+  border-top: none;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  background: #ffffff;
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+
+.group-children.collapsed {
+  display: none;
+}
+
+.group-children.expanding {
+  animation: expandGroup 0.3s ease-out;
+}
+
+.group-children.collapsing {
+  animation: collapseGroup 0.3s ease-in;
+}
+
+@keyframes expandGroup {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collapseGroup {
+  from {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+/* 로딩 애니메이션 개선 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 부드러운 나타나기 애니메이션 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 미니창 전체 애니메이션 */
+.mini-app-container {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* 그룹 헤더 호버 효과 개선 */
+.group-header {
+  transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.group-header:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 프로세스 노드 애니메이션 개선 */
+.process-node {
+  transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.process-node:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 액션 버튼 애니메이션 */
+.action-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.action-btn:hover {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* 컨텍스트 메뉴 애니메이션 */
+.context-menu {
+  animation: fadeInUp 0.15s ease-out;
+  transform-origin: top left;
+}
+
+/* 투명도 조절 패널 애니메이션 */
+.opacity-panel {
+  transition: all 0.3s ease;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.opacity-panel:not([style*="display: none"]) {
+  max-height: 50px;
+}
+
+/* 도움말 패널 스타일 */
+.help-panel {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 8px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.help-panel:not([style*="display: none"]) {
+  max-height: 250px;
+}
+
+.help-content h4 {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  color: #495057;
+}
+
+.help-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  padding: 2px 0;
+}
+
+.shortcut-item kbd {
+  background: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: monospace;
+  font-size: 8px;
+  min-width: 20px;
+  text-align: center;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+.shortcut-item span {
+  color: #6c757d;
+  flex: 1;
+}
+
+/* 상태 표시 개선 */
+.mini-status {
+  transition: all 0.3s ease;
+}
+
+.mini-footer {
+  backdrop-filter: blur(2px);
+}
+
+/* 스크롤바 애니메이션 */
+.tree-container::-webkit-scrollbar-thumb {
+  transition: background 0.2s ease;
+}
+
+/* 포커스 효과 */
+.titlebar-btn:focus,
+.action-btn:focus {
+  outline: 2px solid rgba(33, 150, 243, 0.5);
+  outline-offset: 1px;
+}
+
+/* 로딩 상태 개선 */
+.mini-loading {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.mini-empty {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* counselorId 스타일 - 초록 배경에 흰색 텍스트 */
+.counselor-id {
+  background-color: #2e7d2e;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 4px;
+  display: inline-block;
+}
+
+/* 그룹 색상 인디케이터 */
+.group-color-indicator {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* ==================== 프로세스 노드 스타일 ==================== */
+
+.process-node {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px 3px 8px;
+  margin: 1px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 10px;
+  position: relative;
+}
+
+.process-node:hover {
+  background: #e3f2fd;
+  transform: translateX(2px);
+}
+
+.process-node.selected {
+  background: #2196f3;
+  color: white;
+}
+
+.process-node.selected:hover {
+  background: #1976d2;
+}
+
+/* 카테고리별 배경색 */
+.process-node.category-xray {
+  background-color: #e3f2fd !important;
+  border-left: 3px solid #2196f3 !important;
+}
+
+.process-node.category-other-server {
+  background-color: #fff3e0 !important;
+  border-left: 3px solid #ff9800 !important;
+}
+
+.process-node.category-new-server {
+  background-color: #e8f5e8 !important;
+  border-left: 3px solid #4caf50 !important;
+}
+
+.process-node.category-old-server {
+  background-color: #f5f5f5 !important;
+  border-left: 3px solid #9e9e9e !important;
+}
+
+.process-node.category-uncategorized {
+  background-color: #f8f9fa !important;
+  border-left: 3px solid #6c757d !important;
+}
+
+/* 호버 시에도 카테고리 색상 유지 */
+.process-node.category-xray:hover {
+  background-color: #bbdefb !important;
+}
+
+.process-node.category-other-server:hover {
+  background-color: #ffe0b2 !important;
+}
+
+.process-node.category-new-server:hover {
+  background-color: #c8e6c9 !important;
+}
+
+.process-node.category-old-server:hover {
+  background-color: #eeeeee !important;
+}
+
+.process-node.category-uncategorized:hover {
+  background-color: #e9ecef !important;
+}
+
+/* 선택 시 카테고리 색상 유지 */
+.process-node.selected.category-xray {
+  background-color: #90caf9 !important;
+  color: #0d47a1;
+}
+
+.process-node.selected.category-other-server {
+  background-color: #ffcc02 !important;
+  color: #e65100;
+}
+
+.process-node.selected.category-new-server {
+  background-color: #81c784 !important;
+  color: #1b5e20;
+}
+
+.process-node.selected.category-old-server {
+  background-color: #bdbdbd !important;
+  color: #424242;
+}
+
+.process-node.selected.category-uncategorized {
+  background-color: #ced4da !important;
+  color: #495057;
+}
+
+.process-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 4px;
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 14px;
+  min-height: 14px;
+}
+
+/* 상태 아이콘이 없을 때는 margin 축소 */
+.process-status:empty {
+  margin-right: 0px;
+  width: 0px;
+  min-width: 0px;
+}
+
+.process-status.connected {
+  background: #4caf50;
+  color: white;
+}
+
+.process-status.disconnected {
+  background: #f44336;
+  color: white;
+}
+
+.process-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.process-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.process-type {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #6c757d;
+  color: white;
+}
+
+.process-type.ezhelp {
+  background: #28a745;
+}
+
+.process-type.teamviewer {
+  background: #007bff;
+}
+
+.process-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process-details {
+  font-size: 9px;
+  color: #6c757d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.process-actions {
+  display: flex;
+  flex-direction: row; /* 명시적으로 가로 배치 */
+  gap: 4px;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.process-node:hover .process-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; /* 16px -> 20px로 크기 증가 */
+  height: 20px; /* 16px -> 20px로 크기 증가 */
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px; /* 8px -> 10px로 폰트 크기 증가 */
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #e9ecef;
+  transform: scale(1.1);
+}
+
+.action-btn.copy-btn {
+  color: #17a2b8;
+}
+
+.action-btn.focus-btn {
+  color: #28a745;
+}
+
+/* ==================== 하단 상태 표시 ==================== */
+
+.mini-footer {
+  border-top: 1px solid #dee2e6;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.mini-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #6c757d;
+}
+
+.last-update {
+  opacity: 0.7;
+}
+
+/* ==================== 컨텍스트 메뉴 ==================== */
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 140px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+  background: #f8f9fa;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: #dee2e6;
+  margin: 2px 0;
+}
+
+.menu-icon {
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+}
+
+/* ==================== 반응형 ==================== */
+
+@media (max-width: 300px) {
+  .process-actions {
+    display: none;
+  }
+  
+  .group-count {
+    display: none;
+  }
+  
+  .process-details {
+    display: none;
+  }
+}
+
+/* ==================== 다크 모드 지원 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .mini-window {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+  
+  .group-header {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #ffffff;
+  }
+  
+  .group-header:hover {
+    background: #404040;
+  }
+  
+  .group-children {
+    background: #1a1a1a;
+    border-color: #404040;
+  }
+  
+  .process-node:hover {
+    background: #2d2d2d;
+  }
+  
+  .mini-footer {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #cccccc;
+  }
+  
+  .opacity-panel {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+}

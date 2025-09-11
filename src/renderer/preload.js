@@ -15,12 +15,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   detectProcesses: () => ipcRenderer.invoke('detect-processes'),
 
+
+
   /**
    * 윈도우 포커스 요청
    * @param {Object} focusData - 포커스 데이터 (id, useHandle, processName, windowTitle)
    * @returns {Promise<Object>} 포커스 결과
    */
   focusWindow: (focusData) => ipcRenderer.invoke('focus-window', focusData),
+
+  requestProcessDelete: (processId) => ipcRenderer.invoke('request-process-delete', processId),
+
+  onDeleteRequest: (callback) => {
+    ipcRenderer.on('request-delete-process', (event, processId) => callback(processId));
+  },
 
   /**
    * ezHelp 컨트롤바 표시 요청
@@ -36,10 +44,106 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
 
   /**
+   * 미니창 토글
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  toggleMiniWindow: () => ipcRenderer.invoke('toggle-mini-window'),
+
+  /**
+   * 미니창 표시
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  showMiniWindow: () => ipcRenderer.invoke('show-mini-window'),
+
+  /**
+   * 미니창 숨김
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  hideMiniWindow: () => ipcRenderer.invoke('hide-mini-window'),
+
+  /**
+   * 미니창 닫기
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  closeMiniWindow: () => ipcRenderer.invoke('close-mini-window'),
+
+  /**
+   * 미니창 투명도 설정
+   * @param {number} opacity - 투명도 (0.1 ~ 1.0)
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  setMiniOpacity: (opacity) => ipcRenderer.invoke('set-mini-opacity', opacity),
+
+  /**
+   * 미니창 상태 조회
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  getMiniStatus: () => ipcRenderer.invoke('get-mini-status'),
+
+  /**
+   * 미니창에 데이터 전송
+   * @param {Object} data - 전송할 데이터
+   * @returns {Promise<Object>} 전송 결과
+   */
+  sendDataToMini: (data) => ipcRenderer.invoke('send-data-to-mini', data),
+
+  /**
+   * 메인창 데이터 요청 (미니창에서 사용)
+   * @returns {Promise<Object>} 메인창 데이터
+   */
+  requestMainData: () => ipcRenderer.invoke('request-main-data'),
+
+  /**
+   * 메인창 데이터 업데이트 수신 (미니창에서 사용)
+   * @param {Function} callback - 데이터 수신 콜백
+   */
+  onMainDataUpdate: (callback) => {
+    ipcRenderer.on('main-data-update', (event, data) => callback(data));
+  },
+
+  /**
+   * 메인창 데이터 요청 수신 (메인창에서 사용)
+   * @param {Function} callback - 데이터 요청 콜백
+   */
+  onDataRequest: (callback) => {
+    ipcRenderer.on('request-current-data', () => callback());
+  },
+
+  /**
+   * 메인창 데이터 응답 전송 (메인창에서 사용)
+   * @param {Object} data - 응답할 데이터
+   */
+  sendMainDataResponse: (data) => {
+    ipcRenderer.send('main-data-response', data);
+  },
+
+  /**
+   * 메인창 새로고침 요청 (미니창에서 사용)
+   * @returns {Promise<Object>} 새로고침 요청 결과
+   */
+  requestMainRefresh: () => ipcRenderer.invoke('request-main-refresh'),
+
+  /**
+   * 미니창 새로고침 요청 수신 (메인창에서 사용)
+   * @param {Function} callback - 새로고침 요청 콜백
+   */
+  onRefreshRequest: (callback) => {
+    ipcRenderer.on('request-refresh-from-mini', () => callback());
+  },
+
+  /**
+   * 미니창 윈도우 투명도 설정 (미니창에서 사용)
+   * @param {number} opacity - 투명도 (0.1 ~ 1.0)
+   */
+  setWindowOpacity: (opacity) => {
+    ipcRenderer.send('set-window-opacity', opacity);
+  },
+
+  /**
    * 버전 정보
    */
   version: '1.2.0',
-  
+
   /**
    * 플랫폼 정보
    */
