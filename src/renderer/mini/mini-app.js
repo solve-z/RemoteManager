@@ -473,6 +473,16 @@ class MiniApp {
       groups.get(groupName).processes.push(processData);
     });
 
+    // 각 그룹 내의 프로세스들을 메인창과 동일한 순서로 정렬 (최신순)
+    groups.forEach(group => {
+      group.processes.sort((a, b) => {
+        // 최신순: createdAt 기준 내림차순 (최신이 위로) - 메인창과 완전 동일
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA; // 내림차순: 최신이 위로 (메인창과 동일)
+      });
+    });
+
     return Array.from(groups.values());
   }
 
@@ -495,7 +505,11 @@ class MiniApp {
       multipleId: process.multipleId,
       category: process.category || 'uncategorized',
       groupId: process.groupId,
-      groupName: process.groupName
+      groupName: process.groupName,
+      // 정렬을 위한 시간 필드들 추가
+      createdAt: process.createdAt,
+      firstDetected: process.firstDetected,
+      lastUpdated: process.lastUpdated
     };
   }
 
