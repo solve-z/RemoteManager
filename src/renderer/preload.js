@@ -81,6 +81,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMiniStatus: () => ipcRenderer.invoke('get-mini-status'),
 
   /**
+   * 미니창 접기/펼치기 토글
+   * @returns {Promise<Object>} 미니창 상태
+   */
+  toggleMiniCollapse: () => ipcRenderer.invoke('toggle-mini-collapse'),
+
+  /**
    * 미니창에 데이터 전송
    * @param {Object} data - 전송할 데이터
    * @returns {Promise<Object>} 전송 결과

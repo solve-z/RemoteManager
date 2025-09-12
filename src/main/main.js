@@ -231,6 +231,23 @@ function registerIpcHandlers() {
     }
   });
 
+  // 미니창 접기/펼치기 토글
+  ipcMain.handle('toggle-mini-collapse', () => {
+    try {
+      miniWindowManager.toggleCollapse();
+      return { 
+        success: true, 
+        data: {
+          ...miniWindowManager.getStatus(),
+          ...miniWindowManager.getCollapseStatus()
+        }
+      };
+    } catch (error) {
+      console.error('미니창 접기/펼치기 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // 미니창에 데이터 전송
   ipcMain.handle('send-data-to-mini', (event, data) => {
     try {

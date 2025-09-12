@@ -14,6 +14,7 @@ class MiniApp {
     this.isInitialized = false;
     this.currentOpacity = 0.9;
     this.selectedProcessId = null;
+    this.isCollapsed = false;
   }
 
   /**
@@ -23,17 +24,23 @@ class MiniApp {
     try {
       console.log('🚀 MiniApp 초기화 시작');
 
-      // 1. UI 컴포넌트 초기화
+      // 1. 저장된 상태 복원
+      this.loadCollapseState();
+
+      // 2. UI 컴포넌트 초기화
       await this.initializeComponents();
 
-      // 2. 이벤트 리스너 설정
+      // 3. 이벤트 리스너 설정
       this.setupEventListeners();
 
-      // 3. 초기 데이터 로드
+      // 4. 초기 데이터 로드
       await this.loadInitialData();
 
-      // 4. 메인 프로세스와 통신 설정
+      // 5. 메인 프로세스와 통신 설정
       this.setupMainProcessCommunication();
+
+      // 6. 초기 접기/펼치기 상태 적용
+      this.applyCollapseState();
 
       this.isInitialized = true;
       console.log('✅ MiniApp 초기화 완료');
@@ -78,6 +85,7 @@ class MiniApp {
     const closeBtn = document.getElementById('mini-close-btn');
     const opacityBtn = document.getElementById('mini-opacity-btn');
     const helpBtn = document.getElementById('mini-help-btn');
+    const toggleBtn = document.getElementById('mini-toggle-btn');
 
     closeBtn?.addEventListener('click', () => {
       this.closeWindow();
@@ -90,6 +98,12 @@ class MiniApp {
     helpBtn?.addEventListener('click', () => {
       this.toggleHelpPanel();
     });
+
+    toggleBtn?.addEventListener('click', () => {
+      this.toggleCollapse();
+    });
+
+    // 더블클릭 기능 제거 - 버튼만 사용
 
     // 투명도 조절
     const opacitySlider = document.getElementById('opacity-slider');
@@ -623,9 +637,62 @@ class MiniApp {
   }
 
   /**
+   * 미니창 접기/펼치기 토글
+   */
+  async toggleCollapse() {
+    try {
+      // 메인 프로세스에서 실제 윈도우 크기 변경
+      if (window.electronAPI && window.electronAPI.toggleMiniCollapse) {
+        const result = await window.electronAPI.toggleMiniCollapse();
+        
+        if (result.success) {
+          // 메인 프로세스에서 반환된 상태로 UI 업데이트
+          this.isCollapsed = result.data.isCollapsed;
+          
+          const toggleBtn = document.getElementById('mini-toggle-btn');
+          const toggleIcon = toggleBtn?.querySelector('span');
+          
+          if (this.isCollapsed) {
+            // 접기 상태 UI
+            toggleBtn?.classList.add('collapsed');
+            if (toggleIcon) toggleIcon.textContent = '🔽';
+            
+            // 패널들 닫기
+            const opacityPanel = document.getElementById('opacity-panel');
+            const helpPanel = document.getElementById('help-panel');
+            if (opacityPanel) opacityPanel.style.display = 'none';
+            if (helpPanel) helpPanel.style.display = 'none';
+            
+          } else {
+            // 펼치기 상태 UI
+            toggleBtn?.classList.remove('collapsed');
+            if (toggleIcon) toggleIcon.textContent = '🔼';
+          }
+          
+          // 상태 저장
+          this.saveCollapseState();
+        } else {
+          console.error('미니창 접기/펼치기 실패:', result.error);
+        }
+      } else {
+        console.warn('toggleMiniCollapse API를 사용할 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('미니창 접기/펼치기 오류:', error);
+    }
+  }
+
+  /**
    * 키보드 단축키 처리
    */
   handleKeyboardShortcuts(event) {
+    // Ctrl+Q: 미니창 접기/펼치기 (선택사항 - 더블클릭이 기본)
+    if (event.ctrlKey && event.key === 'q') {
+      event.preventDefault();
+      this.toggleCollapse();
+      return;
+    }
+
     // Escape: 컨텍스트 메뉴 닫기, 패널들 닫기
     if (event.key === 'Escape') {
       this.hideContextMenu();
@@ -815,6 +882,63 @@ class MiniApp {
   async getProcessById(processId) {
     return this.treeView?.getProcessById(processId) || null;
   }
+
+  /**
+   * 접기/펼치기 상태를 localStorage에 저장
+   */
+  saveCollapseState() {
+    try {
+      localStorage.setItem('mini-window-collapsed', JSON.stringify(this.isCollapsed));
+    } catch (error) {
+      console.error('접기/펼치기 상태 저장 실패:', error);
+    }
+  }
+
+  /**
+   * localStorage에서 접기/펼치기 상태 복원
+   */
+  loadCollapseState() {
+    try {
+      const savedState = localStorage.getItem('mini-window-collapsed');
+      if (savedState !== null) {
+        this.isCollapsed = JSON.parse(savedState);
+      } else {
+        // 처음 실행 시 기본값: 펼쳐진 상태 (false)
+        this.isCollapsed = false;
+      }
+    } catch (error) {
+      console.error('접기/펼치기 상태 복원 실패:', error);
+      this.isCollapsed = false; // 오류 시에도 펼쳐진 상태로
+    }
+  }
+
+  /**
+   * 초기화 시 접기/펼치기 상태 적용
+   */
+  async applyCollapseState() {
+    // 저장된 상태가 접힌 상태인 경우에만 접기 실행
+    if (this.isCollapsed) {
+      console.log('저장된 상태: 접힌 상태 - 접기 실행');
+      // DOM이 완전히 로드된 후 실행하기 위해 약간 지연
+      setTimeout(async () => {
+        try {
+          // 저장된 상태가 접힌 상태라면 실제로 접기 실행
+          await this.toggleCollapse();
+        } catch (error) {
+          console.error('초기 접기/펼치기 상태 적용 실패:', error);
+          
+          // 실패 시 UI만 업데이트
+          const toggleBtn = document.getElementById('mini-toggle-btn');
+          const toggleIcon = toggleBtn?.querySelector('span');
+          toggleBtn?.classList.add('collapsed');
+          if (toggleIcon) toggleIcon.textContent = '🔽';
+        }
+      }, 500);
+    } else {
+      console.log('저장된 상태: 펼쳐진 상태 또는 기본값 - 그대로 유지');
+    }
+  }
+
 }
 
 /**

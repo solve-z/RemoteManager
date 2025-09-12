@@ -28,18 +28,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 28px;
+  height: 39px; /* 시스템 최소 높이에 맞춤 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 0 8px;
-  cursor: move;
-  -webkit-app-region: drag;
+  cursor: move; /* 드래그 가능 */
+  -webkit-app-region: drag; /* 드래그 복원 */
   flex-shrink: 0;
+  user-select: none; /* 텍스트 선택 방지 */
 }
+
+/* 접힌 상태일 때 타이틀바 하단 모서리 둥글게 (실제 윈도우 크기 변경 사용) */
+/* 더 이상 필요하지 않음 - 실제 윈도우가 줄어들므로 */
 
 .titlebar-left {
   display: flex;
   align-items: center;
+  flex: 1; /* 드래그 영역을 위해 공간 확보 */
+  cursor: move; /* 드래그 가능 */
+  -webkit-app-region: drag; /* 드래그 영역 */
 }
 
 .mini-logo {
@@ -87,6 +94,21 @@
   background-color: #e74c3c;
 }
 
+/* 토글 버튼 특별 스타일 */
+.titlebar-btn.toggle-btn {
+  font-size: 10px;
+  transition: all 0.3s ease;
+}
+
+.titlebar-btn.toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.1);
+}
+
+.titlebar-btn.toggle-btn.collapsed {
+  transform: rotate(180deg);
+}
+
 /* ==================== 투명도 조절 패널 ==================== */
 
 .opacity-panel {
@@ -122,6 +144,8 @@
   display: flex;
   flex-direction: column;
 }
+
+/* 접힌 상태 스타일 제거 - 실제 윈도우 크기 변경 사용 */
 
 .mini-tree-view {
   flex: 1;
