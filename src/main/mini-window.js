@@ -216,7 +216,6 @@ export class MiniWindowManager {
     
     this.isCollapsed = true;
     
-    console.log(`접기 - 스케일: ${scaleFactor}, 원본높이: ${this.titleBarHeight}, 조정높이: ${adjustedHeight}`);
   }
 
   /**

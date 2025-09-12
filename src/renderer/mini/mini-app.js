@@ -599,10 +599,21 @@ class MiniApp {
   /**
    * 투명도 설정
    */
-  setOpacity(opacity) {
+  async setOpacity(opacity) {
     this.currentOpacity = opacity;
-    if (window.electronAPI && window.electronAPI.setWindowOpacity) {
-      window.electronAPI.setWindowOpacity(opacity);
+    if (window.electronAPI && window.electronAPI.setMiniOpacity) {
+      try {
+        const result = await window.electronAPI.setMiniOpacity(opacity);
+        if (result.success) {
+          console.log('투명도 변경 성공:', opacity);
+        } else {
+          console.error('투명도 변경 실패:', result.error);
+        }
+      } catch (error) {
+        console.error('투명도 설정 오류:', error);
+      }
+    } else {
+      console.warn('setMiniOpacity API를 사용할 수 없습니다.');
     }
   }
 

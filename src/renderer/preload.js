@@ -138,12 +138,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
-   * 미니창 윈도우 투명도 설정 (미니창에서 사용)
+   * 미니창 윈도우 투명도 설정 (미니창에서 사용) - 수정됨
    * @param {number} opacity - 투명도 (0.1 ~ 1.0)
+   * @returns {Promise<Object>} 투명도 설정 결과
    */
-  setWindowOpacity: (opacity) => {
-    ipcRenderer.send('set-window-opacity', opacity);
-  },
+  setWindowOpacity: (opacity) => ipcRenderer.invoke('set-mini-opacity', opacity),
 
   /**
    * 버전 정보
