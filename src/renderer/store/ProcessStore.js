@@ -117,8 +117,63 @@ export class ProcessStore {
       return null;
     }
 
-
     const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);
+    
+    // IP 변경 감지 시 사용자 확인 다이얼로그 표시
+    if (comparison.sameComputer && comparison.ipChanged) {
+      console.log('📍 IP 변경 감지 - 사용자 확인 필요:', {
+        computerName: comparison.computerName,
+        oldIP: comparison.oldIP,
+        newIP: comparison.newIP,
+        stableKey: stableKey
+      });
+
+      const conflictKey = `${stableKey}_${processInfo.windowHandle}`;
+      this.conflictDialogShown.add(conflictKey);
+
+      // 동일한 컴퓨터명을 가진 모든 기존 프로세스 찾기
+      const existingProcessesWithSameComputer = this.findProcessesByComputerName(processInfo.computerName);
+      
+      // IP 변경 충돌 정보 구성
+      const detailedConflictInfo = {
+        ...comparison,
+        existingProcess: {
+          id: existingProcess.id,
+          type: existingProcess.type,
+          windowHandle: existingProcess.windowHandle,
+          pid: existingProcess.pid,
+          createdAt: existingProcess.createdAt,
+          lastSeen: existingProcess.lastSeen,
+          customLabel: existingProcess.customLabel,
+          ipAddress: existingProcess.ipAddress,
+          counselorId: existingProcess.counselorId
+        },
+        newProcess: {
+          windowHandle: processInfo.windowHandle,
+          pid: processInfo.pid,
+          ipAddress: processInfo.ipAddress,
+          counselorId: processInfo.counselorId,
+          detectedAt: new Date()
+        },
+        availableExistingProcesses: existingProcessesWithSameComputer.map(proc => ({
+          id: proc.id,
+          windowHandle: proc.windowHandle,
+          pid: proc.pid,
+          customLabel: proc.customLabel,
+          createdAt: proc.createdAt,
+          lastSeen: proc.lastSeen,
+          ipAddress: proc.ipAddress,
+          counselorId: proc.counselorId,
+          multipleId: proc.multipleId,
+          displayName: this.getDisplayNameForProcess(proc)
+        }))
+      };
+
+      const choice = await this.conflictDialog.showConflictDialog(detailedConflictInfo);
+      return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
+    }
+    
+    // 상담원 번호만 변경되고 IP는 동일한 경우 자동 업데이트
     if (comparison.counselorChanged && !comparison.ipChanged) {
       return this.updateExistingProcess(existingProcess, processInfo);
     }
@@ -160,6 +215,7 @@ export class ProcessStore {
           id: proc.id,
           windowHandle: proc.windowHandle,
           pid: proc.pid,
+          computerName : proc.computerName,
           customLabel: proc.customLabel,
           createdAt: proc.createdAt,
           lastSeen: proc.lastSeen,
@@ -514,29 +570,20 @@ export class ProcessStore {
   }
 
   /**
-   * 프로세스의 표시용 이름 생성 (충돌 다이얼로그용)
+   * 프로세스의 표시용 이름 생성 (충돌 다이얼로그용 - ProcessList와 통일)
    * @param {Object} process - 프로세스 객체
    * @returns {string} 표시용 이름
    */
   getDisplayNameForProcess(process) {
-    let displayName = process.computerName || 'Unknown';
+    // ProcessList와 동일한 KeyManager.getDisplayKey() 사용
+    const baseInfo = KeyManager.getDisplayKey(process);
     
-    // multipleId가 있으면 추가
-    if (process.multipleId) {
-      displayName += ` #${process.multipleId}`;
-    }
-    
-    // 커스텀 라벨이 있으면 추가
+    // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
     if (process.customLabel) {
-      displayName += ` (${process.customLabel})`;
+      return `${baseInfo} - ${process.customLabel}`;
     }
     
-    // IP 정보가 있으면 추가 (ezHelp의 경우)
-    if (process.ipAddress) {
-      displayName += ` - ${process.ipAddress}`;
-    }
-    
-    return displayName;
+    return baseInfo;
   }
 
   cleanup() {

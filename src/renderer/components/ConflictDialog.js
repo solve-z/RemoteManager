@@ -2,6 +2,8 @@
  * ConflictDialog - 프로세스 충돌 해결을 위한 사용자 확인 다이얼로그
  */
 
+import { KeyManager } from '../services/KeyManager.js';
+
 export class ConflictDialog {
   constructor() {
     this.dialog = null;
@@ -29,10 +31,10 @@ export class ConflictDialog {
       this.resolve = resolve;
       this.isOpen = true;
       console.log('   -> Promise 생성, 다이얼로그를 엽니다.');
-      
+
       // 자동 새로고침 일시 정지 알림
       window.dispatchEvent(new CustomEvent('conflict-dialog-opened'));
-      
+
       this.createDialog(conflictInfo);
     });
   }
@@ -43,7 +45,6 @@ export class ConflictDialog {
   createDialog(conflictInfo) {
     // --- 2. 다이얼로그가 실제로 생성되는지 확인 ---
     console.log('2. createDialog 호출됨.');
-
     this.removeDialog();
 
     this.dialog = document.createElement('div');
@@ -57,7 +58,7 @@ export class ConflictDialog {
         <div class="conflict-dialog-content">
           <div class="conflict-summary">
             <p><strong>${conflictInfo.computerName}</strong> 
-            <span class="process-details-compact">${conflictInfo.existingProcess.type ? conflictInfo.existingProcess.type.toUpperCase() : 'UNKNOWN'} | PID: ${conflictInfo.existingProcess.pid}</span></p>
+            <span class="process-details-compact">${conflictInfo.existingProcess.type ? conflictInfo.existingProcess.type.toUpperCase() : 'TeamViewr'} | PID: ${conflictInfo.existingProcess.pid}</span></p>
             ${conflictInfo.ipChanged ? `
               <p class="ip-change-notice">${conflictInfo.oldIP} → ${conflictInfo.newIP}</p>
             ` : ''}
@@ -76,8 +77,7 @@ export class ConflictDialog {
                       <input type="radio" name="selectedExisting" value="${proc.id}" id="existing_${proc.id}">
                       <label for="existing_${proc.id}" class="process-item-label">
                         <div class="process-item-main">
-                          <span class="process-name">${proc.customLabel || proc.displayName}</span>
-                          <span class="process-handle">창 ID: ${proc.windowHandle}</span>
+                          <span class="process-name">${proc.displayName}</span>
                         </div>
                         <div class="process-item-details">
                           <span class="process-time">등록: ${new Date(proc.createdAt).toLocaleString()}</span>
@@ -126,7 +126,7 @@ export class ConflictDialog {
     buttons.forEach(button => {
       button.addEventListener('click', (e) => {
         const choice = e.currentTarget.getAttribute('data-choice');
-        
+
         // keep_existing 선택 시 선택된 프로세스 ID 포함
         if (choice === 'keep_existing') {
           const selectedProcess = this.getSelectedExistingProcess();
@@ -144,12 +144,12 @@ export class ConflictDialog {
     // 라디오 버튼 선택 시 keep_existing 버튼 활성화/비활성화
     const radioButtons = this.dialog.querySelectorAll('input[name="selectedExisting"]');
     const keepExistingBtn = this.dialog.querySelector('.conflict-btn-keep-existing');
-    
+
     radioButtons.forEach(radio => {
       radio.addEventListener('change', () => {
         if (keepExistingBtn) {
           keepExistingBtn.disabled = !this.getSelectedExistingProcess();
-          
+
           // 선택되었을 때 스타일 변경
           if (!keepExistingBtn.disabled) {
             keepExistingBtn.classList.add('enabled');
@@ -240,7 +240,7 @@ export class ConflictDialog {
     document.removeEventListener('keydown', this.handleKeydown);
     this.removeDialog();
     this.isOpen = false;
-    
+
     // 자동 새로고침 재개 알림
     window.dispatchEvent(new CustomEvent('conflict-dialog-closed'));
   }
@@ -260,5 +260,22 @@ export class ConflictDialog {
    */
   isDialogOpen() {
     return this.isOpen;
+  }
+
+  /**
+   * 프로세스 표시명 가져오기 (ProcessList와 동일한 로직)
+   * @param {Object} process - 프로세스 객체
+   * @returns {string} 표시명
+   */
+  getDisplayName(process) {
+    // 기본 정보는 항상 표시
+    const baseInfo = KeyManager.getDisplayKey(process);
+    
+    // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
+    if (process.customLabel) {
+      return `${baseInfo} - ${process.customLabel}`;
+    }
+    
+    return baseInfo;
   }
 }
