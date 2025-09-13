@@ -160,9 +160,9 @@ export class KeyManager {
       if (computerName) {
         // TeamViewer에서 suffix 표시 (동일 컴퓨터명 구분용)
         if (multipleId) {
-          return `[${computerName} #${multipleId}] TeamViewer`;
+          return `[${computerName} #${multipleId}]`;
         } else {
-          return `[${computerName}] TeamViewer`;
+          return `[${computerName}]`;
         }
       }
     }

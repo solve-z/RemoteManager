@@ -241,7 +241,7 @@ export class MiniTreeView extends EventEmitter {
       `<button class="action-btn delete-btn" title="삭제">🗑️</button>` : '';
 
     return `
-      <div class="process-node ${categoryClass} ${isSelected ? 'selected' : ''}" 
+      <div class="process-node ${categoryClass} ${isSelected ? 'selected' : ''}"
            data-process-id="${process.id}">
         <div class="process-status ${this.getStatusClass(process.status)}">
           ${statusIcon}
@@ -354,7 +354,7 @@ export class MiniTreeView extends EventEmitter {
     else if (process.type === 'teamviewer') {
       const computerName = process.computerName;
       if (computerName) {
-        baseInfo = `[${computerName}] TeamViewer`;
+        baseInfo = `[${computerName}]`;
       } else {
         baseInfo = 'Unknown Process';
       }

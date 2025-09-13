@@ -821,6 +821,19 @@
   color: #28a745;
 }
 
+.action-btn.delete-btn {
+  background: #fce4ec;
+  color: #c62828;
+  border-color: #f8bbd9;
+}
+
+.action-btn.delete-btn:hover {
+  background: #f8bbd9;
+  color: #b71c1c;
+  border-color: #f48fb1;
+  transform: scale(1.1);
+}
+
 /* ==================== 하단 상태 표시 ==================== */
 
 .mini-footer {
@@ -883,16 +896,65 @@
 /* ==================== 반응형 ==================== */
 
 @media (max-width: 300px) {
+  /* 액션 버튼 영역은 유지하되 크기 축소 */
   .process-actions {
+    gap: 2px;
+    margin-left: 2px;
+  }
+
+  /* 일반 버튼들은 숨기고 삭제 버튼만 표시 */
+  .process-actions .copy-btn,
+  .process-actions .focus-btn {
     display: none;
   }
-  
+
+  /* 삭제 버튼은 유지하되 크기 축소 */
+  .process-actions .delete-btn {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+    padding: 0;
+    margin: 0;
+  }
+
   .group-count {
     display: none;
   }
-  
+
   .process-details {
     display: none;
+  }
+
+  /* 프로세스 노드 패딩 축소 */
+  .process-node {
+    padding: 2px 6px 2px 6px;
+  }
+
+  /* 프로세스 타입 크기 축소 */
+  .process-type {
+    font-size: 8px;
+    padding: 0 2px;
+  }
+}
+
+/* 더 작은 화면 대응 */
+@media (max-width: 250px) {
+  /* 삭제 버튼을 더 작게 */
+  .process-actions .delete-btn {
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+  }
+
+  /* 프로세스 이름 폰트 축소 */
+  .process-name {
+    font-size: 9px;
+  }
+
+  /* 프로세스 타입을 더 작게 */
+  .process-type {
+    font-size: 7px;
+    padding: 0 1px;
   }
 }
 
