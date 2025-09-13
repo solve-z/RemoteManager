@@ -454,9 +454,10 @@ class MiniApp {
     // TreeView 업데이트
     await this.treeView.updateData(groupedProcesses);
 
-    // 빈 상태 처리
-    const isEmpty = processes.length === 0;
-    this.showEmptyState(isEmpty);
+    // 빈 상태 처리 제거 - 항상 트리 구조를 보여줌 (원래창과 동일)
+    // const isEmpty = processes.length === 0;
+    // this.showEmptyState(isEmpty);
+    this.showEmptyState(false);
   }
 
   /**
@@ -474,6 +475,16 @@ class MiniApp {
           color: group.color,
           processes: []
         });
+      });
+    }
+
+    // "그룹없음" 그룹을 항상 추가 (프로세스가 없어도 표시)
+    if (!groups.has('그룹없음')) {
+      groups.set('그룹없음', {
+        name: '그룹없음',
+        id: 'ungrouped',
+        color: null,
+        processes: []
       });
     }
 

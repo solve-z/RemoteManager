@@ -155,6 +155,13 @@ export class MiniTreeView extends EventEmitter {
       });
     }
 
+    // "그룹없음" 그룹은 항상 열린 상태 유지
+    groups.forEach(group => {
+      if (group.name === '그룹없음' || group.id === 'ungrouped') {
+        this.expandedGroups.add(group.id);
+      }
+    });
+
     await this.render();
   }
 
@@ -185,10 +192,7 @@ export class MiniTreeView extends EventEmitter {
    * HTML 생성
    */
   generateHTML() {
-    if (this.groups.length === 0) {
-      return '<div class="empty-tree">프로세스가 없습니다.</div>';
-    }
-
+    // 프로세스가 없어도 빈 트리 구조를 보여줌 (원래창과 동일)
     return this.groups.map(group => this.renderGroup(group)).join('');
   }
 
@@ -284,7 +288,7 @@ export class MiniTreeView extends EventEmitter {
    * 프로세스 타입 라벨 반환
    */
   getProcessTypeLabel(type) {
-    // 대소문자 구분 없이 처리
+    // 미니창에서는 축약형 사용 (공간 절약)
     const normalizedType = type?.toLowerCase();
     switch (normalizedType) {
       case 'ezhelp': return 'EZ';
