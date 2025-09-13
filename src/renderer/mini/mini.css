@@ -3,6 +3,107 @@
  * 트리 구조 및 컴팩트한 레이아웃을 위한 CSS
  */
 
+/* ==================== 충돌 알림 ==================== */
+
+.conflict-notification {
+  position: fixed;
+  top: 45px; /* 타이틀바 아래 */
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #ff6b6b, #ffa726);
+  color: white;
+  padding: 0;
+  transform: translateY(-100%);
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  cursor: pointer;
+}
+
+.conflict-notification.visible {
+  transform: translateY(0);
+}
+
+.conflict-notification.hidden {
+  transform: translateY(-100%);
+  display: none; /* 완전히 숨김 */
+}
+
+.conflict-notification-content {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.conflict-notification-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.conflict-notification-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.conflict-notification-title {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.conflict-notification-message {
+  font-size: 10px;
+  opacity: 0.9;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conflict-notification-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.conflict-notification-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.conflict-notification-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.conflict-notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.conflict-notification-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* ==================== 기본 레이아웃 ==================== */
 
 .mini-window {

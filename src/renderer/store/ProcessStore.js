@@ -117,9 +117,7 @@ export class ProcessStore {
       return null;
     }
 
-    const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);
-    
-    // IP 변경 감지 시 사용자 확인 다이얼로그 표시
+    const comparison = KeyManager.compareProcessInfo(existingProcess, processInfo);    // IP 변경 감지 시 사용자 확인 다이얼로그 표시
     if (comparison.sameComputer && comparison.ipChanged) {
       console.log('📍 IP 변경 감지 - 사용자 확인 필요:', {
         computerName: comparison.computerName,
@@ -133,7 +131,7 @@ export class ProcessStore {
 
       // 동일한 컴퓨터명을 가진 모든 기존 프로세스 찾기
       const existingProcessesWithSameComputer = this.findProcessesByComputerName(processInfo.computerName);
-      
+
       // IP 변경 충돌 정보 구성
       const detailedConflictInfo = {
         ...comparison,
@@ -169,10 +167,15 @@ export class ProcessStore {
         }))
       };
 
+
+      if (existingProcessesWithSameComputer) {
+        // 미니창에 충돌 알림 전송 필요 
+        await this.sendMiniConflictNotification(detailedConflictInfo);
+      }
+
       const choice = await this.conflictDialog.showConflictDialog(detailedConflictInfo);
       return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
     }
-    
     // 상담원 번호만 변경되고 IP는 동일한 경우 자동 업데이트
     if (comparison.counselorChanged && !comparison.ipChanged) {
       return this.updateExistingProcess(existingProcess, processInfo);
@@ -189,7 +192,9 @@ export class ProcessStore {
 
       // 동일한 컴퓨터명을 가진 모든 기존 프로세스 찾기
       const existingProcessesWithSameComputer = this.findProcessesByComputerName(processInfo.computerName);
-      
+
+
+
       // 상세한 충돌 정보 구성 (기존/새 프로세스 정보 + 선택 가능한 프로세스 목록)
       const detailedConflictInfo = {
         ...comparison, // 기존 comparison 정보 유지
@@ -215,7 +220,7 @@ export class ProcessStore {
           id: proc.id,
           windowHandle: proc.windowHandle,
           pid: proc.pid,
-          computerName : proc.computerName,
+          computerName: proc.computerName,
           customLabel: proc.customLabel,
           createdAt: proc.createdAt,
           lastSeen: proc.lastSeen,
@@ -225,8 +230,14 @@ export class ProcessStore {
           displayName: this.getDisplayNameForProcess(proc)
         }))
       };
-
+      if (existingProcessesWithSameComputer) {
+        // 미니창에 충돌 알림 전송 필요 
+        await this.sendMiniConflictNotification(detailedConflictInfo);
+      }
       const choice = await this.conflictDialog.showConflictDialog(detailedConflictInfo);
+
+
+
       return this.handleUserChoice(choice, existingProcess, processInfo, stableKey);
     }
 
@@ -242,12 +253,12 @@ export class ProcessStore {
     const isChoiceObject = typeof choiceData === 'object' && choiceData !== null;
     const choice = isChoiceObject ? choiceData.choice : choiceData;
     const selectedProcessId = isChoiceObject ? choiceData.selectedProcessId : null;
-    
-    console.log('🎯 사용자 선택 처리:', { 
-      choice, 
-      selectedProcessId, 
+
+    console.log('🎯 사용자 선택 처리:', {
+      choice,
+      selectedProcessId,
       stableKey,
-      isChoiceObject 
+      isChoiceObject
     });
 
     switch (choice) {
@@ -266,7 +277,7 @@ export class ProcessStore {
             console.warn('⚠️ 선택된 프로세스를 찾을 수 없음:', selectedProcessId);
           }
         }
-        
+
         // 선택된 프로세스가 없으면 기본적으로 기존 프로세스를 새 정보로 업데이트
         console.log('📍 기존 연결을 새 정보로 업데이트 (기본값)');
         return this.updateExistingProcess(existingProcess, newProcessInfo);
@@ -304,6 +315,17 @@ export class ProcessStore {
         return this.createNewProcessWithSuffix(newProcessInfo, stableKey);
     }
   }
+
+
+  // 미니창에 간단한 충돌 알림 전송 메서드
+  sendMiniConflictNotification(conflictInfo) {
+
+    if (window.electronAPI && window.electronAPI.notifyMiniWindowConflict) {
+      window.electronAPI.notifyMiniWindowConflict(conflictInfo);
+    }
+  }
+
+
 
   findNextSuffix(baseStableKey) {
     let suffix = 2;
@@ -478,7 +500,7 @@ export class ProcessStore {
       this.processes.delete(processId);
       const stableKey = KeyManager.getStableIdentifier(process);
       this.stableKeyMap.delete(stableKey);
-      
+
       // multipleId 매핑도 정리 (windowHandle 기반)
       if (process.windowHandle) {
         this.multipleIdStore.removeMapping(process.windowHandle);
@@ -564,7 +586,7 @@ export class ProcessStore {
    * @returns {Array} 동일 컴퓨터명을 가진 프로세스 배열
    */
   findProcessesByComputerName(computerName) {
-    return this.getAllProcesses().filter(process => 
+    return this.getAllProcesses().filter(process =>
       process.computerName === computerName
     );
   }
@@ -577,12 +599,12 @@ export class ProcessStore {
   getDisplayNameForProcess(process) {
     // ProcessList와 동일한 KeyManager.getDisplayKey() 사용
     const baseInfo = KeyManager.getDisplayKey(process);
-    
+
     // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
     if (process.customLabel) {
       return `${baseInfo} - ${process.customLabel}`;
     }
-    
+
     return baseInfo;
   }
 

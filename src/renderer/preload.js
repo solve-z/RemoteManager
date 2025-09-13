@@ -145,6 +145,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setWindowOpacity: (opacity) => ipcRenderer.invoke('set-mini-opacity', opacity),
 
   /**
+   * 미니창에 충돌 알림 전송 (메인창에서 사용)
+   * @param {Object} conflictInfo - 충돌 정보
+   * @returns {Promise<Object>} 알림 전송 결과
+   */
+  notifyMiniWindowConflict: (conflictInfo) => ipcRenderer.invoke('notify-mini-window-conflict', conflictInfo),
+
+  /**
+   * 충돌 감지 알림 수신 (미니창에서 사용)
+   * @param {Function} callback - 충돌 알림 수신 콜백
+   */
+  onConflictDetected: (callback) => {
+    ipcRenderer.on('conflict-detected', (event, conflictInfo) => callback(conflictInfo));
+  },
+
+  /**
+   * 메인창으로 전환 요청 (미니창에서 사용)
+   * @returns {Promise<Object>} 메인창 전환 결과
+   */
+  switchToMainWindow: () => ipcRenderer.invoke('switch-to-main-window'),
+
+  /**
    * 버전 정보
    */
   version: '1.2.0',

@@ -306,6 +306,51 @@ function registerIpcHandlers() {
       return { success: false, error: error.message };
     }
   });
+
+  // 미니창에 충돌 알림 전송
+  ipcMain.handle('notify-mini-window-conflict', (event, conflictInfo) => {
+    try {
+      const miniWindow = miniWindowManager.miniWindow;
+      if (miniWindow && !miniWindow.isDestroyed()) {
+        console.log('📱 미니창에 충돌 알림 전송:', conflictInfo.computerName);
+        miniWindow.webContents.send('conflict-detected', conflictInfo);
+        return { success: true };
+      }
+      return { success: false, error: '미니창이 열려있지 않습니다.' };
+    } catch (error) {
+      console.error('미니창 충돌 알림 전송 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창에서 메인창으로 전환 요청
+  ipcMain.handle('switch-to-main-window', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        // 메인창 포커스 및 최상위로 이동
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.setAlwaysOnTop(true);
+        
+        // 잠시 후 always on top 해제
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.setAlwaysOnTop(false);
+          }
+        }, 1000);
+        
+        console.log('🔄 메인창으로 전환 완료');
+        return { success: true };
+      }
+      return { success: false, error: '메인창을 찾을 수 없습니다.' };
+    } catch (error) {
+      console.error('메인창 전환 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 /**

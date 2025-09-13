@@ -4,7 +4,7 @@
  */
 
 import { MiniTreeView } from './MiniTreeView.js';
-
+import { ConflictNotification } from './components/ConflictNotification.js';
 /**
  * 미니창 애플리케이션 클래스
  */
@@ -15,6 +15,7 @@ class MiniApp {
     this.currentOpacity = 0.9;
     this.selectedProcessId = null;
     this.isCollapsed = false;
+    this.conflictNotification = new ConflictNotification();
   }
 
   /**
@@ -190,8 +191,29 @@ class MiniApp {
       // 미니창이 열렸을 때 즉시 메인창 데이터 요청
       this.requestMainData();
     }
+
+    // 충돌 알림 리스너 (간단하게)
+    if (window.electronAPI && window.electronAPI.onConflictDetected) {
+      window.electronAPI.onConflictDetected((conflictData) => {
+        console.log('충돌 알림 수신:', conflictData);
+        this.handleConflictAlert(conflictData);
+      });
+    }
   }
 
+
+  // 3. 기존 충돌 알림 핸들러를 ConflictNotification 사용으로 변경
+  handleConflictAlert(conflictData) {
+    console.log('⚠️ 충돌 알림 수신:', conflictData);
+
+    // 기존: alert() 방식
+    // alert(`충돌 감지: ${conflictData.computerName}`);
+
+    // 새로운: ConflictNotification 사용
+    if (this.conflictNotification) {
+      this.conflictNotification.show(conflictData);
+    }
+  }
   /**
    * 초기 데이터 로드
    */
@@ -669,31 +691,31 @@ class MiniApp {
       // 메인 프로세스에서 실제 윈도우 크기 변경
       if (window.electronAPI && window.electronAPI.toggleMiniCollapse) {
         const result = await window.electronAPI.toggleMiniCollapse();
-        
+
         if (result.success) {
           // 메인 프로세스에서 반환된 상태로 UI 업데이트
           this.isCollapsed = result.data.isCollapsed;
-          
+
           const toggleBtn = document.getElementById('mini-toggle-btn');
           const toggleIcon = toggleBtn?.querySelector('span');
-          
+
           if (this.isCollapsed) {
             // 접기 상태 UI
             toggleBtn?.classList.add('collapsed');
             if (toggleIcon) toggleIcon.textContent = '🔽';
-            
+
             // 패널들 닫기
             const opacityPanel = document.getElementById('opacity-panel');
             const helpPanel = document.getElementById('help-panel');
             if (opacityPanel) opacityPanel.style.display = 'none';
             if (helpPanel) helpPanel.style.display = 'none';
-            
+
           } else {
             // 펼치기 상태 UI
             toggleBtn?.classList.remove('collapsed');
             if (toggleIcon) toggleIcon.textContent = '🔼';
           }
-          
+
           // 상태 저장
           this.saveCollapseState();
         } else {
@@ -951,7 +973,7 @@ class MiniApp {
           await this.toggleCollapse();
         } catch (error) {
           console.error('초기 접기/펼치기 상태 적용 실패:', error);
-          
+
           // 실패 시 UI만 업데이트
           const toggleBtn = document.getElementById('mini-toggle-btn');
           const toggleIcon = toggleBtn?.querySelector('span');
@@ -961,6 +983,15 @@ class MiniApp {
       }, 500);
     } else {
       console.log('저장된 상태: 펼쳐진 상태 또는 기본값 - 그대로 유지');
+    }
+  }
+
+  destroy() {
+    // 기존 정리 코드...
+
+    if (this.conflictNotification) {
+      this.conflictNotification.destroy();
+      this.conflictNotification = null;
     }
   }
 
