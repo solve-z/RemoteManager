@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="stylesheet" href="../../styles/themes.css">
     <link rel="stylesheet" href="mini.css">
 </head>
+
 <body class="mini-window">
     <div id="mini-app" class="mini-app-container">
         <!-- 커스텀 타이틀바 -->
@@ -20,6 +22,9 @@
                 </div>
             </div>
             <div class="titlebar-right">
+                <button id="mini-create-group-btn" class="titlebar-btn" title="새 그룹 추가">
+                    <span class="icon-plus"></span>
+                </button>
                 <button id="mini-toggle-btn" class="titlebar-btn toggle-btn" title="내용 숨기기/표시">
                     <span>🔼</span>
                 </button>
@@ -30,7 +35,7 @@
                     <span>🔍</span>
                 </button>
                 <button id="mini-close-btn" class="titlebar-btn close-btn" title="닫기">
-                    <span>×</span>
+                    <span>X</span>
                 </button>
             </div>
         </div>
@@ -88,13 +93,13 @@
                     <div class="loading-spinner"></div>
                     <p>로딩 중...</p>
                 </div>
-                
+
                 <!-- 빈 상태 -->
                 <div id="mini-empty" class="mini-empty" style="display: none;">
                     <div class="empty-icon">📱</div>
                     <p>원격 프로세스가 없습니다</p>
                 </div>
-                
+
                 <!-- 트리 리스트 -->
                 <div id="tree-container" class="tree-container">
                     <!-- 트리 노드들이 여기에 표시됩니다 -->
@@ -130,9 +135,83 @@
             <span class="menu-icon">📁</span>
             <span class="menu-text">모든 그룹 접기</span>
         </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="context-create-group">
+            <span class="menu-icon">➕</span>
+            <span class="menu-text">새 그룹 추가</span>
+        </div>
+        <div class="context-menu-item" id="context-manage-groups">
+            <span class="menu-icon">⚙️</span>
+            <span class="menu-text">그룹 관리</span>
+        </div>
+    </div>
+
+    <!-- 그룹 추가/편집 다이얼로그 -->
+    <div id="mini-group-dialog" class="mini-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="mini-group-dialog-title">새 그룹 추가</h3>
+                <button id="mini-group-dialog-close" class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="mini-group-name">그룹명</label>
+                    <input type="text" id="mini-group-name" placeholder="그룹명을 입력하세요" class="form-input" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>그룹 색상</label>
+                    <div id="mini-color-picker" class="color-picker-mini">
+                        <div class="color-option selected" data-color="#3b82f6" style="background:#3b82f6;"
+                            title="파란색"></div>
+                        <div class="color-option" data-color="#10b981" style="background:#10b981;" title="녹색">
+                        </div>
+                        <div class="color-option" data-color="#f59e0b" style="background:#f59e0b;" title="주황색">
+                        </div>
+                        <div class="color-option" data-color="#ef4444" style="background:#ef4444;" title="빨간색">
+                        </div>
+                        <div class="color-option" data-color="#8b5cf6" style="background:#8b5cf6;" title="보라색">
+                        </div>
+                        <div class="color-option" data-color="#06b6d4" style="background:#06b6d4;" title="청록색">
+                        </div>
+                        <div class="color-option" data-color="#84cc16" style="background:#84cc16;" title="라임">
+                        </div>
+                        <div class="color-option" data-color="#f97316" style="background:#f97316;" title="오렌지">
+                        </div>
+                        <div class="color-option" data-color="#ec4899" style="background:#ec4899;" title="핑크">
+                        </div>
+                        <div class="color-option" data-color="#6366f1" style="background:#6366f1;" title="인디고">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="mini-group-save" class="btn btn-primary">저장</button>
+                <button id="mini-group-cancel" class="btn btn-secondary">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 그룹 삭제 확인 다이얼로그 -->
+    <div id="mini-confirm-dialog" class="mini-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="mini-confirm-dialog-title">그룹 삭제 확인</h3>
+                <button id="mini-confirm-dialog-close" class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="mini-confirm-dialog-message">이 그룹을 삭제하시겠습니까?</p>
+            </div>
+            <div class="modal-footer">
+                <button id="mini-confirm-yes" class="btn btn-danger">삭제</button>
+                <button id="mini-confirm-no" class="btn btn-secondary">취소</button>
+            </div>
+        </div>
     </div>
 
     <!-- JavaScript 모듈 로드 -->
     <script type="module" src="mini-app.js"></script>
 </body>
+
 </html>

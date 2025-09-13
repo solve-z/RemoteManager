@@ -293,12 +293,35 @@ function registerIpcHandlers() {
     }
   });
 
-  // 미니창에서 메인창에 새로고침 요청
-  ipcMain.handle('request-main-refresh', () => {
+  // 미니창에서 메인창에 새로고침 요청 (액션 데이터 포함 가능)
+  ipcMain.handle('request-main-refresh', (event, actionData = null) => {
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('request-refresh-from-mini');
-        return { success: true, message: '메인창에 새로고침 요청을 전송했습니다.' };
+        if (actionData && actionData.type === 'group-management') {
+          // 그룹 관리 액션인 경우
+          return new Promise((resolve) => {
+            console.log('🎯 미니창에서 그룹 관리 액션 요청:', actionData);
+            mainWindow.webContents.send('request-group-action-from-mini', actionData);
+
+            // 응답 대기 (5초 타임아웃)
+            const timeout = setTimeout(() => {
+              resolve({ success: false, error: '그룹 액션 요청 타임아웃' });
+            }, 5000);
+
+            // 한번만 응답 받기
+            const responseHandler = (event, result) => {
+              clearTimeout(timeout);
+              ipcMain.removeListener('group-action-response', responseHandler);
+              resolve(result);
+            };
+
+            ipcMain.on('group-action-response', responseHandler);
+          });
+        } else {
+          // 기존 새로고침 요청
+          mainWindow.webContents.send('request-refresh-from-mini');
+          return { success: true, message: '메인창에 새로고침 요청을 전송했습니다.' };
+        }
       }
       return { success: false, error: '메인창을 찾을 수 없습니다.' };
     } catch (error) {

@@ -322,6 +322,14 @@ class RemoteManagerApp {
       });
     }
 
+    // 미니창에서 그룹 액션 요청했을 때 처리
+    if (window.electronAPI && window.electronAPI.onGroupActionRequest) {
+      window.electronAPI.onGroupActionRequest((actionData) => {
+        console.log('🎯 미니창에서 그룹 액션 요청 받음:', actionData);
+        this.handleGroupActionFromMini(actionData);
+      });
+    }
+
     // 사이드바 리사이저 기능
     this.setupSidebarResizer();
 
@@ -336,6 +344,92 @@ class RemoteManagerApp {
     console.log('🔄 미니창 요청으로 새로고침 실행');
     // 기존 새로고침 로직 호출
     this.refreshProcesses();
+  }
+
+  /**
+   * 미니창에서 받은 그룹 액션 처리
+   * @param {Object} actionData - 액션 데이터 { action, data }
+   */
+  async handleGroupActionFromMini(actionData) {
+    try {
+      const { action, data } = actionData;
+      let result = { success: false, error: 'Unknown action' };
+
+      switch (action) {
+        case 'create':
+          console.log('🎯 미니창에서 그룹 생성 요청:', data);
+          const newGroup = this.services.group.createGroup(data.name);
+          if (newGroup && data.color) {
+            this.services.group.updateGroup(newGroup.id, { color: data.color });
+          }
+          result = { success: !!newGroup, data: newGroup };
+          break;
+
+        case 'delete':
+          console.log('🗑️ 미니창에서 그룹 삭제 요청:', data);
+          const deleteSuccess = this.services.group.deleteGroup(data.id, true); // force delete
+          result = { success: deleteSuccess };
+          break;
+
+        case 'update':
+          console.log('✏️ 미니창에서 그룹 수정 요청:', data);
+          const updateSuccess = this.services.group.updateGroup(data.id, {
+            name: data.name,
+            color: data.color
+          });
+          result = { success: updateSuccess };
+          break;
+
+        case 'change-process-group':
+          console.log('🔄 미니창에서 프로세스 그룹 변경 요청:', data);
+          const changeSuccess = this.services.group.assignProcessToGroup(
+            data.processId,
+            data.toGroupId
+          );
+          result = { success: changeSuccess };
+          break;
+
+        case 'reorder-process':
+          console.log('📋 미니창에서 프로세스 순서 변경 요청:', data);
+          const reorderSuccess = this.services.group.reorderProcessInGroup(
+            data.groupId,
+            data.processId,
+            data.newIndex
+          );
+          result = { success: reorderSuccess };
+          break;
+
+        default:
+          console.warn('알 수 없는 그룹 액션:', action);
+      }
+
+      // 성공 시 미니창에 최신 데이터 전송
+      if (result.success) {
+        // 타이밍을 150ms로 늘려서 드래그 쓰로틀링과 겹치지 않도록
+        setTimeout(() => {
+          this.sendDataToMiniWindow();
+        }, 150);
+      }
+
+      // 메인 프로세스에 결과 응답
+      if (window.electronAPI && window.electronAPI.sendGroupActionResponse) {
+        console.log('📤 메인창에서 그룹 액션 응답 전송:', result);
+        window.electronAPI.sendGroupActionResponse(result);
+      } else {
+        console.error('❌ sendGroupActionResponse API를 찾을 수 없습니다.');
+      }
+
+    } catch (error) {
+      console.error('미니창 그룹 액션 처리 실패:', error);
+      const errorResult = { success: false, error: error.message };
+
+      if (window.electronAPI && window.electronAPI.sendGroupActionResponse) {
+        console.log('📤 메인창에서 그룹 액션 에러 응답 전송:', errorResult);
+        window.electronAPI.sendGroupActionResponse(errorResult);
+      } else {
+        console.error('❌ sendGroupActionResponse API를 찾을 수 없습니다. (에러 케이스)');
+      }
+    }
   }
 
 

@@ -48,6 +48,11 @@ export class MiniTreeView extends EventEmitter {
     // 기본적으로 모든 그룹을 펼친 상태로 시작
     this.defaultExpanded = true;
 
+    // 드래그앤드롭 쓰로틀링을 위한 변수들
+    this.dragThrottleTime = 50; // 50ms로 줄임 - 더 반응성 좋게
+    this.lastDragTime = 0;
+    this.pendingDragOperation = null;
+
     this.initialize();
   }
 
@@ -81,25 +86,18 @@ export class MiniTreeView extends EventEmitter {
    * 클릭 이벤트 처리
    */
   handleClick(event) {
-    const target = event.target.closest('[data-group-id], [data-process-id]');
-    if (!target) return;
-
-    event.preventDefault();
-
-    // 그룹 헤더 클릭
-    if (target.hasAttribute('data-group-id')) {
-      const groupId = target.getAttribute('data-group-id');
-      this.toggleGroup(groupId);
-      return;
-    }
-
-    // 프로세스 노드 클릭
-    if (target.hasAttribute('data-process-id')) {
-      const processId = target.getAttribute('data-process-id');
+    // 프로세스 노드 클릭 우선 처리
+    const processNode = event.target.closest('[data-process-id]');
+    if (processNode) {
+      event.preventDefault();
+      const processId = processNode.getAttribute('data-process-id');
 
       // 액션 버튼 클릭 확인
       const actionBtn = event.target.closest('.action-btn');
       if (actionBtn) {
+        event.stopPropagation(); // 이벤트 전파 방지
+        console.log('🎯 액션 버튼 클릭:', actionBtn.className, processId);
+
         if (actionBtn.classList.contains('copy-btn')) {
           this.handleProcessCopy(processId);
         } else if (actionBtn.classList.contains('focus-btn')) {
@@ -111,7 +109,19 @@ export class MiniTreeView extends EventEmitter {
       }
 
       // 일반 프로세스 선택
+      console.log('📝 프로세스 선택:', processId);
       this.selectProcess(processId);
+      return;
+    }
+
+    // 그룹 헤더 클릭 (고유 식별자로 구분)
+    const groupHeader = event.target.closest('[data-is-group-header="true"]');
+    if (groupHeader) {
+      event.preventDefault();
+      const groupId = groupHeader.getAttribute('data-group-id');
+      console.log('📁 그룹 헤더 클릭:', groupId);
+      this.toggleGroup(groupId);
+      return;
     }
   }
 
@@ -143,6 +153,9 @@ export class MiniTreeView extends EventEmitter {
    * @param {Array} groups - 그룹별로 분류된 프로세스 데이터
    */
   async updateData(groups) {
+    // 현재 펼침 상태를 저장 (그룹 ID 기준)
+    const previousExpandedState = new Set(this.expandedGroups);
+
     this.groups = groups;
 
     // 프로세스 캐시 업데이트
@@ -153,6 +166,23 @@ export class MiniTreeView extends EventEmitter {
       groups.forEach(group => {
         this.expandedGroups.add(group.id);
       });
+    } else {
+      // 기존 상태 유지: 새로운 그룹 목록에 있는 그룹 중 이전에 펼쳐져 있던 것들은 계속 펼침
+      const newExpandedGroups = new Set();
+      groups.forEach(group => {
+        if (previousExpandedState.has(group.id)) {
+          newExpandedGroups.add(group.id);
+        }
+      });
+
+      // 새 그룹이 있으면 기본적으로 펼침
+      groups.forEach(group => {
+        if (!previousExpandedState.has(group.id) && this.defaultExpanded) {
+          newExpandedGroups.add(group.id);
+        }
+      });
+
+      this.expandedGroups = newExpandedGroups;
     }
 
     // "그룹없음" 그룹은 항상 열린 상태 유지
@@ -160,6 +190,12 @@ export class MiniTreeView extends EventEmitter {
       if (group.name === '그룹없음' || group.id === 'ungrouped') {
         this.expandedGroups.add(group.id);
       }
+    });
+
+    console.log('📋 그룹 데이터 업데이트:', {
+      총그룹수: groups.length,
+      펼쳐진그룹: Array.from(this.expandedGroups),
+      이전상태: Array.from(previousExpandedState)
     });
 
     await this.render();
@@ -204,20 +240,30 @@ export class MiniTreeView extends EventEmitter {
     const processCount = group.processes.length;
     const colorIndicator = group.color ? `<div class="group-color-indicator" style="background-color: ${group.color};"></div>` : '';
 
+    // 그룹없음이 아닌 경우에만 그룹 관리 버튼 표시
+    const groupActions = (group.name !== '그룹없음' && group.id !== 'ungrouped') ? `
+      <div class="group-actions">
+        <button class="group-action-btn edit-group-btn" title="그룹 수정" data-group-id="${group.id}">✏️</button>
+        <button class="group-action-btn delete-group-btn" title="그룹 삭제" data-group-id="${group.id}">🗑️</button>
+      </div>
+    ` : '';
+
     const groupHeader = `
-      <div class="group-header ${isExpanded ? 'expanded' : ''}" 
-           data-group-id="${group.id}">
+      <div class="group-header ${isExpanded ? 'expanded' : ''}"
+           data-group-id="${group.id}"
+           data-is-group-header="true">
         ${colorIndicator}
         <div class="group-toggle ${isExpanded ? 'expanded' : ''}">▶</div>
         <div class="group-name">${this.escapeHtml(group.name)}</div>
         <div class="group-count">${processCount}</div>
+        ${groupActions}
       </div>
     `;
 
     const groupChildren = `
-      <div class="group-children ${isExpanded ? '' : 'collapsed'}" 
-           data-group-id="${group.id}-children">
-        ${group.processes.map(process => this.renderProcess(process)).join('')}
+      <div class="group-children ${isExpanded ? '' : 'collapsed'}"
+           data-group-id="${group.id}">
+        ${group.processes.map(process => this.renderProcess(process, group)).join('')}
       </div>
     `;
 
@@ -229,10 +275,11 @@ export class MiniTreeView extends EventEmitter {
     `;
   }
 
+
   /**
    * 프로세스 렌더링
    */
-  renderProcess(process) {
+  renderProcess(process, group = null) {
     const isSelected = this.selectedProcessId === process.id;
     const statusIcon = this.getStatusIcon(process.status);
     const processType = this.getProcessTypeLabel(process.type);
@@ -242,7 +289,11 @@ export class MiniTreeView extends EventEmitter {
 
     return `
       <div class="process-node ${categoryClass} ${isSelected ? 'selected' : ''}"
-           data-process-id="${process.id}">
+           data-process-id="${process.id}"
+           data-group-id="${group?.id || 'ungrouped'}"
+           data-group-name="${group?.name || '그룹없음'}"
+           draggable="true">
+        <div class="process-drag-handle" title="드래그해서 그룹 변경">⋮⋮</div>
         <div class="process-status ${this.getStatusClass(process.status)}">
           ${statusIcon}
         </div>
@@ -415,13 +466,20 @@ export class MiniTreeView extends EventEmitter {
    * 그룹 표시/숨김 업데이트
    */
   updateGroupVisibility(groupId) {
-    const header = this.container.querySelector(`[data-group-id="${groupId}"]`);
-    const children = this.container.querySelector(`[data-group-id="${groupId}-children"]`);
+    const groupContainer = this.container.querySelector(`.tree-group[data-group-id="${groupId}"]`);
+    if (!groupContainer) return;
+
+    const header = groupContainer.querySelector('.group-header');
+    const children = groupContainer.querySelector('.group-children');
     const toggle = header?.querySelector('.group-toggle');
 
-    if (!header || !children || !toggle) return;
+    if (!header || !children || !toggle) {
+      console.warn('그룹 visibility 업데이트 실패 - 요소를 찾을 수 없음:', { groupId, header: !!header, children: !!children, toggle: !!toggle });
+      return;
+    }
 
     const isExpanded = this.expandedGroups.has(groupId);
+    console.log(`🔄 그룹 ${groupId} visibility 업데이트:`, isExpanded ? '펼침' : '접힘');
 
     if (isExpanded) {
       header.classList.add('expanded');
@@ -493,6 +551,7 @@ export class MiniTreeView extends EventEmitter {
    * 프로세스 포커스 처리
    */
   handleProcessFocus(processId) {
+    console.log('🎯 MiniTreeView 포커스 요청:', processId);
     this.selectProcess(processId);
     this.emit('process-focus', processId);
   }
@@ -515,7 +574,264 @@ export class MiniTreeView extends EventEmitter {
    * 이벤트 바인딩
    */
   bindEvents() {
-    // 현재는 상위 레벨에서 이벤트 위임으로 처리하므로 별도 바인딩 불필요
+    // 기본 클릭/더블클릭 이벤트는 이미 container에 설정되어 있음
+    // 렌더링 후 추가로 필요한 이벤트만 설정
+    this.setupDragAndDrop();
+    this.setupGroupManagementEvents();
+  }
+
+  /**
+   * 드래그앤드롭 설정
+   */
+  setupDragAndDrop() {
+    // 드래그 시작
+    this.container.addEventListener('dragstart', (e) => {
+      const processNode = e.target.closest('.process-node');
+      if (!processNode) return;
+
+      // 액션 버튼에서 시작된 드래그는 방지
+      const actionBtn = e.target.closest('.action-btn');
+      if (actionBtn) {
+        e.preventDefault();
+        return;
+      }
+
+      // 그룹 관리 버튼에서 시작된 드래그는 방지
+      const groupActionBtn = e.target.closest('.group-action-btn');
+      if (groupActionBtn) {
+        e.preventDefault();
+        return;
+      }
+
+      // 프로세스 노드 전체에서 드래그 허용 (액션 버튼 제외)
+      console.log('🔥 드래그 시작 허용:', e.target.className);
+
+      const processId = processNode.dataset.processId;
+      const groupId = processNode.dataset.groupId;
+      const groupName = processNode.dataset.groupName;
+
+      console.log('🔥 드래그 시작:', { processId, groupId, dragFrom: e.target.className });
+
+      e.dataTransfer.setData('application/json', JSON.stringify({
+        processId,
+        fromGroupId: groupId,
+        fromGroupName: groupName
+      }));
+
+      e.dataTransfer.effectAllowed = 'move';
+      processNode.classList.add('dragging');
+    });
+
+    // 드래그 종료
+    this.container.addEventListener('dragend', (e) => {
+      const processNode = e.target.closest('.process-node');
+      if (processNode) {
+        processNode.classList.remove('dragging');
+      }
+    });
+
+    // 드래그 오버 (드롭 존 하이라이트)
+    this.container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+
+      // 기존 하이라이트 제거
+      this.container.querySelectorAll('.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+
+      const dropTarget = this.findDropTarget(e.target);
+      if (dropTarget) {
+        e.dataTransfer.dropEffect = 'move';
+        dropTarget.classList.add('drag-over');
+      }
+    });
+
+    // 드래그 리브 (하이라이트 제거)
+    this.container.addEventListener('dragleave', (e) => {
+      // 컨테이너를 완전히 벗어났을 때만 모든 하이라이트 제거
+      const rect = this.container.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        this.container.querySelectorAll('.drag-over').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+      }
+    });
+
+    // 드롭
+    this.container.addEventListener('drop', async (e) => {
+      e.preventDefault();
+
+      // 모든 드래그 하이라이트 제거
+      this.container.querySelectorAll('.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+      });
+
+      const dropTarget = this.findDropTarget(e.target);
+      if (!dropTarget) return;
+
+      // 쓰로틀링 적용 - 연속된 드래그 이벤트 방지
+      const now = Date.now();
+      if (now - this.lastDragTime < this.dragThrottleTime) {
+        console.log('⏳ 드롭 이벤트 쓰로틀링됨 (연속 드래그 방지)');
+        return;
+      }
+      this.lastDragTime = now;
+
+      try {
+        const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+        let toGroupId = dropTarget.dataset.groupId;
+
+        // group-header의 경우 정확한 그룹 ID를 찾아야 함
+        if (dropTarget.classList.contains('group-header')) {
+          toGroupId = dropTarget.dataset.groupId;
+        } else if (dropTarget.classList.contains('group-children')) {
+          toGroupId = dropTarget.dataset.groupId;
+        } else if (dropTarget.classList.contains('process-node')) {
+          toGroupId = dropTarget.dataset.groupId;
+        }
+
+        const toGroup = this.groups.find(g => g.id === toGroupId);
+
+        // 유효하지 않은 그룹인지 확인
+        if (!toGroup) {
+          console.warn('유효하지 않은 그룹 ID:', toGroupId);
+          return;
+        }
+
+        // 같은 그룹 내에서의 순서 변경 확인 (process-node에서만)
+        if (dragData.fromGroupId === toGroupId && dropTarget.classList.contains('process-node')) {
+          const targetProcessId = dropTarget.dataset.processId;
+          if (targetProcessId && targetProcessId !== dragData.processId) {
+            console.log('프로세스 순서 변경:', {
+              processId: dragData.processId,
+              groupId: toGroup.id,
+              targetProcessId: targetProcessId
+            });
+            await this.handleProcessReorder(dragData, dropTarget, toGroup);
+            return;
+          }
+        }
+
+        // 같은 그룹으로 드롭한 경우 (순서 변경이 아닌 경우) 무시
+        if (dragData.fromGroupId === toGroupId) {
+          return;
+        }
+
+        console.log('🔄 드래그앤드롭 그룹 변경:', {
+          processId: dragData.processId,
+          fromGroupId: dragData.fromGroupId,
+          fromGroupName: dragData.fromGroupName,
+          toGroupId: toGroupId,
+          toGroupName: toGroup.name,
+          dropTargetType: dropTarget.className
+        });
+
+        // 그룹 변경 이벤트 발생
+        this.emit('process-group-change', {
+          processId: dragData.processId,
+          fromGroupId: dragData.fromGroupId,
+          toGroupId: toGroupId
+        });
+
+        // 성공적인 드래그 후 200ms 동안 추가 드래그 방지
+        this.lastDragTime = Date.now() + 150; // 현재 시간 + 150ms 추가
+
+      } catch (error) {
+        console.error('드롭 처리 실패:', error);
+      }
+    });
+  }
+
+  /**
+   * 드롭 타겟 찾기
+   */
+  findDropTarget(element) {
+    // 우선순위: group-children > process-node > group-header
+    // group-children이 있으면 우선적으로 선택 (더 정확한 드롭존)
+    const groupChildren = element.closest('.group-children');
+    if (groupChildren) {
+      return groupChildren;
+    }
+
+    const processNode = element.closest('.process-node');
+    if (processNode) {
+      return processNode;
+    }
+
+    // group-header는 마지막 대안으로만 사용
+    const groupHeader = element.closest('.group-header');
+    if (groupHeader) {
+      return groupHeader;
+    }
+
+    return null;
+  }
+
+  /**
+   * 프로세스 순서 변경 처리
+   */
+  async handleProcessReorder(dragData, targetElement, group) {
+    try {
+      const targetProcessId = targetElement.dataset.processId;
+      const groupProcesses = group.processes;
+
+      // 현재 인덱스 찾기
+      const dragIndex = groupProcesses.findIndex(p => p.id === dragData.processId);
+      const targetIndex = groupProcesses.findIndex(p => p.id === targetProcessId);
+
+      if (dragIndex === -1 || targetIndex === -1 || dragIndex === targetIndex) {
+        return; // 잘못된 인덱스이거나 같은 위치
+      }
+
+      console.log('프로세스 순서 변경:', {
+        processId: dragData.processId,
+        groupId: group.id,
+        fromIndex: dragIndex,
+        toIndex: targetIndex
+      });
+
+      // 순서 변경 이벤트 발생
+      this.emit('process-reorder', {
+        processId: dragData.processId,
+        groupId: group.id,
+        newIndex: targetIndex
+      });
+
+    } catch (error) {
+      console.error('프로세스 순서 변경 실패:', error);
+    }
+  }
+
+  /**
+   * 그룹 관리 이벤트 설정
+   */
+  setupGroupManagementEvents() {
+    // 그룹 수정 버튼
+    this.container.addEventListener('click', (e) => {
+      if (e.target.classList.contains('edit-group-btn')) {
+        e.stopPropagation();
+        const groupId = e.target.dataset.groupId;
+        const group = this.groups.find(g => g.id === groupId);
+        if (group) {
+          this.emit('group-edit', group);
+        }
+      }
+    });
+
+    // 그룹 삭제 버튼
+    this.container.addEventListener('click', (e) => {
+      if (e.target.classList.contains('delete-group-btn')) {
+        e.stopPropagation();
+        const groupId = e.target.dataset.groupId;
+        const group = this.groups.find(g => g.id === groupId);
+        if (group) {
+          this.emit('group-delete', group);
+        }
+      }
+    });
   }
 
   /**

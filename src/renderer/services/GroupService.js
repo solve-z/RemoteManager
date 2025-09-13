@@ -181,9 +181,15 @@ export class GroupService {
 
       let targetGroup = null;
       if (groupId) {
-        targetGroup = this.groupStore.getGroup(groupId);
-        if (!targetGroup) {
-          throw new Error('대상 그룹을 찾을 수 없습니다.');
+        // 'ungrouped' 또는 '그룹없음'인 경우 특별 처리
+        if (groupId === 'ungrouped') {
+          // 그룹없음으로 할당하는 경우 - null로 처리
+          groupId = null;
+        } else {
+          targetGroup = this.groupStore.getGroup(groupId);
+          if (!targetGroup) {
+            throw new Error('대상 그룹을 찾을 수 없습니다.');
+          }
         }
       }
 

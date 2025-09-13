@@ -125,9 +125,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /**
    * 메인창 새로고침 요청 (미니창에서 사용)
+   * @param {Object} actionData - 선택적 액션 데이터
    * @returns {Promise<Object>} 새로고침 요청 결과
    */
-  requestMainRefresh: () => ipcRenderer.invoke('request-main-refresh'),
+  requestMainRefresh: (actionData) => ipcRenderer.invoke('request-main-refresh', actionData),
 
   /**
    * 미니창 새로고침 요청 수신 (메인창에서 사용)
@@ -164,6 +165,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @returns {Promise<Object>} 메인창 전환 결과
    */
   switchToMainWindow: () => ipcRenderer.invoke('switch-to-main-window'),
+
+  /**
+   * 그룹 액션 요청 수신 (메인창에서 사용)
+   * @param {Function} callback - 그룹 액션 요청 콜백
+   */
+  onGroupActionRequest: (callback) => {
+    ipcRenderer.on('request-group-action-from-mini', (event, actionData) => callback(actionData));
+  },
+
+  /**
+   * 그룹 액션 응답 전송 (메인창에서 사용)
+   * @param {Object} result - 그룹 액션 결과
+   */
+  sendGroupActionResponse: (result) => {
+    ipcRenderer.send('group-action-response', result);
+  },
 
   /**
    * 버전 정보

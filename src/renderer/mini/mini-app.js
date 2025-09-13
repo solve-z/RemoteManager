@@ -5,6 +5,7 @@
 
 import { MiniTreeView } from './MiniTreeView.js';
 import { ConflictNotification } from './components/ConflictNotification.js';
+import { MiniGroupManager } from './components/MiniGroupManager.js';
 /**
  * 미니창 애플리케이션 클래스
  */
@@ -16,6 +17,7 @@ class MiniApp {
     this.selectedProcessId = null;
     this.isCollapsed = false;
     this.conflictNotification = new ConflictNotification();
+    this.groupManager = null;
   }
 
   /**
@@ -60,6 +62,9 @@ class MiniApp {
     const treeContainer = document.getElementById('tree-container');
     this.treeView = new MiniTreeView(treeContainer);
 
+    // GroupManager 초기화
+    this.groupManager = new MiniGroupManager(this);
+
     // TreeView 이벤트 리스너
     this.treeView.on('process-selected', (processId) => {
       this.handleProcessSelection(processId);
@@ -76,6 +81,23 @@ class MiniApp {
     this.treeView.on('process-delete', (processId) => {
       this.handleProcessDelete(processId);
     });
+
+    // 그룹 관리 이벤트 리스너
+    this.treeView.on('group-edit', (group) => {
+      this.groupManager.showEditGroupDialog(group);
+    });
+
+    this.treeView.on('group-delete', (group) => {
+      this.groupManager.showDeleteGroupDialog(group);
+    });
+
+    this.treeView.on('process-group-change', async (data) => {
+      await this.handleProcessGroupChange(data);
+    });
+
+    this.treeView.on('process-reorder', async (data) => {
+      await this.handleProcessReorder(data);
+    });
   }
 
   /**
@@ -86,6 +108,7 @@ class MiniApp {
     const closeBtn = document.getElementById('mini-close-btn');
     const opacityBtn = document.getElementById('mini-opacity-btn');
     const helpBtn = document.getElementById('mini-help-btn');
+    const createGroupBtn = document.getElementById('mini-create-group-btn');
     const toggleBtn = document.getElementById('mini-toggle-btn');
 
     closeBtn?.addEventListener('click', () => {
@@ -98,6 +121,11 @@ class MiniApp {
 
     helpBtn?.addEventListener('click', () => {
       this.toggleHelpPanel();
+    });
+
+    createGroupBtn?.addEventListener('click', () => {
+      console.log('➕ 그룹 생성 버튼 클릭');
+      this.groupManager.showCreateGroupDialog();
     });
 
     toggleBtn?.addEventListener('click', () => {
@@ -124,18 +152,8 @@ class MiniApp {
       this.handleKeyboardShortcuts(e);
     });
 
-    // 윈도우 포커스/블러 시 투명도 조절
-    window.addEventListener('focus', () => {
-      if (this.currentOpacity < 0.9) {
-        this.setOpacity(Math.min(1.0, this.currentOpacity + 0.2));
-      }
-    });
-
-    window.addEventListener('blur', () => {
-      if (this.currentOpacity > 0.7) {
-        this.setOpacity(Math.max(0.5, this.currentOpacity - 0.2));
-      }
-    });
+    // 윈도우 포커스/블러 시 투명도 자동 조절 기능 제거
+    // 사용자가 설정한 투명도를 그대로 유지
   }
 
   /**
@@ -641,6 +659,52 @@ class MiniApp {
     }
   }
 
+  /**
+   * 프로세스 그룹 변경 처리
+   */
+  async handleProcessGroupChange(data) {
+    try {
+      const result = await this.groupManager.changeProcessGroup(
+        data.processId,
+        data.fromGroupId,
+        data.toGroupId
+      );
+
+      if (result.success) {
+        // 성공 시에는 조용히 처리 (메인창에서 이미 알림)
+        console.log('✅ 프로세스 그룹 변경 성공');
+      } else {
+        this.showNotification(result.error || '그룹 변경 실패', 'error');
+      }
+    } catch (error) {
+      console.error('프로세스 그룹 변경 실패:', error);
+      this.showNotification('그룹 변경 오류', 'error');
+    }
+  }
+
+  /**
+   * 프로세스 순서 변경 처리
+   */
+  async handleProcessReorder(data) {
+    try {
+      const result = await this.groupManager.reorderProcess(
+        data.groupId,
+        data.processId,
+        data.newIndex
+      );
+
+      if (result.success) {
+        // 성공 시에는 조용히 처리
+        console.log('✅ 프로세스 순서 변경 성공');
+      } else {
+        this.showNotification(result.error || '순서 변경 실패', 'error');
+      }
+    } catch (error) {
+      console.error('프로세스 순서 변경 실패:', error);
+      this.showNotification('순서 변경 오류', 'error');
+    }
+  }
+
 
 
   /**
@@ -744,6 +808,25 @@ class MiniApp {
    * 키보드 단축키 처리
    */
   handleKeyboardShortcuts(event) {
+    // 입력 필드에 포커스가 있는 경우 단축키 비활성화
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.contentEditable === 'true'
+    );
+
+    // 입력 필드 포커스 시에는 ESC와 Enter만 처리
+    if (isInputFocused) {
+      if (event.key === 'Escape') {
+        // ESC 키로 입력 필드에서 포커스 해제
+        activeElement.blur();
+        return;
+      }
+      // 다른 키들은 입력 필드에서 정상 처리되도록 함
+      return;
+    }
+
     // Ctrl+Q: 미니창 접기/펼치기 (선택사항 - 더블클릭이 기본)
     if (event.ctrlKey && event.key === 'q') {
       event.preventDefault();
