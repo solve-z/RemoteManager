@@ -175,9 +175,15 @@ class MiniApp {
       this.showContextMenu(e.clientX, e.clientY);
     });
 
-    // 클릭으로 컨텍스트 메뉴 숨김
-    document.addEventListener('click', () => {
+    // 클릭으로 컨텍스트 메뉴 숨김 및 빈 화면 클릭 시 선택 해제
+    document.addEventListener('click', (event) => {
       this.hideContextMenu();
+
+      // 빈 화면 클릭 시 프로세스 선택 해제
+      const processContainer = event.target.closest('.process-item, .group-header, .mini-button, .mini-panel, .mini-context-menu');
+      if (!processContainer && this.selectedProcessId) {
+        this.treeView?.selectProcess(null);
+      }
     });
 
     // 컨텍스트 메뉴 항목 이벤트
@@ -955,17 +961,38 @@ class MiniApp {
       return;
     }
 
-    // ArrowUp: 선택된 프로세스 위로 이동
-    if (event.key === 'ArrowUp' && this.selectedProcessId && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    // ArrowUp: 이전 프로세스 선택
+    if (event.key === 'ArrowUp' && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      this.selectPreviousProcess();
+      return;
+    }
+
+    // ArrowDown: 다음 프로세스 선택
+    if (event.key === 'ArrowDown' && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      this.selectNextProcess();
+      return;
+    }
+
+    // Ctrl+ArrowUp: 선택된 프로세스 위로 이동
+    if (event.key === 'ArrowUp' && this.selectedProcessId && event.ctrlKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       this.treeView?.handleProcessMoveUp(this.selectedProcessId);
       return;
     }
 
-    // ArrowDown: 선택된 프로세스 아래로 이동
-    if (event.key === 'ArrowDown' && this.selectedProcessId && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    // Ctrl+ArrowDown: 선택된 프로세스 아래로 이동
+    if (event.key === 'ArrowDown' && this.selectedProcessId && event.ctrlKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       this.treeView?.handleProcessMoveDown(this.selectedProcessId);
+      return;
+    }
+
+    // Escape: 프로세스 선택 해제
+    if (event.key === 'Escape' && this.selectedProcessId) {
+      event.preventDefault();
+      this.treeView?.selectProcess(null);
       return;
     }
   }
@@ -987,6 +1014,74 @@ class MiniApp {
         processIndex++;
       }
     }
+  }
+
+  /**
+   * 모든 표시된 프로세스 목록 반환
+   */
+  getAllVisibleProcesses() {
+    if (!this.treeView) return [];
+
+    const allProcesses = [];
+    for (const group of this.treeView.groups) {
+      for (const process of group.processes) {
+        allProcesses.push(process);
+      }
+    }
+    return allProcesses;
+  }
+
+  /**
+   * 이전 프로세스 선택
+   */
+  selectPreviousProcess() {
+    const allProcesses = this.getAllVisibleProcesses();
+    if (allProcesses.length === 0) return;
+
+    if (!this.selectedProcessId) {
+      // 선택된 프로세스가 없으면 마지막 프로세스 선택
+      const lastProcess = allProcesses[allProcesses.length - 1];
+      this.treeView.selectProcess(lastProcess.id);
+      return;
+    }
+
+    // 현재 선택된 프로세스의 인덱스 찾기
+    const currentIndex = allProcesses.findIndex(p => p.id === this.selectedProcessId);
+    if (currentIndex === -1) {
+      // 현재 선택된 프로세스가 목록에 없으면 첫 번째 프로세스 선택
+      this.treeView.selectProcess(allProcesses[0].id);
+      return;
+    }
+
+    // 이전 프로세스 선택 (첫 번째면 마지막으로 순환)
+    const prevIndex = currentIndex === 0 ? allProcesses.length - 1 : currentIndex - 1;
+    this.treeView.selectProcess(allProcesses[prevIndex].id);
+  }
+
+  /**
+   * 다음 프로세스 선택
+   */
+  selectNextProcess() {
+    const allProcesses = this.getAllVisibleProcesses();
+    if (allProcesses.length === 0) return;
+
+    if (!this.selectedProcessId) {
+      // 선택된 프로세스가 없으면 첫 번째 프로세스 선택
+      this.treeView.selectProcess(allProcesses[0].id);
+      return;
+    }
+
+    // 현재 선택된 프로세스의 인덱스 찾기
+    const currentIndex = allProcesses.findIndex(p => p.id === this.selectedProcessId);
+    if (currentIndex === -1) {
+      // 현재 선택된 프로세스가 목록에 없으면 첫 번째 프로세스 선택
+      this.treeView.selectProcess(allProcesses[0].id);
+      return;
+    }
+
+    // 다음 프로세스 선택 (마지막이면 첫 번째로 순환)
+    const nextIndex = currentIndex === allProcesses.length - 1 ? 0 : currentIndex + 1;
+    this.treeView.selectProcess(allProcesses[nextIndex].id);
   }
 
   /**
