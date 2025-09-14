@@ -330,21 +330,15 @@ export class MiniGroupManager {
   }
 
   /**
-   * 프로세스 순서 변경
+   * 프로세스 순서 변경 (미니창 내부에서만 처리)
    * @param {string} groupId - 그룹 ID
    * @param {string} processId - 프로세스 ID
    * @param {number} newIndex - 새 인덱스
    * @returns {Promise<Object>} 변경 결과
    */
   async reorderProcess(groupId, processId, newIndex) {
-    if (!window.electronAPI?.requestMainRefresh) {
-      return { success: false, error: 'IPC API를 사용할 수 없습니다.' };
-    }
-
-    return await window.electronAPI.requestMainRefresh({
-      type: 'group-management',
-      action: 'reorder-process',
-      data: { groupId, processId, newIndex }
-    });
+    // 미니창에서만 순서 변경, 메인창과 동기화하지 않음
+    console.log('🔄 미니창 내부 순서 변경:', { groupId, processId, newIndex });
+    return { success: true };
   }
 }

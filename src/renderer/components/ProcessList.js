@@ -14,7 +14,7 @@ export class ProcessList {
     
     this.processes = [];
     this.filteredProcesses = [];
-    this.sortOption = 'latest';
+    this.sortOption = 'oldest';
     this.groupFilter = '';
     this.categoryFilter = '';
     this.typeFilter = '';
@@ -207,8 +207,14 @@ export class ProcessList {
           return catA.localeCompare(catB);
         });
 
-      case 'latest':
+      case 'oldest':
       default:
+        return processes.sort((a, b) => {
+          // 오래된순: 생성 시간 기준 오름차순 (오래된 것이 위로, 새로운 것이 아래로)
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        });
+
+      case 'latest':
         return processes.sort((a, b) => {
           // 최신순: 생성 시간 기준 내림차순 (최신이 위로)
           return new Date(b.createdAt) - new Date(a.createdAt);

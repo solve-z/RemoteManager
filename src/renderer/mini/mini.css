@@ -843,12 +843,28 @@
   transform: scale(1.1);
 }
 
-.action-btn.copy-btn {
+.action-btn.move-up-btn {
   color: #17a2b8;
+  background: #e8f4fd;
+  border-color: #b6e3f7;
 }
 
-.action-btn.focus-btn {
+.action-btn.move-up-btn:hover {
+  background: #d1ecf1;
+  color: #138496;
+  transform: scale(1.1);
+}
+
+.action-btn.move-down-btn {
   color: #28a745;
+  background: #e8f5e8;
+  border-color: #c3e6cb;
+}
+
+.action-btn.move-down-btn:hover {
+  background: #d4edda;
+  color: #1e7e34;
+  transform: scale(1.1);
 }
 
 .action-btn.delete-btn {
@@ -1190,8 +1206,8 @@
   }
 
   /* 일반 버튼들은 숨기고 삭제 버튼만 표시 */
-  .process-actions .copy-btn,
-  .process-actions .focus-btn {
+  .process-actions .move-up-btn,
+  .process-actions .move-down-btn {
     display: none;
   }
 

@@ -810,7 +810,7 @@ class RemoteManagerApp {
     if (groupFilter) groupFilter.value = '';
     if (categoryFilter) categoryFilter.value = '';
     if (typeFilter) typeFilter.value = '';
-    if (sortSelect) sortSelect.value = 'latest';
+    if (sortSelect) sortSelect.value = 'oldest';
 
     // 사이드바 그룹 선택도 해제
     this.components.sidebar?.clearGroupSelection();

@@ -53,6 +53,9 @@ export class MiniTreeView extends EventEmitter {
     this.lastDragTime = 0;
     this.pendingDragOperation = null;
 
+    // 미니창 순서 저장소
+    this.customOrderStorage = this.loadCustomOrders();
+
     this.initialize();
   }
 
@@ -98,10 +101,10 @@ export class MiniTreeView extends EventEmitter {
         event.stopPropagation(); // 이벤트 전파 방지
         console.log('🎯 액션 버튼 클릭:', actionBtn.className, processId);
 
-        if (actionBtn.classList.contains('copy-btn')) {
-          this.handleProcessCopy(processId);
-        } else if (actionBtn.classList.contains('focus-btn')) {
-          this.handleProcessFocus(processId);
+        if (actionBtn.classList.contains('move-up-btn')) {
+          this.handleProcessMoveUp(processId);
+        } else if (actionBtn.classList.contains('move-down-btn')) {
+          this.handleProcessMoveDown(processId);
         } else if (actionBtn.classList.contains('delete-btn')) {
           this.handleProcessDelete(processId);
         }
@@ -191,6 +194,14 @@ export class MiniTreeView extends EventEmitter {
         this.expandedGroups.add(group.id);
       }
     });
+
+    // 저장된 커스텀 순서 적용
+    groups.forEach(group => {
+      this.applyCustomOrder(group);
+    });
+
+    // 오래된 순서 정보 정리 (삭제된 그룹, 존재하지 않는 프로세스)
+    this.cleanupOldOrders();
 
     console.log('📋 그룹 데이터 업데이트:', {
       총그룹수: groups.length,
@@ -307,8 +318,8 @@ export class MiniTreeView extends EventEmitter {
           </div>
         </div>
         <div class="process-actions">
-          <button class="action-btn copy-btn" title="IP 복사">📋</button>
-          <button class="action-btn focus-btn" title="포커스">🎯</button>
+          <button class="action-btn move-up-btn" title="위로 이동">🔼</button>
+          <button class="action-btn move-down-btn" title="아래로 이동">🔽</button>
           ${deleteButton}
         </div>
       </div>
@@ -786,19 +797,23 @@ export class MiniTreeView extends EventEmitter {
         return; // 잘못된 인덱스이거나 같은 위치
       }
 
-      console.log('프로세스 순서 변경:', {
+      console.log('🔄 드래그앤드롭 순서 변경:', {
         processId: dragData.processId,
         groupId: group.id,
         fromIndex: dragIndex,
         toIndex: targetIndex
       });
 
-      // 순서 변경 이벤트 발생
-      this.emit('process-reorder', {
-        processId: dragData.processId,
-        groupId: group.id,
-        newIndex: targetIndex
-      });
+      // 배열에서 순서 변경
+      const [movedProcess] = groupProcesses.splice(dragIndex, 1);
+      groupProcesses.splice(targetIndex, 0, movedProcess);
+
+      // 변경된 순서를 localStorage에 저장
+      const processIds = groupProcesses.map(p => p.id);
+      this.saveGroupOrder(group.id, processIds);
+
+      // UI 즉시 업데이트
+      this.render();
 
     } catch (error) {
       console.error('프로세스 순서 변경 실패:', error);
@@ -881,6 +896,214 @@ export class MiniTreeView extends EventEmitter {
     }
 
     this.render();
+  }
+
+  /**
+   * 프로세스 위로 이동 처리
+   */
+  handleProcessMoveUp(processId) {
+    console.log('🔼 프로세스 위로 이동:', processId);
+
+    const { group, processIndex } = this.findProcessInGroups(processId);
+    if (!group || processIndex <= 0) {
+      console.log('위로 이동할 수 없음: 이미 맨 위이거나 프로세스를 찾을 수 없음');
+      return;
+    }
+
+    this.moveProcessInGroup(group.id, processIndex, processIndex - 1);
+  }
+
+  /**
+   * 프로세스 아래로 이동 처리
+   */
+  handleProcessMoveDown(processId) {
+    console.log('🔽 프로세스 아래로 이동:', processId);
+
+    const { group, processIndex } = this.findProcessInGroups(processId);
+    if (!group || processIndex >= group.processes.length - 1) {
+      console.log('아래로 이동할 수 없음: 이미 맨 아래이거나 프로세스를 찾을 수 없음');
+      return;
+    }
+
+    this.moveProcessInGroup(group.id, processIndex, processIndex + 1);
+  }
+
+  /**
+   * 그룹에서 프로세스 찾기
+   */
+  findProcessInGroups(processId) {
+    for (const group of this.groups) {
+      const processIndex = group.processes.findIndex(p => p.id === processId);
+      if (processIndex !== -1) {
+        return { group, processIndex };
+      }
+    }
+    return { group: null, processIndex: -1 };
+  }
+
+  /**
+   * 그룹 내에서 프로세스 순서 변경
+   */
+  moveProcessInGroup(groupId, fromIndex, toIndex) {
+    const group = this.groups.find(g => g.id === groupId);
+    if (!group || fromIndex < 0 || toIndex < 0 ||
+        fromIndex >= group.processes.length || toIndex >= group.processes.length) {
+      return;
+    }
+
+    // 배열에서 프로세스 순서 변경
+    const [movedProcess] = group.processes.splice(fromIndex, 1);
+    group.processes.splice(toIndex, 0, movedProcess);
+
+    // 변경된 순서를 localStorage에 저장
+    const processIds = group.processes.map(p => p.id);
+    this.saveGroupOrder(groupId, processIds);
+
+    console.log('🔄 미니창 내부 순서 변경 완료:', {
+      groupId: groupId,
+      processId: movedProcess.id,
+      fromIndex: fromIndex,
+      toIndex: toIndex
+    });
+
+    // UI 즉시 업데이트
+    this.render();
+  }
+
+  /**
+   * 커스텀 순서 정보 로드
+   */
+  loadCustomOrders() {
+    try {
+      const saved = localStorage.getItem('mini-window-custom-orders');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('커스텀 순서 로드 실패:', error);
+      return {};
+    }
+  }
+
+  /**
+   * 커스텀 순서 정보 저장
+   */
+  saveCustomOrders() {
+    try {
+      localStorage.setItem('mini-window-custom-orders', JSON.stringify(this.customOrderStorage));
+    } catch (error) {
+      console.error('커스텀 순서 저장 실패:', error);
+    }
+  }
+
+  /**
+   * 그룹 내 프로세스 순서 저장
+   */
+  saveGroupOrder(groupId, processIds) {
+    this.customOrderStorage[groupId] = [...processIds];
+    this.saveCustomOrders();
+    console.log('📝 그룹 순서 저장:', { groupId, processIds });
+  }
+
+  /**
+   * 프로세스가 다른 그룹으로 이동했을 때 순서 정보 정리
+   */
+  removeProcessFromCustomOrder(processId, fromGroupId) {
+    if (this.customOrderStorage[fromGroupId]) {
+      const processIndex = this.customOrderStorage[fromGroupId].indexOf(processId);
+      if (processIndex !== -1) {
+        this.customOrderStorage[fromGroupId].splice(processIndex, 1);
+
+        // 그룹에 프로세스가 없으면 그룹 순서 정보 삭제
+        if (this.customOrderStorage[fromGroupId].length === 0) {
+          delete this.customOrderStorage[fromGroupId];
+        }
+
+        this.saveCustomOrders();
+        console.log('🗑️ 프로세스 순서 정보 제거:', { processId, fromGroupId });
+      }
+    }
+  }
+
+  /**
+   * 프로세스가 새로운 그룹으로 이동할 때 해당 프로세스를 대상 그룹의 순서에서 제외
+   * (새로운 그룹에서는 기본 정렬 순서로 배치되도록)
+   */
+  removeProcessFromTargetGroupOrder(processId, toGroupId) {
+    if (this.customOrderStorage[toGroupId]) {
+      const processIndex = this.customOrderStorage[toGroupId].indexOf(processId);
+      if (processIndex !== -1) {
+        this.customOrderStorage[toGroupId].splice(processIndex, 1);
+        this.saveCustomOrders();
+        console.log('🔄 대상 그룹 순서에서 프로세스 제거 (기본 정렬 적용):', { processId, toGroupId });
+      }
+    }
+  }
+
+  /**
+   * 그룹의 커스텀 순서 적용
+   */
+  applyCustomOrder(group) {
+    const savedOrder = this.customOrderStorage[group.id];
+    if (!savedOrder || savedOrder.length === 0) {
+      return; // 저장된 순서가 없으면 기본 순서 유지
+    }
+
+    // 저장된 순서대로 프로세스 재배열
+    const reorderedProcesses = [];
+    const remainingProcesses = [...group.processes];
+
+    // 저장된 순서대로 먼저 배치
+    savedOrder.forEach(savedProcessId => {
+      const processIndex = remainingProcesses.findIndex(p => p.id === savedProcessId);
+      if (processIndex !== -1) {
+        reorderedProcesses.push(remainingProcesses.splice(processIndex, 1)[0]);
+      }
+    });
+
+    // 새로 추가된 프로세스들(그룹 변경으로 새로 들어온)은 가장 뒤(아래)에 배치
+    // 오래된순 정렬에서 인덱스 끝 = 화면상 가장 아래 = 최신 위치
+    reorderedProcesses.push(...remainingProcesses);
+
+    // 더 이상 존재하지 않는 프로세스들이 저장된 순서에 있으면 정리
+    const currentProcessIds = group.processes.map(p => p.id);
+    const validSavedOrder = savedOrder.filter(id => currentProcessIds.includes(id));
+
+    if (validSavedOrder.length !== savedOrder.length) {
+      console.log('🧹 존재하지 않는 프로세스 ID 정리:', {
+        groupId: group.id,
+        removed: savedOrder.length - validSavedOrder.length
+      });
+      this.saveGroupOrder(group.id, validSavedOrder);
+    }
+
+    group.processes = reorderedProcesses;
+
+    console.log('🔄 커스텀 순서 적용:', {
+      groupId: group.id,
+      originalCount: group.processes.length,
+      reorderedCount: reorderedProcesses.length
+    });
+  }
+
+  /**
+   * 오래된 순서 정보 정리 (옵션)
+   */
+  cleanupOldOrders() {
+    // 현재 존재하는 그룹 ID들 수집
+    const currentGroupIds = this.groups.map(g => g.id);
+    const savedGroupIds = Object.keys(this.customOrderStorage);
+
+    let cleaned = false;
+    savedGroupIds.forEach(savedGroupId => {
+      if (!currentGroupIds.includes(savedGroupId)) {
+        delete this.customOrderStorage[savedGroupId];
+        cleaned = true;
+        console.log('🧹 삭제된 그룹의 순서 정보 정리:', savedGroupId);
+      }
+    });
+
+    if (cleaned) {
+      this.saveCustomOrders();
+    }
   }
 
   /**

@@ -95,9 +95,7 @@ class MiniApp {
       await this.handleProcessGroupChange(data);
     });
 
-    this.treeView.on('process-reorder', async (data) => {
-      await this.handleProcessReorder(data);
-    });
+    // process-reorder 이벤트 리스너 제거 (미니창 내부에서만 처리)
   }
 
   /**
@@ -283,6 +281,7 @@ class MiniApp {
         console.warn('유효하지 않은 메인창 데이터:', data);
         return;
       }
+
 
       console.log('🔄 메인창 데이터 처리 중:', {
         processCount: data.processes.length,
@@ -524,13 +523,13 @@ class MiniApp {
       groups.get(groupName).processes.push(processData);
     });
 
-    // 각 그룹 내의 프로세스들을 메인창과 동일한 순서로 정렬 (최신순)
+    // 각 그룹 내의 프로세스들을 오래된순으로 정렬 (모든 그룹 동일)
+    // 오래된 것이 위(인덱스 0), 새로운 것이 아래(인덱스 끝)
     groups.forEach(group => {
       group.processes.sort((a, b) => {
-        // 최신순: createdAt 기준 내림차순 (최신이 위로) - 메인창과 완전 동일
         const dateA = new Date(a.createdAt || 0);
         const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA; // 내림차순: 최신이 위로 (메인창과 동일)
+        return dateA - dateB; // 오름차순: 오래된 것이 위로, 새것이 아래로
       });
     });
 
@@ -646,9 +645,21 @@ class MiniApp {
     try {
       if (!window.electronAPI?.requestProcessDelete) return;
 
+      // 삭제 전에 해당 프로세스를 찾아서 그룹 정보 확인
+      const processInfo = this.treeView?.getProcessById(processId);
+
       const result = await window.electronAPI.requestProcessDelete(processId);
       console.log(result, "result")
+
       if (result.success) {
+        // 삭제 성공 시 순서 정보에서도 제거
+        if (processInfo && this.treeView) {
+          const groupId = this.findProcessGroupId(processId);
+          if (groupId) {
+            this.treeView.removeProcessFromCustomOrder(processId, groupId);
+          }
+        }
+
         this.showNotification('프로세스가 삭제되었습니다.', 'success');
       } else {
         this.showNotification('삭제에 실패했습니다.', 'error');
@@ -660,10 +671,33 @@ class MiniApp {
   }
 
   /**
+   * 프로세스가 속한 그룹 ID 찾기
+   */
+  findProcessGroupId(processId) {
+    if (!this.treeView?.groups) return null;
+
+    for (const group of this.treeView.groups) {
+      if (group.processes.some(p => p.id === processId)) {
+        return group.id;
+      }
+    }
+    return null;
+  }
+
+  /**
    * 프로세스 그룹 변경 처리
    */
   async handleProcessGroupChange(data) {
     try {
+      // 그룹 변경 시 순서 정보 정리
+      if (this.treeView && data.fromGroupId !== data.toGroupId) {
+        // 1. 기존 그룹의 순서 정보에서 해당 프로세스 제거
+        this.treeView.removeProcessFromCustomOrder(data.processId, data.fromGroupId);
+
+        // 2. 대상 그룹의 순서 정보에서도 해당 프로세스 제거 (기본 정렬로 배치되도록)
+        this.treeView.removeProcessFromTargetGroupOrder(data.processId, data.toGroupId);
+      }
+
       const result = await this.groupManager.changeProcessGroup(
         data.processId,
         data.fromGroupId,
@@ -672,7 +706,7 @@ class MiniApp {
 
       if (result.success) {
         // 성공 시에는 조용히 처리 (메인창에서 이미 알림)
-        console.log('✅ 프로세스 그룹 변경 성공');
+        console.log('✅ 프로세스 그룹 변경 성공 - 순서 정보 정리 완료');
       } else {
         this.showNotification(result.error || '그룹 변경 실패', 'error');
       }
@@ -683,26 +717,15 @@ class MiniApp {
   }
 
   /**
-   * 프로세스 순서 변경 처리
+   * 프로세스 순서 변경 처리 (미니창 내부에서만)
    */
   async handleProcessReorder(data) {
-    try {
-      const result = await this.groupManager.reorderProcess(
-        data.groupId,
-        data.processId,
-        data.newIndex
-      );
+    console.log('🔄 미니창 내부 순서 변경:', data);
 
-      if (result.success) {
-        // 성공 시에는 조용히 처리
-        console.log('✅ 프로세스 순서 변경 성공');
-      } else {
-        this.showNotification(result.error || '순서 변경 실패', 'error');
-      }
-    } catch (error) {
-      console.error('프로세스 순서 변경 실패:', error);
-      this.showNotification('순서 변경 오류', 'error');
-    }
+    // 미니창에서만 순서 변경, 메인창으로는 요청 보내지 않음
+    // TreeView에서 이미 UI 업데이트가 완료됨
+
+    console.log('✅ 미니창 프로세스 순서 변경 완료');
   }
 
 
@@ -908,6 +931,20 @@ class MiniApp {
     if (event.ctrlKey && event.key === 'c' && this.selectedProcessId) {
       event.preventDefault();
       this.handleProcessCopy(this.selectedProcessId);
+      return;
+    }
+
+    // ArrowUp: 선택된 프로세스 위로 이동
+    if (event.key === 'ArrowUp' && this.selectedProcessId && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      this.treeView?.handleProcessMoveUp(this.selectedProcessId);
+      return;
+    }
+
+    // ArrowDown: 선택된 프로세스 아래로 이동
+    if (event.key === 'ArrowDown' && this.selectedProcessId && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      this.treeView?.handleProcessMoveDown(this.selectedProcessId);
       return;
     }
   }
