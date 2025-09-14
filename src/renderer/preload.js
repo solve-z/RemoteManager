@@ -201,7 +201,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /**
    * 버전 정보
    */
-  version: '1.2.0',
+  version: '2.1.0',
 
   /**
    * 플랫폼 정보

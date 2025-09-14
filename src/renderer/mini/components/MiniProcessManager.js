@@ -76,6 +76,7 @@ export class MiniProcessManager {
     const dialog = document.getElementById('mini-process-dialog');
     const title = document.getElementById('mini-process-dialog-title');
     const labelInput = document.getElementById('mini-process-label');
+    const processInfo = document.getElementById('process-info');
 
     if (!dialog || !title || !labelInput) {
       console.error('프로세스 편집 다이얼로그 요소를 찾을 수 없습니다.');
@@ -87,6 +88,14 @@ export class MiniProcessManager {
 
     title.textContent = '프로세스 편집';
     labelInput.value = process.customLabel || '';
+
+    // 선택한 process 정보 
+    let displayInfo = process.computerName || ''; // 컴퓨터 이름 기본값 설정
+    if (process.ip) { // IP 정보가 있을 경우
+      displayInfo += `[${process.ip}]`; // "[IP]" 형식으로 추가
+    }
+    processInfo.textContent = displayInfo; 
+
 
     // 현재 카테고리 선택
     const currentCategory = process.category || 'uncategorized';

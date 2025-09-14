@@ -482,7 +482,7 @@ export class GroupStore {
   save() {
     try {
       const data = {
-        version: '4.1', // 안정적 키 지원 버전
+        version: '2.1.0', 
         groups: Array.from(this.groups.values()),
         stableKeyGroupMap: Array.from(this.stableKeyGroupMap.entries()),
         stableKeyCategoryMap: Array.from(this.stableKeyCategoryMap.entries()),
@@ -508,7 +508,7 @@ export class GroupStore {
    */
   exportData() {
     return {
-      version: '1.2.0',
+      version: '2.1.0',
       timestamp: new Date().toISOString(),
       groups: Array.from(this.groups.values()),
     };
