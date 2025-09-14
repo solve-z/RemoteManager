@@ -1214,6 +1214,100 @@
   background: #c82333;
 }
 
+/* ==================== 카테고리 선택기 ==================== */
+
+.category-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.category-option {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  padding: 2px;
+}
+
+.category-option:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.category-option.selected {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 50px;
+  cursor: inherit;
+  transition: all 0.2s ease;
+}
+
+/* 카테고리별 배지 색상 */
+.category-badge.category-uncategorized {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
+.category-badge.category-xray {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #90caf9;
+}
+
+.category-badge.category-new-server {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+.category-badge.category-old-server {
+  background: #fce4ec;
+  color: #c2185b;
+  border: 1px solid #f48fb1;
+}
+
+.category-badge.category-other-server {
+  background: #fff3e0;
+  color: #f57c00;
+  border: 1px solid #ffcc02;
+}
+
+/* 선택된 카테고리 배지 하이라이트 */
+.category-option.selected .category-badge {
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 폼 도움말 텍스트 */
+.form-help {
+  display: block;
+  font-size: 10px;
+  color: #6c757d;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* 프로세스 다이얼로그 전용 스타일 */
+.mini-process-dialog .modal-content {
+  min-width: 320px;
+}
+
+.mini-process-dialog .form-group {
+  margin-bottom: 20px;
+}
+
 /* ==================== 반응형 ==================== */
 
 @media (max-width: 300px) {

@@ -317,6 +317,26 @@ function registerIpcHandlers() {
 
             ipcMain.on('group-action-response', responseHandler);
           });
+        } else if (actionData && actionData.type === 'process-management') {
+          // 프로세스 관리 액션인 경우
+          return new Promise((resolve) => {
+            console.log('🎯 미니창에서 프로세스 관리 액션 요청:', actionData);
+            mainWindow.webContents.send('request-process-action-from-mini', actionData);
+
+            // 응답 대기 (5초 타임아웃)
+            const timeout = setTimeout(() => {
+              resolve({ success: false, error: '프로세스 액션 요청 타임아웃' });
+            }, 5000);
+
+            // 한번만 응답 받기
+            const responseHandler = (event, result) => {
+              clearTimeout(timeout);
+              ipcMain.removeListener('process-action-response', responseHandler);
+              resolve(result);
+            };
+
+            ipcMain.on('process-action-response', responseHandler);
+          });
         } else {
           // 기존 새로고침 요청
           mainWindow.webContents.send('request-refresh-from-mini');

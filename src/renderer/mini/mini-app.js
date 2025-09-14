@@ -6,6 +6,7 @@
 import { MiniTreeView } from './MiniTreeView.js';
 import { ConflictNotification } from './components/ConflictNotification.js';
 import { MiniGroupManager } from './components/MiniGroupManager.js';
+import { MiniProcessManager } from './components/MiniProcessManager.js';
 /**
  * 미니창 애플리케이션 클래스
  */
@@ -18,6 +19,7 @@ class MiniApp {
     this.isCollapsed = false;
     this.conflictNotification = new ConflictNotification();
     this.groupManager = null;
+    this.processManager = null;
   }
 
   /**
@@ -65,6 +67,9 @@ class MiniApp {
     // GroupManager 초기화
     this.groupManager = new MiniGroupManager(this);
 
+    // ProcessManager 초기화
+    this.processManager = new MiniProcessManager(this);
+
     // TreeView 이벤트 리스너
     this.treeView.on('process-selected', (processId) => {
       this.handleProcessSelection(processId);
@@ -93,6 +98,10 @@ class MiniApp {
 
     this.treeView.on('process-group-change', async (data) => {
       await this.handleProcessGroupChange(data);
+    });
+
+    this.treeView.on('process-edit', (process) => {
+      this.handleProcessEdit(process);
     });
 
     // process-reorder 이벤트 리스너 제거 (미니창 내부에서만 처리)
@@ -728,6 +737,18 @@ class MiniApp {
     console.log('✅ 미니창 프로세스 순서 변경 완료');
   }
 
+  /**
+   * 프로세스 편집 처리
+   */
+  handleProcessEdit(process) {
+    console.log('✏️ 프로세스 편집 요청:', process);
+    if (this.processManager) {
+      this.processManager.showEditProcessDialog(process);
+    } else {
+      console.error('ProcessManager가 초기화되지 않았습니다.');
+    }
+  }
+
 
 
   /**
@@ -1123,6 +1144,11 @@ class MiniApp {
     if (this.conflictNotification) {
       this.conflictNotification.destroy();
       this.conflictNotification = null;
+    }
+
+    if (this.processManager) {
+      this.processManager.destroy();
+      this.processManager = null;
     }
   }
 

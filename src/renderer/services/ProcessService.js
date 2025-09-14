@@ -375,6 +375,75 @@ export class ProcessService {
   }
 
   /**
+   * 프로세스 정보 업데이트 (라벨, 카테고리)
+   * @param {string} processId - 프로세스 ID
+   * @param {string} customLabel - 커스텀 라벨
+   * @param {string} category - 카테고리
+   * @returns {boolean} 업데이트 성공 여부
+   */
+  updateProcessInfo(processId, customLabel, category) {
+    try {
+      const process = this.processStore.getProcess(processId);
+      if (!process) {
+        console.error('프로세스를 찾을 수 없습니다:', processId);
+        return false;
+      }
+
+      console.log('✏️ 프로세스 정보 업데이트 시작:', {
+        processId,
+        currentLabel: process.customLabel,
+        newLabel: customLabel,
+        currentCategory: process.category,
+        newCategory: category
+      });
+
+      // ProcessStore에서 프로세스 정보 업데이트
+      const success = this.processStore.updateProcessInfo(processId, {
+        customLabel,
+        category
+      });
+
+      if (success) {
+        // 안정적 키 기반 설정도 업데이트 (GroupStore 사용)
+        if (this.groupStore) {
+          const stableKey = KeyManager.getStableIdentifier(process);
+
+          // 카테고리 매핑 업데이트
+          if (category && category !== 'uncategorized') {
+            this.groupStore.stableKeyCategoryMap.set(stableKey, category);
+          } else {
+            this.groupStore.stableKeyCategoryMap.delete(stableKey);
+          }
+
+          // GroupStore 저장
+          this.groupStore.save();
+
+          console.log('🔄 안정적 키 기반 카테고리 매핑 업데이트:', {
+            stableKey,
+            category,
+            totalMappings: this.groupStore.stableKeyCategoryMap.size
+          });
+        }
+
+        // 라벨 업데이트 이벤트 발생 (미니창 동기화용)
+        window.dispatchEvent(new CustomEvent('process-label-updated', {
+          detail: { processId, customLabel, category }
+        }));
+
+        this.notificationService?.showSuccess('프로세스 정보가 업데이트되었습니다.');
+      } else {
+        this.notificationService?.showError('프로세스 정보 업데이트에 실패했습니다.');
+      }
+
+      return success;
+    } catch (error) {
+      console.error('프로세스 정보 업데이트 실패:', error);
+      this.notificationService?.showError('프로세스 정보 업데이트 실패', error.message);
+      return false;
+    }
+  }
+
+  /**
    * 프로세스 통계 정보 가져오기
    * @returns {Object} 통계 정보
    */

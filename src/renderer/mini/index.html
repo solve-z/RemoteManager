@@ -216,6 +216,48 @@
         </div>
     </div>
 
+    <!-- 프로세스 편집 다이얼로그 -->
+    <div id="mini-process-dialog" class="mini-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="mini-process-dialog-title">프로세스 편집</h3>
+                <button id="mini-process-dialog-close" class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="mini-process-label">커스텀 라벨</label>
+                    <input type="text" id="mini-process-label" placeholder="프로세스 라벨을 입력하세요" class="form-input" maxlength="100">
+                    <small class="form-help">프로세스에 표시할 사용자 정의 라벨입니다</small>
+                </div>
+                <div class="form-group">
+                    <label>카테고리</label>
+                    <div id="mini-category-picker" class="category-picker">
+                        <div class="category-option selected" data-category="uncategorized" title="미분류">
+                            <span class="category-badge category-uncategorized">미분류</span>
+                        </div>
+                        <div class="category-option" data-category="xray" title="엑스레이">
+                            <span class="category-badge category-xray">엑스레이</span>
+                        </div>
+                        <div class="category-option" data-category="new-server" title="새서버">
+                            <span class="category-badge category-new-server">새서버</span>
+                        </div>
+                        <div class="category-option" data-category="old-server" title="구서버">
+                            <span class="category-badge category-old-server">구서버</span>
+                        </div>
+                        <div class="category-option" data-category="other-server" title="타서버">
+                            <span class="category-badge category-other-server">타서버</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="mini-process-save" class="btn btn-primary">저장</button>
+                <button id="mini-process-cancel" class="btn btn-secondary">취소</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript 모듈 로드 -->
     <script type="module" src="mini-app.js"></script>
 </body>

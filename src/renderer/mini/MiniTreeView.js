@@ -101,7 +101,9 @@ export class MiniTreeView extends EventEmitter {
         event.stopPropagation(); // 이벤트 전파 방지
         console.log('🎯 액션 버튼 클릭:', actionBtn.className, processId);
 
-        if (actionBtn.classList.contains('move-up-btn')) {
+        if (actionBtn.classList.contains('edit-process-btn')) {
+          this.handleProcessEdit(processId);
+        } else if (actionBtn.classList.contains('move-up-btn')) {
           this.handleProcessMoveUp(processId);
         } else if (actionBtn.classList.contains('move-down-btn')) {
           this.handleProcessMoveDown(processId);
@@ -318,6 +320,7 @@ export class MiniTreeView extends EventEmitter {
           </div>
         </div>
         <div class="process-actions">
+          <button class="action-btn edit-process-btn" title="프로세스 수정">✏️</button>
           <button class="action-btn move-up-btn" title="위로 이동">🔼</button>
           <button class="action-btn move-down-btn" title="아래로 이동">🔽</button>
           ${deleteButton}
@@ -578,6 +581,18 @@ export class MiniTreeView extends EventEmitter {
   handleProcessDelete(processId) {
     this.selectProcess(processId);
     this.emit('process-delete', processId);
+  }
+
+  /**
+   * 프로세스 편집 처리
+   */
+  handleProcessEdit(processId) {
+    console.log('✏️ MiniTreeView 프로세스 편집 요청:', processId);
+    this.selectProcess(processId);
+    const process = this.getProcessById(processId);
+    if (process) {
+      this.emit('process-edit', process);
+    }
   }
 
 

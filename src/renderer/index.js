@@ -330,6 +330,14 @@ class RemoteManagerApp {
       });
     }
 
+    // 미니창에서 프로세스 액션 요청했을 때 처리
+    if (window.electronAPI && window.electronAPI.onProcessActionRequest) {
+      window.electronAPI.onProcessActionRequest((actionData) => {
+        console.log('🎯 미니창에서 프로세스 액션 요청 받음:', actionData);
+        this.handleProcessActionFromMini(actionData);
+      });
+    }
+
     // 사이드바 리사이저 기능
     this.setupSidebarResizer();
 
@@ -432,7 +440,57 @@ class RemoteManagerApp {
     }
   }
 
+  /**
+   * 미니창에서 받은 프로세스 액션 처리
+   * @param {Object} actionData - 액션 데이터 { action, data }
+   */
+  async handleProcessActionFromMini(actionData) {
+    try {
+      const { action, data } = actionData;
+      let result = { success: false, error: 'Unknown action' };
 
+      switch (action) {
+        case 'update':
+          console.log('✏️ 미니창에서 프로세스 업데이트 요청:', data);
+          const updateSuccess = await this.services.process.updateProcessInfo(
+            data.processId,
+            data.customLabel,
+            data.category
+          );
+          result = { success: updateSuccess };
+          break;
+
+        default:
+          console.warn('알 수 없는 프로세스 액션:', action);
+      }
+
+      // 성공 시 미니창에 최신 데이터 전송
+      if (result.success) {
+        setTimeout(() => {
+          this.sendDataToMiniWindow();
+        }, 150);
+      }
+
+      // 메인 프로세스에 결과 응답
+      if (window.electronAPI && window.electronAPI.sendProcessActionResponse) {
+        console.log('📤 메인창에서 프로세스 액션 응답 전송:', result);
+        window.electronAPI.sendProcessActionResponse(result);
+      } else {
+        console.error('❌ sendProcessActionResponse API를 찾을 수 없습니다.');
+      }
+
+    } catch (error) {
+      console.error('미니창 프로세스 액션 처리 실패:', error);
+      const errorResult = { success: false, error: error.message };
+
+      if (window.electronAPI && window.electronAPI.sendProcessActionResponse) {
+        console.log('📤 메인창에서 프로세스 액션 에러 응답 전송:', errorResult);
+        window.electronAPI.sendProcessActionResponse(errorResult);
+      } else {
+        console.error('❌ sendProcessActionResponse API를 찾을 수 없습니다. (에러 케이스)');
+      }
+    }
+  }
 
   /**
    * 사이드바 리사이저 설정

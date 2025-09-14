@@ -183,6 +183,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
+   * 프로세스 액션 요청 수신 (메인창에서 사용)
+   * @param {Function} callback - 프로세스 액션 요청 콜백
+   */
+  onProcessActionRequest: (callback) => {
+    ipcRenderer.on('request-process-action-from-mini', (event, actionData) => callback(actionData));
+  },
+
+  /**
+   * 프로세스 액션 응답 전송 (메인창에서 사용)
+   * @param {Object} result - 프로세스 액션 결과
+   */
+  sendProcessActionResponse: (result) => {
+    ipcRenderer.send('process-action-response', result);
+  },
+
+  /**
    * 버전 정보
    */
   version: '1.2.0',

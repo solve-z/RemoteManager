@@ -547,6 +547,16 @@ export class ProcessStore {
     return false;
   }
 
+  /**
+   * 프로세스 정보 업데이트 (라벨, 카테고리 등)
+   * @param {string} processId - 프로세스 ID
+   * @param {Object} updates - 업데이트할 정보
+   * @returns {boolean} 업데이트 성공 여부
+   */
+  updateProcessInfo(processId, updates) {
+    return this.updateProcessSettings(processId, updates);
+  }
+
   getProcess(processId) {
     return this.processes.get(processId) || null;
   }
