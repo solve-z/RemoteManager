@@ -180,7 +180,7 @@ class MiniApp {
       this.hideContextMenu();
 
       // 빈 화면 클릭 시 프로세스 선택 해제
-      const processContainer = event.target.closest('.process-item, .group-header, .mini-button, .mini-panel, .mini-context-menu');
+      const processContainer = event.target.closest('.process-item, .process-node, .group-header, .mini-button, .mini-panel, .mini-context-menu');
       if (!processContainer && this.selectedProcessId) {
         this.treeView?.selectProcess(null);
       }
