@@ -66,13 +66,28 @@ export class MiniGroupManager {
       }
     });
 
-    // Esc 키로 다이얼로그 닫기
+    // 키보드 이벤트로 다이얼로그 제어
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (document.getElementById('mini-group-dialog').style.display !== 'none') {
+      const groupDialog = document.getElementById('mini-group-dialog');
+      const confirmDialog = document.getElementById('mini-confirm-dialog');
+
+      if (groupDialog && groupDialog.style.display !== 'none') {
+        // 그룹 다이얼로그가 열려있을 때
+        if (e.key === 'Escape') {
+          e.preventDefault();
           this.hideGroupDialog();
-        } else if (document.getElementById('mini-confirm-dialog').style.display !== 'none') {
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleSaveGroup();
+        }
+      } else if (confirmDialog && confirmDialog.style.display !== 'none') {
+        // 확인 다이얼로그가 열려있을 때
+        if (e.key === 'Escape') {
+          e.preventDefault();
           this.hideConfirmDialog();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleConfirmYes();
         }
       }
     });

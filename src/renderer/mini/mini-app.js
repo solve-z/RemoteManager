@@ -904,12 +904,6 @@ class MiniApp {
       return;
     }
 
-    // Ctrl+W: 창 닫기
-    if (event.ctrlKey && event.key === 'w') {
-      event.preventDefault();
-      this.closeWindow();
-      return;
-    }
 
     // F5 또는 Ctrl+R: 새로고침
     if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
@@ -932,13 +926,6 @@ class MiniApp {
       return;
     }
 
-    // 숫자키 1-9: 첫 번째부터 9번째 프로세스로 빠른 포커스
-    if (event.key >= '1' && event.key <= '9' && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-      event.preventDefault();
-      const index = parseInt(event.key) - 1;
-      this.focusProcessByIndex(index);
-      return;
-    }
 
     // Space: 선택된 프로세스 포커스
     if (event.key === ' ' && this.selectedProcessId) {
@@ -947,12 +934,6 @@ class MiniApp {
       return;
     }
 
-    // Enter: 선택된 프로세스 포커스
-    if (event.key === 'Enter' && this.selectedProcessId) {
-      event.preventDefault();
-      this.handleProcessFocus(this.selectedProcessId);
-      return;
-    }
 
     // Ctrl+C: 선택된 프로세스 정보 복사
     if (event.ctrlKey && event.key === 'c' && this.selectedProcessId) {
@@ -997,24 +978,6 @@ class MiniApp {
     }
   }
 
-  /**
-   * 인덱스로 프로세스 포커스
-   */
-  focusProcessByIndex(index) {
-    if (!this.treeView) return;
-
-    let processIndex = 0;
-    for (const group of this.treeView.groups) {
-      for (const process of group.processes) {
-        if (processIndex === index) {
-          this.treeView.selectProcess(process.id);
-          this.handleProcessFocus(process.id);
-          return;
-        }
-        processIndex++;
-      }
-    }
-  }
 
   /**
    * 모든 표시된 프로세스 목록 반환

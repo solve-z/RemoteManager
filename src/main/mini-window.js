@@ -20,6 +20,8 @@ export class MiniWindowManager {
     this.isCollapsed = false;
     this.originalBounds = null;
     this.titleBarHeight = 39; // 타이틀바 높이 (시스템 최소 높이에 맞춤)
+    this.lastCollapsedPosition = null; // 마지막으로 접었을 때의 위치
+    this.currentUserPosition = null; // 접힌 상태에서 사용자가 이동한 위치
   }
 
   /**
@@ -196,26 +198,38 @@ export class MiniWindowManager {
   collapseWindow() {
     if (!this.miniWindow || this.isCollapsed) return;
 
-    // 현재 크기 저장
+    // 접기 전에 현재 위치를 lastCollapsedPosition에 저장
+    this.lastCollapsedPosition = this.miniWindow.getBounds();
+
+    // 현재 크기 저장 (기존 로직)
     this.originalBounds = this.miniWindow.getBounds();
 
     // DPI 스케일링 고려한 정확한 높이 계산
     const scaleFactor = this.miniWindow.webContents.getZoomFactor();
     const adjustedHeight = Math.ceil(this.titleBarHeight / scaleFactor);
 
-    // 타이틀바 높이로 축소 - DPI 고려
-    const collapsedBounds = {
-      x: this.originalBounds.x,
-      y: this.originalBounds.y,
-      width: this.originalBounds.width,
-      height: adjustedHeight
-    };
+    // currentUserPosition이 있으면 그 위치로 이동 후 접기
+    if (this.currentUserPosition) {
+      const collapsedBounds = {
+        x: this.currentUserPosition.x,
+        y: this.currentUserPosition.y,
+        width: this.originalBounds.width,
+        height: adjustedHeight
+      };
+      this.miniWindow.setBounds(collapsedBounds);
+    } else {
+      // 현재 위치에서 접기
+      const collapsedBounds = {
+        x: this.originalBounds.x,
+        y: this.originalBounds.y,
+        width: this.originalBounds.width,
+        height: adjustedHeight
+      };
+      this.miniWindow.setBounds(collapsedBounds);
+    }
 
-    // 시스템 최소 높이에 맞춰서 간단하게 설정
-    this.miniWindow.setBounds(collapsedBounds);
-    
     this.isCollapsed = true;
-    
+
   }
 
   /**
@@ -224,21 +238,34 @@ export class MiniWindowManager {
   expandWindow() {
     if (!this.miniWindow || !this.isCollapsed) return;
 
+    // 펼치기 전에 현재 위치 저장 (사용자가 드래그한 B 위치)
+    const currentPosition = this.miniWindow.getBounds();
+    this.currentUserPosition = { ...currentPosition };
+
     // 최소 크기 제한 복원 (39px로 수정)
     this.miniWindow.setMinimumSize(280, 39);
 
-    if (this.originalBounds) {
+    // 원래 접었던 위치(A)에서 펼치기
+    if (this.lastCollapsedPosition) {
+      const expandedBounds = {
+        x: this.lastCollapsedPosition.x,
+        y: this.lastCollapsedPosition.y,
+        width: this.originalBounds ? this.originalBounds.width : 350,
+        height: this.originalBounds ? this.originalBounds.height : 500
+      };
+      this.miniWindow.setBounds(expandedBounds);
+    } else if (this.originalBounds) {
       this.miniWindow.setBounds(this.originalBounds);
     } else {
-      // 원래 크기가 없으면 기본 크기로 복원
+      // 기본 크기로 복원
       this.miniWindow.setBounds({
-        x: this.miniWindow.getBounds().x,
-        y: this.miniWindow.getBounds().y,
+        x: currentPosition.x,
+        y: currentPosition.y,
         width: 350,
         height: 500
       });
     }
-    
+
     this.isCollapsed = false;
   }
 

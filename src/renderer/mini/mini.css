@@ -557,23 +557,29 @@
 
 /* 도움말 패널 스타일 */
 .help-panel {
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
   border-bottom: 1px solid #dee2e6;
-  padding: 8px;
+  border-top: 1px solid #e9ecef;
+  padding: 12px;
   flex-shrink: 0;
   transition: all 0.3s ease;
   max-height: 0;
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .help-panel:not([style*='display: none']) {
-  max-height: 250px;
+  max-height: 280px;
 }
 
 .help-content h4 {
-  margin: 0 0 8px 0;
-  font-size: 11px;
-  color: #495057;
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #343a40;
+  font-weight: 700;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e9ecef;
 }
 
 .help-shortcuts {
@@ -585,26 +591,35 @@
 .shortcut-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 9px;
-  padding: 2px 0;
+  gap: 8px;
+  font-size: 11px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.shortcut-item:hover {
+  background-color: #f1f3f4;
 }
 
 .shortcut-item kbd {
-  background: #e9ecef;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border: 1px solid #ced4da;
-  border-radius: 3px;
-  padding: 1px 4px;
-  font-family: monospace;
-  font-size: 8px;
-  min-width: 20px;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-family: 'Segoe UI', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 24px;
   text-align: center;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  color: #495057;
 }
 
 .shortcut-item span {
-  color: #6c757d;
+  color: #343a40;
   flex: 1;
+  font-weight: 500;
 }
 
 /* 상태 표시 개선 */

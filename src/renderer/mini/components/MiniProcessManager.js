@@ -50,13 +50,19 @@ export class MiniProcessManager {
       }
     });
 
-    // Esc 키로 다이얼로그 닫기
+    // 키보드 이벤트로 다이얼로그 제어
     document.addEventListener('keydown', (e) => {
+      const processDialog = document.getElementById('mini-process-dialog');
+      const isDialogOpen = processDialog && processDialog.style.display !== 'none';
+
+      if (!isDialogOpen) return;
+
       if (e.key === 'Escape') {
-        const processDialog = document.getElementById('mini-process-dialog');
-        if (processDialog && processDialog.style.display !== 'none') {
-          this.hideProcessDialog();
-        }
+        e.preventDefault();
+        this.hideProcessDialog();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleSaveProcess();
       }
     });
 

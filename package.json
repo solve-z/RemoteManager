@@ -5,7 +5,7 @@
   "main": "src/main/main.js",
   "type": "module",
   "scripts": {
-    "dev": "electron src/main/main.js --dev",
+    "dev": "chcp 65001 >NUL && electron src/main/main.js --dev",
     "start": "electron src/main/main.js",
     "test": "jest",
     "test:watch": "jest --watch",
