@@ -1207,6 +1207,14 @@
   font-size: 12px;
   color: #6b7280;
   flex-wrap: wrap;
+  min-height: 16px; /* 내용이 없어도 최소 높이 보장 */
+}
+
+/* 미니창에서 화면 크기가 일정 이상일 때 자리 유지 */
+@media (min-width: 400px) {
+  .tree-container .process-details {
+    min-height: 18px; /* 미니창에서 더 명확한 자리 차지 */
+  }
 }
 
 .process-type {

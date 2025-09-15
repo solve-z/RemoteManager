@@ -76,11 +76,11 @@ export class MiniTreeView extends EventEmitter {
    * 이벤트 리스너 설정
    */
   setupEventListeners() {
-    this.container.addEventListener('click', (e) => {
+    this.container.addEventListener('click', e => {
       this.handleClick(e);
     });
 
-    this.container.addEventListener('dblclick', (e) => {
+    this.container.addEventListener('dblclick', e => {
       this.handleDoubleClick(e);
     });
   }
@@ -208,7 +208,7 @@ export class MiniTreeView extends EventEmitter {
     console.log('📋 그룹 데이터 업데이트:', {
       총그룹수: groups.length,
       펼쳐진그룹: Array.from(this.expandedGroups),
-      이전상태: Array.from(previousExpandedState)
+      이전상태: Array.from(previousExpandedState),
     });
 
     await this.render();
@@ -251,15 +251,20 @@ export class MiniTreeView extends EventEmitter {
   renderGroup(group) {
     const isExpanded = this.expandedGroups.has(group.id);
     const processCount = group.processes.length;
-    const colorIndicator = group.color ? `<div class="group-color-indicator" style="background-color: ${group.color};"></div>` : '';
+    const colorIndicator = group.color
+      ? `<div class="group-color-indicator" style="background-color: ${group.color};"></div>`
+      : '';
 
     // 그룹없음이 아닌 경우에만 그룹 관리 버튼 표시
-    const groupActions = (group.name !== '그룹없음' && group.id !== 'ungrouped') ? `
+    const groupActions =
+      group.name !== '그룹없음' && group.id !== 'ungrouped'
+        ? `
       <div class="group-actions">
         <button class="group-action-btn edit-group-btn" title="그룹 수정" data-group-id="${group.id}">✏️</button>
         <button class="group-action-btn delete-group-btn" title="그룹 삭제" data-group-id="${group.id}">🗑️</button>
       </div>
-    ` : '';
+    `
+        : '';
 
     const groupHeader = `
       <div class="group-header ${isExpanded ? 'expanded' : ''}"
@@ -288,7 +293,6 @@ export class MiniTreeView extends EventEmitter {
     `;
   }
 
-
   /**
    * 프로세스 렌더링
    */
@@ -297,8 +301,10 @@ export class MiniTreeView extends EventEmitter {
     const statusIcon = this.getStatusIcon(process.status);
     const processType = this.getProcessTypeLabel(process.type);
     const categoryClass = this.getCategoryClass(process.category);
-    const deleteButton = process.status === 'disconnected' ?
-      `<button class="action-btn delete-btn" title="삭제">🗑️</button>` : '';
+    const deleteButton =
+      process.status === 'disconnected'
+        ? `<button class="action-btn delete-btn" title="삭제">🗑️</button>`
+        : '';
 
     return `
       <div class="process-node ${categoryClass} ${isSelected ? 'selected' : ''}"
@@ -334,7 +340,8 @@ export class MiniTreeView extends EventEmitter {
    */
   getStatusIcon(status) {
     switch (status) {
-      default: return ''; // 흰색 원 완전 제거
+      default:
+        return ''; // 흰색 원 완전 제거
     }
   }
 
@@ -343,9 +350,12 @@ export class MiniTreeView extends EventEmitter {
    */
   getStatusClass(status) {
     switch (status) {
-      case 'connected': return 'connected';
-      case 'disconnected': return 'disconnected';
-      default: return 'unknown';
+      case 'connected':
+        return 'connected';
+      case 'disconnected':
+        return 'disconnected';
+      default:
+        return 'unknown';
     }
   }
 
@@ -356,9 +366,12 @@ export class MiniTreeView extends EventEmitter {
     // 미니창에서는 축약형 사용 (공간 절약)
     const normalizedType = type?.toLowerCase();
     switch (normalizedType) {
-      case 'ezhelp': return 'EZ';
-      case 'teamviewer': return 'TV';
-      default: return '??';
+      case 'ezhelp':
+        return 'EZ';
+      case 'teamviewer':
+        return 'TV';
+      default:
+        return '??';
     }
   }
 
@@ -376,16 +389,16 @@ export class MiniTreeView extends EventEmitter {
    */
   getCategoryDisplayName(category) {
     if (!category) return '미분류';
-    
+
     const categoryMap = {
       'old-server': '구서버',
       'new-server': '새서버',
       'x-ray': '엑스레이',
-      'xray': '엑스레이',
+      xray: '엑스레이',
       'other-server': '타서버',
       'another-server': '타서버',
       'external-server': '타서버',
-      'uncategorized': '미분류'
+      uncategorized: '미분류',
     };
 
     const normalizedCategory = category.toLowerCase().replace(/[_\s]/g, '-');
@@ -398,7 +411,7 @@ export class MiniTreeView extends EventEmitter {
   formatProcessName(process) {
     // 기본 정보 생성
     let baseInfo = '';
-    
+
     // ezHelp인 경우 실시간 데이터로 직접 조합
     if (process.type === 'ezhelp') {
       const computerName = process.computerName;
@@ -414,7 +427,7 @@ export class MiniTreeView extends EventEmitter {
       } else {
         baseInfo = 'Unknown Process';
       }
-    } 
+    }
     // TeamViewer인 경우
     else if (process.type === 'teamviewer') {
       const computerName = process.computerName;
@@ -426,14 +439,10 @@ export class MiniTreeView extends EventEmitter {
     }
     // 기본값
     else {
-      baseInfo = process.windowTitle || process.processName || 'Unknown Process';
+      baseInfo =
+        process.windowTitle || process.processName || 'Unknown Process';
     }
 
-    // 라벨이 있으면 기본 정보 + 라벨 형태로 표시
-    if (process.customLabel) {
-      return this.escapeHtml(`${baseInfo} - ${process.customLabel}`);
-    }
-    
     return this.escapeHtml(baseInfo);
   }
 
@@ -452,15 +461,15 @@ export class MiniTreeView extends EventEmitter {
     // 카테고리 정보가 있으면 표시 (uncategorized 제외)
     if (process.category && process.category !== 'uncategorized') {
       const categoryDisplayName = this.getCategoryDisplayName(process.category);
-      details.push(`카테고리: ${categoryDisplayName}`);
+      details.push(`📂${categoryDisplayName}`);
     }
 
-    // PID 정보 (디버깅 시 유용)
-    if (process.pid) {
-      details.push(`PID: ${process.pid}`);
+    // 라벨 정보
+    if (process.customLabel) {
+      details.push(`🏷️${process.customLabel}`);
     }
 
-    return details.join(' • ');
+    return details.join(' ');
   }
 
   /**
@@ -480,7 +489,9 @@ export class MiniTreeView extends EventEmitter {
    * 그룹 표시/숨김 업데이트
    */
   updateGroupVisibility(groupId) {
-    const groupContainer = this.container.querySelector(`.tree-group[data-group-id="${groupId}"]`);
+    const groupContainer = this.container.querySelector(
+      `.tree-group[data-group-id="${groupId}"]`
+    );
     if (!groupContainer) return;
 
     const header = groupContainer.querySelector('.group-header');
@@ -488,12 +499,20 @@ export class MiniTreeView extends EventEmitter {
     const toggle = header?.querySelector('.group-toggle');
 
     if (!header || !children || !toggle) {
-      console.warn('그룹 visibility 업데이트 실패 - 요소를 찾을 수 없음:', { groupId, header: !!header, children: !!children, toggle: !!toggle });
+      console.warn('그룹 visibility 업데이트 실패 - 요소를 찾을 수 없음:', {
+        groupId,
+        header: !!header,
+        children: !!children,
+        toggle: !!toggle,
+      });
       return;
     }
 
     const isExpanded = this.expandedGroups.has(groupId);
-    console.log(`🔄 그룹 ${groupId} visibility 업데이트:`, isExpanded ? '펼침' : '접힘');
+    console.log(
+      `🔄 그룹 ${groupId} visibility 업데이트:`,
+      isExpanded ? '펼침' : '접힘'
+    );
 
     if (isExpanded) {
       header.classList.add('expanded');
@@ -553,7 +572,9 @@ export class MiniTreeView extends EventEmitter {
     }
 
     // 새로운 선택
-    const newSelected = this.container.querySelector(`[data-process-id="${processId}"]`);
+    const newSelected = this.container.querySelector(
+      `[data-process-id="${processId}"]`
+    );
     if (newSelected) {
       newSelected.classList.add('selected');
       this.selectedProcessId = processId;
@@ -595,7 +616,6 @@ export class MiniTreeView extends EventEmitter {
     }
   }
 
-
   /**
    * 이벤트 바인딩
    */
@@ -611,7 +631,7 @@ export class MiniTreeView extends EventEmitter {
    */
   setupDragAndDrop() {
     // 드래그 시작
-    this.container.addEventListener('dragstart', (e) => {
+    this.container.addEventListener('dragstart', e => {
       const processNode = e.target.closest('.process-node');
       if (!processNode) return;
 
@@ -636,20 +656,27 @@ export class MiniTreeView extends EventEmitter {
       const groupId = processNode.dataset.groupId;
       const groupName = processNode.dataset.groupName;
 
-      console.log('🔥 드래그 시작:', { processId, groupId, dragFrom: e.target.className });
-
-      e.dataTransfer.setData('application/json', JSON.stringify({
+      console.log('🔥 드래그 시작:', {
         processId,
-        fromGroupId: groupId,
-        fromGroupName: groupName
-      }));
+        groupId,
+        dragFrom: e.target.className,
+      });
+
+      e.dataTransfer.setData(
+        'application/json',
+        JSON.stringify({
+          processId,
+          fromGroupId: groupId,
+          fromGroupName: groupName,
+        })
+      );
 
       e.dataTransfer.effectAllowed = 'move';
       processNode.classList.add('dragging');
     });
 
     // 드래그 종료
-    this.container.addEventListener('dragend', (e) => {
+    this.container.addEventListener('dragend', e => {
       const processNode = e.target.closest('.process-node');
       if (processNode) {
         processNode.classList.remove('dragging');
@@ -657,7 +684,7 @@ export class MiniTreeView extends EventEmitter {
     });
 
     // 드래그 오버 (드롭 존 하이라이트)
-    this.container.addEventListener('dragover', (e) => {
+    this.container.addEventListener('dragover', e => {
       e.preventDefault();
 
       // 기존 하이라이트 제거
@@ -673,7 +700,7 @@ export class MiniTreeView extends EventEmitter {
     });
 
     // 드래그 리브 (하이라이트 제거)
-    this.container.addEventListener('dragleave', (e) => {
+    this.container.addEventListener('dragleave', e => {
       // 컨테이너를 완전히 벗어났을 때만 모든 하이라이트 제거
       const rect = this.container.getBoundingClientRect();
       const x = e.clientX;
@@ -687,7 +714,7 @@ export class MiniTreeView extends EventEmitter {
     });
 
     // 드롭
-    this.container.addEventListener('drop', async (e) => {
+    this.container.addEventListener('drop', async e => {
       e.preventDefault();
 
       // 모든 드래그 하이라이트 제거
@@ -728,13 +755,16 @@ export class MiniTreeView extends EventEmitter {
         }
 
         // 같은 그룹 내에서의 순서 변경 확인 (process-node에서만)
-        if (dragData.fromGroupId === toGroupId && dropTarget.classList.contains('process-node')) {
+        if (
+          dragData.fromGroupId === toGroupId &&
+          dropTarget.classList.contains('process-node')
+        ) {
           const targetProcessId = dropTarget.dataset.processId;
           if (targetProcessId && targetProcessId !== dragData.processId) {
             console.log('프로세스 순서 변경:', {
               processId: dragData.processId,
               groupId: toGroup.id,
-              targetProcessId: targetProcessId
+              targetProcessId: targetProcessId,
             });
             await this.handleProcessReorder(dragData, dropTarget, toGroup);
             return;
@@ -752,19 +782,18 @@ export class MiniTreeView extends EventEmitter {
           fromGroupName: dragData.fromGroupName,
           toGroupId: toGroupId,
           toGroupName: toGroup.name,
-          dropTargetType: dropTarget.className
+          dropTargetType: dropTarget.className,
         });
 
         // 그룹 변경 이벤트 발생
         this.emit('process-group-change', {
           processId: dragData.processId,
           fromGroupId: dragData.fromGroupId,
-          toGroupId: toGroupId
+          toGroupId: toGroupId,
         });
 
         // 성공적인 드래그 후 200ms 동안 추가 드래그 방지
         this.lastDragTime = Date.now() + 150; // 현재 시간 + 150ms 추가
-
       } catch (error) {
         console.error('드롭 처리 실패:', error);
       }
@@ -805,8 +834,12 @@ export class MiniTreeView extends EventEmitter {
       const groupProcesses = group.processes;
 
       // 현재 인덱스 찾기
-      const dragIndex = groupProcesses.findIndex(p => p.id === dragData.processId);
-      const targetIndex = groupProcesses.findIndex(p => p.id === targetProcessId);
+      const dragIndex = groupProcesses.findIndex(
+        p => p.id === dragData.processId
+      );
+      const targetIndex = groupProcesses.findIndex(
+        p => p.id === targetProcessId
+      );
 
       if (dragIndex === -1 || targetIndex === -1 || dragIndex === targetIndex) {
         return; // 잘못된 인덱스이거나 같은 위치
@@ -816,7 +849,7 @@ export class MiniTreeView extends EventEmitter {
         processId: dragData.processId,
         groupId: group.id,
         fromIndex: dragIndex,
-        toIndex: targetIndex
+        toIndex: targetIndex,
       });
 
       // 배열에서 순서 변경
@@ -829,7 +862,6 @@ export class MiniTreeView extends EventEmitter {
 
       // UI 즉시 업데이트
       this.render();
-
     } catch (error) {
       console.error('프로세스 순서 변경 실패:', error);
     }
@@ -840,7 +872,7 @@ export class MiniTreeView extends EventEmitter {
    */
   setupGroupManagementEvents() {
     // 그룹 수정 버튼
-    this.container.addEventListener('click', (e) => {
+    this.container.addEventListener('click', e => {
       if (e.target.classList.contains('edit-group-btn')) {
         e.stopPropagation();
         const groupId = e.target.dataset.groupId;
@@ -852,7 +884,7 @@ export class MiniTreeView extends EventEmitter {
     });
 
     // 그룹 삭제 버튼
-    this.container.addEventListener('click', (e) => {
+    this.container.addEventListener('click', e => {
       if (e.target.classList.contains('delete-group-btn')) {
         e.stopPropagation();
         const groupId = e.target.dataset.groupId;
@@ -894,7 +926,7 @@ export class MiniTreeView extends EventEmitter {
   saveState() {
     return {
       expandedGroups: Array.from(this.expandedGroups),
-      selectedProcessId: this.selectedProcessId
+      selectedProcessId: this.selectedProcessId,
     };
   }
 
@@ -921,7 +953,9 @@ export class MiniTreeView extends EventEmitter {
 
     const { group, processIndex } = this.findProcessInGroups(processId);
     if (!group || processIndex <= 0) {
-      console.log('위로 이동할 수 없음: 이미 맨 위이거나 프로세스를 찾을 수 없음');
+      console.log(
+        '위로 이동할 수 없음: 이미 맨 위이거나 프로세스를 찾을 수 없음'
+      );
       return;
     }
 
@@ -936,7 +970,9 @@ export class MiniTreeView extends EventEmitter {
 
     const { group, processIndex } = this.findProcessInGroups(processId);
     if (!group || processIndex >= group.processes.length - 1) {
-      console.log('아래로 이동할 수 없음: 이미 맨 아래이거나 프로세스를 찾을 수 없음');
+      console.log(
+        '아래로 이동할 수 없음: 이미 맨 아래이거나 프로세스를 찾을 수 없음'
+      );
       return;
     }
 
@@ -961,8 +997,13 @@ export class MiniTreeView extends EventEmitter {
    */
   moveProcessInGroup(groupId, fromIndex, toIndex) {
     const group = this.groups.find(g => g.id === groupId);
-    if (!group || fromIndex < 0 || toIndex < 0 ||
-        fromIndex >= group.processes.length || toIndex >= group.processes.length) {
+    if (
+      !group ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= group.processes.length ||
+      toIndex >= group.processes.length
+    ) {
       return;
     }
 
@@ -978,7 +1019,7 @@ export class MiniTreeView extends EventEmitter {
       groupId: groupId,
       processId: movedProcess.id,
       fromIndex: fromIndex,
-      toIndex: toIndex
+      toIndex: toIndex,
     });
 
     // UI 즉시 업데이트
@@ -1003,7 +1044,10 @@ export class MiniTreeView extends EventEmitter {
    */
   saveCustomOrders() {
     try {
-      localStorage.setItem('mini-window-custom-orders', JSON.stringify(this.customOrderStorage));
+      localStorage.setItem(
+        'mini-window-custom-orders',
+        JSON.stringify(this.customOrderStorage)
+      );
     } catch (error) {
       console.error('커스텀 순서 저장 실패:', error);
     }
@@ -1023,7 +1067,8 @@ export class MiniTreeView extends EventEmitter {
    */
   removeProcessFromCustomOrder(processId, fromGroupId) {
     if (this.customOrderStorage[fromGroupId]) {
-      const processIndex = this.customOrderStorage[fromGroupId].indexOf(processId);
+      const processIndex =
+        this.customOrderStorage[fromGroupId].indexOf(processId);
       if (processIndex !== -1) {
         this.customOrderStorage[fromGroupId].splice(processIndex, 1);
 
@@ -1044,11 +1089,15 @@ export class MiniTreeView extends EventEmitter {
    */
   removeProcessFromTargetGroupOrder(processId, toGroupId) {
     if (this.customOrderStorage[toGroupId]) {
-      const processIndex = this.customOrderStorage[toGroupId].indexOf(processId);
+      const processIndex =
+        this.customOrderStorage[toGroupId].indexOf(processId);
       if (processIndex !== -1) {
         this.customOrderStorage[toGroupId].splice(processIndex, 1);
         this.saveCustomOrders();
-        console.log('🔄 대상 그룹 순서에서 프로세스 제거 (기본 정렬 적용):', { processId, toGroupId });
+        console.log('🔄 대상 그룹 순서에서 프로세스 제거 (기본 정렬 적용):', {
+          processId,
+          toGroupId,
+        });
       }
     }
   }
@@ -1068,7 +1117,9 @@ export class MiniTreeView extends EventEmitter {
 
     // 저장된 순서대로 먼저 배치
     savedOrder.forEach(savedProcessId => {
-      const processIndex = remainingProcesses.findIndex(p => p.id === savedProcessId);
+      const processIndex = remainingProcesses.findIndex(
+        p => p.id === savedProcessId
+      );
       if (processIndex !== -1) {
         reorderedProcesses.push(remainingProcesses.splice(processIndex, 1)[0]);
       }
@@ -1080,12 +1131,14 @@ export class MiniTreeView extends EventEmitter {
 
     // 더 이상 존재하지 않는 프로세스들이 저장된 순서에 있으면 정리
     const currentProcessIds = group.processes.map(p => p.id);
-    const validSavedOrder = savedOrder.filter(id => currentProcessIds.includes(id));
+    const validSavedOrder = savedOrder.filter(id =>
+      currentProcessIds.includes(id)
+    );
 
     if (validSavedOrder.length !== savedOrder.length) {
       console.log('🧹 존재하지 않는 프로세스 ID 정리:', {
         groupId: group.id,
-        removed: savedOrder.length - validSavedOrder.length
+        removed: savedOrder.length - validSavedOrder.length,
       });
       this.saveGroupOrder(group.id, validSavedOrder);
     }
@@ -1095,7 +1148,7 @@ export class MiniTreeView extends EventEmitter {
     console.log('🔄 커스텀 순서 적용:', {
       groupId: group.id,
       originalCount: group.processes.length,
-      reorderedCount: reorderedProcesses.length
+      reorderedCount: reorderedProcesses.length,
     });
   }
 
