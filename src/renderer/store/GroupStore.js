@@ -36,7 +36,7 @@ export class GroupStore {
     this.groups.set(group.id, group);
     this.save();
     this.notifyListeners();
-    
+
     return group;
   }
 
@@ -98,7 +98,7 @@ export class GroupStore {
       deletedGroupId: groupId,
       groupName: group.name,
       deletedStableKeys: keysToDelete,
-      remainingMappings: this.stableKeyGroupMap.size
+      remainingMappings: this.stableKeyGroupMap.size,
     });
 
     // 그룹 삭제
@@ -131,16 +131,18 @@ export class GroupStore {
         processId: processId,
         groupId: groupId,
         stableKey: stableKey,
-        computerName: processInfo.computerName || KeyManager.extractComputerName(processInfo),
-        type: processInfo.type || KeyManager.detectProcessType(processInfo)
+        computerName:
+          processInfo.computerName ||
+          KeyManager.extractComputerName(processInfo),
+        type: processInfo.type || KeyManager.detectProcessType(processInfo),
       });
-      
+
       if (groupId) {
         this.stableKeyGroupMap.set(stableKey, groupId);
         console.log('✅ 안정적 키 맵에 저장됨:', {
           stableKey: stableKey,
           groupId: groupId,
-          totalMappings: this.stableKeyGroupMap.size
+          totalMappings: this.stableKeyGroupMap.size,
         });
       } else {
         this.stableKeyGroupMap.delete(stableKey);
@@ -214,8 +216,9 @@ export class GroupStore {
    * @returns {Array} 그룹 배열
    */
   getAllGroups() {
-    return Array.from(this.groups.values())
-      .sort((a, b) => a.createdAt - b.createdAt);
+    return Array.from(this.groups.values()).sort(
+      (a, b) => a.createdAt - b.createdAt
+    );
   }
 
   /**
@@ -299,7 +302,7 @@ export class GroupStore {
       savedCategory: savedCategory,
       groupExists: savedGroupId ? this.groups.has(savedGroupId) : false,
       totalStableKeys: this.stableKeyGroupMap.size,
-      allStableKeys: Array.from(this.stableKeyGroupMap.keys())
+      allStableKeys: Array.from(this.stableKeyGroupMap.keys()),
     });
 
     // 그룹 정보 복원
@@ -312,13 +315,13 @@ export class GroupStore {
         console.log('✅ 그룹에 프로세스 추가됨:', {
           groupName: group.name,
           processId: process.id,
-          groupProcessCount: group.processIds.length
+          groupProcessCount: group.processIds.length,
         });
       }
     } else if (savedGroupId) {
       console.warn('⚠️ 저장된 그룹 ID가 존재하지 않음:', {
         savedGroupId: savedGroupId,
-        availableGroups: Array.from(this.groups.keys())
+        availableGroups: Array.from(this.groups.keys()),
       });
     }
 
@@ -356,7 +359,7 @@ export class GroupStore {
       console.log('🧹 고아 매핑 정리:', {
         cleanupCount: cleanupCount,
         deletedKeys: keysToDelete,
-        remainingMappings: this.stableKeyGroupMap.size
+        remainingMappings: this.stableKeyGroupMap.size,
       });
       this.save();
     }
@@ -371,15 +374,28 @@ export class GroupStore {
   getStatistics() {
     const groups = this.getAllGroups();
     const orphanedMappings = this.cleanupOrphanedMappings(); // 통계 조회 시 자동 정리
-    
+
     return {
       totalGroups: groups.length,
-      totalProcessesInGroups: groups.reduce((sum, group) => sum + group.processIds.length, 0),
-      averageProcessesPerGroup: groups.length > 0 
-        ? Math.round(groups.reduce((sum, group) => sum + group.processIds.length, 0) / groups.length * 10) / 10
-        : 0,
-      largestGroup: groups.reduce((max, group) => 
-        group.processIds.length > (max?.processIds?.length || 0) ? group : max, null),
+      totalProcessesInGroups: groups.reduce(
+        (sum, group) => sum + group.processIds.length,
+        0
+      ),
+      averageProcessesPerGroup:
+        groups.length > 0
+          ? Math.round(
+              (groups.reduce((sum, group) => sum + group.processIds.length, 0) /
+                groups.length) *
+                10
+            ) / 10
+          : 0,
+      largestGroup: groups.reduce(
+        (max, group) =>
+          group.processIds.length > (max?.processIds?.length || 0)
+            ? group
+            : max,
+        null
+      ),
       totalStableKeys: this.stableKeyGroupMap.size,
       totalCategories: this.stableKeyCategoryMap.size,
       orphanedMappingsCleanedUp: orphanedMappings,
@@ -421,7 +437,7 @@ export class GroupStore {
     try {
       const data = localStorage.getItem('remotemanager_groups_v4');
       console.log('📂 GroupStore 로드 시작:', { hasData: !!data });
-      
+
       if (data) {
         const parsed = JSON.parse(data);
         console.log('📂 파싱된 데이터:', {
@@ -429,43 +445,50 @@ export class GroupStore {
           version: parsed.version,
           hasGroups: !!parsed.groups,
           hasStableKeyGroupMap: !!parsed.stableKeyGroupMap,
-          hasStableKeyCategoryMap: !!parsed.stableKeyCategoryMap
+          hasStableKeyCategoryMap: !!parsed.stableKeyCategoryMap,
         });
-        
+
         // 기존 형식 (배열)과 새 형식 (객체) 모두 지원
         if (Array.isArray(parsed)) {
           // 기존 그룹 데이터만 로드 (호환성)
           console.log('📂 기존 형식 (배열) 로드');
-          this.groups = new Map(parsed.map(group => {
-            group.createdAt = new Date(group.createdAt);
-            return [group.id, group];
-          }));
+          this.groups = new Map(
+            parsed.map(group => {
+              group.createdAt = new Date(group.createdAt);
+              return [group.id, group];
+            })
+          );
         } else {
           // 새 형식: 그룹 + 안정적 키 맵 데이터
           console.log('📂 새 형식 (객체) 로드');
-          this.groups = new Map((parsed.groups || []).map(group => {
-            group.createdAt = new Date(group.createdAt);
-            return [group.id, group];
-          }));
-          
+          this.groups = new Map(
+            (parsed.groups || []).map(group => {
+              group.createdAt = new Date(group.createdAt);
+              return [group.id, group];
+            })
+          );
+
           // 안정적 키 맵 복원
           if (parsed.stableKeyGroupMap) {
             this.stableKeyGroupMap = new Map(parsed.stableKeyGroupMap);
             console.log('✅ 안정적 키 그룹 맵 로드됨:', {
               count: this.stableKeyGroupMap.size,
-              entries: Array.from(this.stableKeyGroupMap.entries())
+              entries: Array.from(this.stableKeyGroupMap.entries()),
             });
           }
           if (parsed.stableKeyCategoryMap) {
             this.stableKeyCategoryMap = new Map(parsed.stableKeyCategoryMap);
-            console.log('✅ 안정적 키 카테고리 맵 로드됨:', this.stableKeyCategoryMap.size);
+            console.log(
+              '✅ 안정적 키 카테고리 맵 로드됨:',
+              this.stableKeyCategoryMap.size
+            );
           }
         }
-        
+
         console.log('📂 GroupStore 로드 완료:', {
           groupCount: this.groups.size,
           stableKeyGroupMappings: this.stableKeyGroupMap.size,
-          stableKeyCategoryMappings: this.stableKeyCategoryMap.size
+          stableKeyCategoryMappings: this.stableKeyCategoryMap.size,
         });
       }
     } catch (error) {
@@ -482,20 +505,23 @@ export class GroupStore {
   save() {
     try {
       const data = {
-        version: '2.1.0', 
+        version: '2.2.0',
         groups: Array.from(this.groups.values()),
         stableKeyGroupMap: Array.from(this.stableKeyGroupMap.entries()),
         stableKeyCategoryMap: Array.from(this.stableKeyCategoryMap.entries()),
         timestamp: new Date().toISOString(),
       };
-      
+
       console.log('💾 GroupStore 저장:', {
         groupCount: data.groups.length,
         stableKeyMappings: data.stableKeyGroupMap.length,
         categoryMappings: data.stableKeyCategoryMap.length,
-        stableKeys: data.stableKeyGroupMap.map(([key, groupId]) => ({ key, groupId }))
+        stableKeys: data.stableKeyGroupMap.map(([key, groupId]) => ({
+          key,
+          groupId,
+        })),
       });
-      
+
       localStorage.setItem('remotemanager_groups_v4', JSON.stringify(data));
     } catch (error) {
       console.error('그룹 데이터 저장 실패:', error);
@@ -508,7 +534,7 @@ export class GroupStore {
    */
   exportData() {
     return {
-      version: '2.1.0',
+      version: '2.2.0',
       timestamp: new Date().toISOString(),
       groups: Array.from(this.groups.values()),
     };

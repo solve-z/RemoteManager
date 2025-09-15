@@ -1,326 +1,445 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RemoteManager v2.0</title>
-    <link rel="stylesheet" href="../styles/main.css">
-    <link rel="stylesheet" href="../styles/components.css">
-    <link rel="stylesheet" href="../styles/themes.css">
-</head>
-<body>
+    <link rel="stylesheet" href="../styles/main.css" />
+    <link rel="stylesheet" href="../styles/components.css" />
+    <link rel="stylesheet" href="../styles/themes.css" />
+  </head>
+  <body>
     <div id="app" class="app-container">
-        <!-- 사이드바 -->
-        <aside id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <h1>RemoteManager</h1>
-                    <span class="version">v2.1.0</span>
-                </div>
-                <button id="sidebar-toggle" class="sidebar-toggle" aria-label="사이드바 토글">
-                    <span class="toggle-icon">☰</span>
-                </button>
+      <!-- 사이드바 -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <h1>RemoteManager</h1>
+            <span class="version">v2.2.0</span>
+          </div>
+          <button
+            id="sidebar-toggle"
+            class="sidebar-toggle"
+            aria-label="사이드바 토글"
+          >
+            <span class="toggle-icon">☰</span>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <ul class="nav-list">
+            <li class="nav-item">
+              <a href="#" id="nav-dashboard" class="nav-link active">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-text">대시보드</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" id="nav-processes" class="nav-link">
+                <span class="nav-icon">💻</span>
+                <span class="nav-text">원격 프로세스</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" id="nav-empty" class="nav-link">
+                <span class="nav-icon">☐</span>
+                <span class="nav-text">그룹없음</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- 네비게이션과 그룹 사이 리사이저 -->
+        <div
+          id="nav-groups-resizer"
+          class="nav-groups-resizer"
+          title="드래그하여 그룹 영역 크기 조절"
+        ></div>
+
+        <!-- 그룹 섹션 -->
+        <div class="groups-section">
+          <div class="groups-header">
+            <h3>그룹</h3>
+            <div class="group-header-actions">
+              <button id="add-group-btn" class="btn-icon" title="그룹 추가">
+                <span>+</span>
+              </button>
+              <button
+                id="advanced-group-btn"
+                class="btn-icon"
+                title="고급 그룹 관리"
+              >
+                <span>⚙️</span>
+              </button>
+            </div>
+          </div>
+          <div id="groups-list" class="groups-list">
+            <!-- 그룹 목록이 여기에 표시됩니다 -->
+          </div>
+        </div>
+
+        <!-- 상태 정보 -->
+        <div class="sidebar-footer">
+          <div class="status-info">
+            <div class="status-item">
+              <span class="status-label">연결된 원격지:</span>
+              <span id="connected-count" class="status-value">0</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">총 프로세스:</span>
+              <span id="total-count" class="status-value">0</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 사이드바 리사이저 -->
+      <div
+        id="sidebar-resizer"
+        class="sidebar-resizer"
+        title="드래그하여 사이드바 크기 조절"
+      ></div>
+
+      <!-- 메인 콘텐츠 -->
+      <main class="main-content">
+        <!-- 헤더 -->
+        <header class="main-header">
+          <div class="header-left">
+            <h2 id="page-title">대시보드</h2>
+          </div>
+          <div class="header-right">
+            <div class="header-controls">
+              <button
+                id="mini-window-toggle"
+                class="btn btn-primary"
+                title="최상위 미니창 열기/닫기 (Ctrl+M)"
+              >
+                <span class="btn-icon">🔧</span>
+                <span class="btn-text">미니창</span>
+              </button>
+              <button id="refresh-btn" class="btn btn-secondary">
+                <span class="btn-icon"
+                  ><span class="refresh-icon normal"></span
+                ></span>
+                <span class="btn-text">새로고침</span>
+              </button>
+              <button id="auto-refresh-toggle" class="btn btn-outline">
+                <span class="btn-icon"
+                  ><span class="auto-refresh-icon play"></span
+                ></span>
+                <span class="btn-text">자동 새로고침 시작</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- 콘텐츠 영역 -->
+        <div class="content-area">
+          <!-- 필터 및 정렬 옵션 -->
+          <div class="filters-header">
+            <h3>필터 및 정렬</h3>
+            <div class="filters-header-actions">
+              <button
+                id="reset-multiple-ids"
+                class="btn-icon"
+                title="다중 연결 정보 초기화"
+              >
+                🗑️
+              </button>
+              <button
+                id="clear-all-filters"
+                class="btn-icon"
+                title="필터 초기화"
+              >
+                🔄
+              </button>
+              <button
+                id="filters-toggle"
+                class="btn-icon"
+                title="필터 표시/숨기기 (Ctrl+Shift+F)"
+                aria-expanded="true"
+              >
+                <span class="toggle-icon">🔽</span>
+              </button>
+            </div>
+          </div>
+          <div class="filters-bar" id="filters-container">
+            <div class="filter-group">
+              <label for="sort-select">정렬:</label>
+              <select id="sort-select" class="form-select">
+                <option value="oldest">오래된순</option>
+                <option value="latest">최신순</option>
+                <option value="group">그룹순</option>
+                <option value="category">카테고리순</option>
+              </select>
             </div>
 
-            <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="#" id="nav-dashboard" class="nav-link active">
-                            <span class="nav-icon">🏠</span>
-                            <span class="nav-text">대시보드</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" id="nav-processes" class="nav-link">
-                            <span class="nav-icon">💻</span>
-                            <span class="nav-text">원격 프로세스</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" id="nav-empty" class="nav-link">
-                            <span class="nav-icon">☐</span>
-                            <span class="nav-text">그룹없음</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- 네비게이션과 그룹 사이 리사이저 -->
-            <div id="nav-groups-resizer" class="nav-groups-resizer" title="드래그하여 그룹 영역 크기 조절"></div>
-
-            <!-- 그룹 섹션 -->
-            <div class="groups-section">
-                <div class="groups-header">
-                    <h3>그룹</h3>
-                    <div class="group-header-actions">
-                        <button id="add-group-btn" class="btn-icon" title="그룹 추가">
-                            <span>+</span>
-                        </button>
-                        <button id="advanced-group-btn" class="btn-icon" title="고급 그룹 관리">
-                            <span>⚙️</span>
-                        </button>
-                    </div>
-                </div>
-                <div id="groups-list" class="groups-list">
-                    <!-- 그룹 목록이 여기에 표시됩니다 -->
-                </div>
+            <div class="filter-group">
+              <label for="group-filter">그룹:</label>
+              <select id="group-filter" class="form-select">
+                <option value="">전체</option>
+                <option value="ungrouped">그룹 없음</option>
+              </select>
             </div>
 
-            <!-- 상태 정보 -->
-            <div class="sidebar-footer">
-                <div class="status-info">
-                    <div class="status-item">
-                        <span class="status-label">연결된 원격지:</span>
-                        <span id="connected-count" class="status-value">0</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">총 프로세스:</span>
-                        <span id="total-count" class="status-value">0</span>
-                    </div>
-                </div>
+            <div class="filter-group">
+              <label for="category-filter">카테고리:</label>
+              <select id="category-filter" class="form-select">
+                <option value="">전체</option>
+                <option value="xray">엑스레이</option>
+                <option value="other-server">타서버</option>
+                <option value="new-server">새서버</option>
+                <option value="old-server">구서버</option>
+                <option value="uncategorized">카테고리 없음</option>
+              </select>
             </div>
-        </aside>
 
-        <!-- 사이드바 리사이저 -->
-        <div id="sidebar-resizer" class="sidebar-resizer" title="드래그하여 사이드바 크기 조절"></div>
-
-        <!-- 메인 콘텐츠 -->
-        <main class="main-content">
-            <!-- 헤더 -->
-            <header class="main-header">
-                <div class="header-left">
-                    <h2 id="page-title">대시보드</h2>
-                </div>
-                <div class="header-right">
-                    <div class="header-controls">
-                        <button id="mini-window-toggle" class="btn btn-primary" title="최상위 미니창 열기/닫기 (Ctrl+M)">
-                            <span class="btn-icon">🔧</span>
-                            <span class="btn-text">미니창</span>
-                        </button>
-                        <button id="refresh-btn" class="btn btn-secondary">
-                            <span class="btn-icon"><span class="refresh-icon normal"></span></span>
-                            <span class="btn-text">새로고침</span>
-                        </button>
-                        <button id="auto-refresh-toggle" class="btn btn-outline">
-                            <span class="btn-icon"><span class="auto-refresh-icon play"></span></span>
-                            <span class="btn-text">자동 새로고침 시작</span>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <!-- 콘텐츠 영역 -->
-            <div class="content-area">
-                <!-- 필터 및 정렬 옵션 -->
-                <div class="filters-header">
-                    <h3>필터 및 정렬</h3>
-                    <div class="filters-header-actions">
-                        <button id="reset-multiple-ids" class="btn-icon" title="다중 연결 정보 초기화">🗑️</button>
-                        <button id="clear-all-filters" class="btn-icon" title="필터 초기화">🔄</button>
-                        <button id="filters-toggle" class="btn-icon" title="필터 표시/숨기기 (Ctrl+Shift+F)" aria-expanded="true">
-                            <span class="toggle-icon">🔽</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="filters-bar" id="filters-container">
-                    
-                    <div class="filter-group">
-                        <label for="sort-select">정렬:</label>
-                        <select id="sort-select" class="form-select">
-                            <option value="oldest">오래된순</option>
-                            <option value="latest">최신순</option>
-                            <option value="group">그룹순</option>
-                            <option value="category">카테고리순</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="group-filter">그룹:</label>
-                        <select id="group-filter" class="form-select">
-                            <option value="">전체</option>
-                            <option value="ungrouped">그룹 없음</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="category-filter">카테고리:</label>
-                        <select id="category-filter" class="form-select">
-                            <option value="">전체</option>
-                            <option value="xray">엑스레이</option>
-                            <option value="other-server">타서버</option>
-                            <option value="new-server">새서버</option>
-                            <option value="old-server">구서버</option>
-                            <option value="uncategorized">카테고리 없음</option>
-                        </select>
-                    </div>
-                    
-                    
-                    <div class="filter-group">
-                        <label for="type-filter">타입:</label>
-                        <select id="type-filter" class="form-select">
-                            <option value="">전체</option>
-                            <option value="ezhelp">ezHelp</option>
-                            <option value="teamviewer">TeamViewer</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-actions">
-                        <span id="filter-summary" class="filter-summary"></span>
-                    </div>
-                </div>
-
-                <!-- 프로세스 목록 -->
-                <div id="process-list-container" class="process-list-container">
-                    <div id="process-list" class="process-list">
-                        <!-- 프로세스 목록이 여기에 표시됩니다 -->
-                    </div>
-                </div>
-
-                <!-- 로딩 및 빈 상태 -->
-                <div id="loading-state" class="loading-state" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <p>프로세스를 감지하는 중...</p>
-                </div>
-
-                <div id="empty-state" class="empty-state" style="display: none;">
-                    <div class="empty-icon">📱</div>
-                    <h3>원격 프로세스가 없습니다</h3>
-                    <p>ezHelp 또는 TeamViewer로 원격 연결을 시작해보세요.</p>
-                </div>
+            <div class="filter-group">
+              <label for="type-filter">타입:</label>
+              <select id="type-filter" class="form-select">
+                <option value="">전체</option>
+                <option value="ezhelp">ezHelp</option>
+                <option value="teamviewer">TeamViewer</option>
+              </select>
             </div>
-        </main>
+
+            <div class="filter-actions">
+              <span id="filter-summary" class="filter-summary"></span>
+            </div>
+          </div>
+
+          <!-- 프로세스 목록 -->
+          <div id="process-list-container" class="process-list-container">
+            <div id="process-list" class="process-list">
+              <!-- 프로세스 목록이 여기에 표시됩니다 -->
+            </div>
+          </div>
+
+          <!-- 로딩 및 빈 상태 -->
+          <div id="loading-state" class="loading-state" style="display: none">
+            <div class="loading-spinner"></div>
+            <p>프로세스를 감지하는 중...</p>
+          </div>
+
+          <div id="empty-state" class="empty-state" style="display: none">
+            <div class="empty-icon">📱</div>
+            <h3>원격 프로세스가 없습니다</h3>
+            <p>ezHelp 또는 TeamViewer로 원격 연결을 시작해보세요.</p>
+          </div>
+        </div>
+      </main>
     </div>
 
     <!-- 그룹 관리 다이얼로그 -->
-    <div id="group-dialog" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="group-dialog-title">그룹 추가</h3>
-                <button id="group-dialog-close" class="btn-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="group-name-input">그룹명</label>
-                    <input type="text" id="group-name-input" class="form-input" placeholder="그룹명을 입력하세요">
-                </div>
-                <div class="form-group">
-                    <label>그룹 색상</label>
-                    <div id="color-picker" class="color-picker">
-                        <div class="color-option" data-color="#3b82f6" style="background-color: #3b82f6;" title="파란색"></div>
-                        <div class="color-option" data-color="#10b981" style="background-color: #10b981;" title="녹색"></div>
-                        <div class="color-option" data-color="#f59e0b" style="background-color: #f59e0b;" title="주황색"></div>
-                        <div class="color-option" data-color="#ef4444" style="background-color: #ef4444;" title="빨간색"></div>
-                        <div class="color-option" data-color="#8b5cf6" style="background-color: #8b5cf6;" title="보라색"></div>
-                        <div class="color-option" data-color="#06b6d4" style="background-color: #06b6d4;" title="청록색"></div>
-                        <div class="color-option" data-color="#84cc16" style="background-color: #84cc16;" title="라임"></div>
-                        <div class="color-option" data-color="#f97316" style="background-color: #f97316;" title="오렌지"></div>
-                        <div class="color-option" data-color="#ec4899" style="background-color: #ec4899;" title="핑크"></div>
-                        <div class="color-option" data-color="#6366f1" style="background-color: #6366f1;" title="인디고"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="group-dialog-cancel" class="btn btn-secondary">취소</button>
-                <button id="group-dialog-save" class="btn btn-primary">저장</button>
-            </div>
+    <div id="group-dialog" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="group-dialog-title">그룹 추가</h3>
+          <button id="group-dialog-close" class="btn-close">&times;</button>
         </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="group-name-input">그룹명</label>
+            <input
+              type="text"
+              id="group-name-input"
+              class="form-input"
+              placeholder="그룹명을 입력하세요"
+            />
+          </div>
+          <div class="form-group">
+            <label>그룹 색상</label>
+            <div id="color-picker" class="color-picker">
+              <div
+                class="color-option"
+                data-color="#3b82f6"
+                style="background-color: #3b82f6"
+                title="파란색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#10b981"
+                style="background-color: #10b981"
+                title="녹색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#f59e0b"
+                style="background-color: #f59e0b"
+                title="주황색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#ef4444"
+                style="background-color: #ef4444"
+                title="빨간색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#8b5cf6"
+                style="background-color: #8b5cf6"
+                title="보라색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#06b6d4"
+                style="background-color: #06b6d4"
+                title="청록색"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#84cc16"
+                style="background-color: #84cc16"
+                title="라임"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#f97316"
+                style="background-color: #f97316"
+                title="오렌지"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#ec4899"
+                style="background-color: #ec4899"
+                title="핑크"
+              ></div>
+              <div
+                class="color-option"
+                data-color="#6366f1"
+                style="background-color: #6366f1"
+                title="인디고"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="group-dialog-cancel" class="btn btn-secondary">
+            취소
+          </button>
+          <button id="group-dialog-save" class="btn btn-primary">저장</button>
+        </div>
+      </div>
     </div>
 
     <!-- 그룹 컨텍스트 메뉴 -->
-    <div id="group-context-menu" class="context-menu" style="display: none;">
-        <div class="context-menu-item" id="edit-group">
-            <span class="menu-icon">✏️</span>
-            <span class="menu-text">그룹 수정</span>
-        </div>
-        <div class="context-menu-item" id="change-group-color">
-            <span class="menu-icon">🎨</span>
-            <span class="menu-text">색상 변경</span>
-        </div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="view-group-stats">
-            <span class="menu-icon">📊</span>
-            <span class="menu-text">그룹 통계</span>
-        </div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="delete-group" class="danger">
-            <span class="menu-icon">🗑️</span>
-            <span class="menu-text">그룹 삭제</span>
-        </div>
+    <div id="group-context-menu" class="context-menu" style="display: none">
+      <div class="context-menu-item" id="edit-group">
+        <span class="menu-icon">✏️</span>
+        <span class="menu-text">그룹 수정</span>
+      </div>
+      <div class="context-menu-item" id="change-group-color">
+        <span class="menu-icon">🎨</span>
+        <span class="menu-text">색상 변경</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" id="view-group-stats">
+        <span class="menu-icon">📊</span>
+        <span class="menu-text">그룹 통계</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" id="delete-group" class="danger">
+        <span class="menu-icon">🗑️</span>
+        <span class="menu-text">그룹 삭제</span>
+      </div>
     </div>
 
     <!-- 커스텀 확인 다이얼로그 -->
-    <div id="confirm-dialog" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3 id="confirm-dialog-title">확인</h3>
-                <button id="confirm-dialog-close" class="btn-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="confirm-dialog-message" style="margin-bottom: 20px; line-height: 1.5;">
-                    메시지가 여기에 표시됩니다.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="confirm-dialog-cancel" class="btn btn-secondary">취소</button>
-                <button id="confirm-dialog-confirm" class="btn btn-danger">확인</button>
-            </div>
+    <div id="confirm-dialog" class="modal" style="display: none">
+      <div class="modal-content" style="max-width: 400px">
+        <div class="modal-header">
+          <h3 id="confirm-dialog-title">확인</h3>
+          <button id="confirm-dialog-close" class="btn-close">&times;</button>
         </div>
+        <div class="modal-body">
+          <div
+            id="confirm-dialog-message"
+            style="margin-bottom: 20px; line-height: 1.5"
+          >
+            메시지가 여기에 표시됩니다.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="confirm-dialog-cancel" class="btn btn-secondary">
+            취소
+          </button>
+          <button id="confirm-dialog-confirm" class="btn btn-danger">
+            확인
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 고급 그룹 관리 다이얼로그 -->
-    <div id="advanced-group-dialog" class="modal modal-large" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>고급 그룹 관리</h3>
-                <button id="advanced-group-close" class="btn-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="tabs">
-                    <div class="tab-headers">
-                        <button class="tab-header active" data-tab="groups">그룹 목록</button>
-                        <button class="tab-header" data-tab="statistics">통계</button>
-                        <button class="tab-header" data-tab="import-export">가져오기/내보내기</button>
-                    </div>
-                    
-                    <div class="tab-content active" id="tab-groups">
-                        <div class="group-management">
-                            <div class="group-list-header">
-                                <h4>전체 그룹 (0개)</h4>
-                                <div class="group-actions">
-                                    <button id="cleanup-empty-groups" class="btn btn-outline">빈 그룹 정리</button>
-                                    <button id="create-new-group" class="btn btn-primary">새 그룹</button>
-                                </div>
-                            </div>
-                            <div id="advanced-groups-list" class="advanced-groups-list">
-                                <!-- 그룹 목록이 여기에 표시됩니다 -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="tab-statistics">
-                        <div id="group-statistics" class="group-statistics">
-                            <!-- 통계 정보가 여기에 표시됩니다 -->
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="tab-import-export">
-                        <div class="import-export-section">
-                            <div class="section">
-                                <h4>데이터 내보내기</h4>
-                                <p>모든 그룹 데이터를 JSON 파일로 내보냅니다.</p>
-                                <button id="export-groups" class="btn btn-primary">그룹 데이터 내보내기</button>
-                            </div>
-                            
-                            <div class="section">
-                                <h4>데이터 가져오기</h4>
-                                <p>이전에 내보낸 JSON 파일에서 그룹 데이터를 가져옵니다.</p>
-                                <button id="import-groups" class="btn btn-secondary">그룹 데이터 가져오기</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div
+      id="advanced-group-dialog"
+      class="modal modal-large"
+      style="display: none"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>고급 그룹 관리</h3>
+          <button id="advanced-group-close" class="btn-close">&times;</button>
         </div>
+        <div class="modal-body">
+          <div class="tabs">
+            <div class="tab-headers">
+              <button class="tab-header active" data-tab="groups">
+                그룹 목록
+              </button>
+              <button class="tab-header" data-tab="statistics">통계</button>
+              <button class="tab-header" data-tab="import-export">
+                가져오기/내보내기
+              </button>
+            </div>
+
+            <div class="tab-content active" id="tab-groups">
+              <div class="group-management">
+                <div class="group-list-header">
+                  <h4>전체 그룹 (0개)</h4>
+                  <div class="group-actions">
+                    <button id="cleanup-empty-groups" class="btn btn-outline">
+                      빈 그룹 정리
+                    </button>
+                    <button id="create-new-group" class="btn btn-primary">
+                      새 그룹
+                    </button>
+                  </div>
+                </div>
+                <div id="advanced-groups-list" class="advanced-groups-list">
+                  <!-- 그룹 목록이 여기에 표시됩니다 -->
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab-statistics">
+              <div id="group-statistics" class="group-statistics">
+                <!-- 통계 정보가 여기에 표시됩니다 -->
+              </div>
+            </div>
+
+            <div class="tab-content" id="tab-import-export">
+              <div class="import-export-section">
+                <div class="section">
+                  <h4>데이터 내보내기</h4>
+                  <p>모든 그룹 데이터를 JSON 파일로 내보냅니다.</p>
+                  <button id="export-groups" class="btn btn-primary">
+                    그룹 데이터 내보내기
+                  </button>
+                </div>
+
+                <div class="section">
+                  <h4>데이터 가져오기</h4>
+                  <p>이전에 내보낸 JSON 파일에서 그룹 데이터를 가져옵니다.</p>
+                  <button id="import-groups" class="btn btn-secondary">
+                    그룹 데이터 가져오기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 알림 컨테이너 -->
@@ -328,5 +447,5 @@
 
     <!-- JavaScript 모듈 로드 -->
     <script type="module" src="index.js"></script>
-</body>
+  </body>
 </html>

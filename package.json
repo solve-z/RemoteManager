@@ -1,6 +1,6 @@
 {
   "name": "remote-manager",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "ezHelp, TeamViewer 등 원격지원 프로그램 관리창",
   "main": "src/main/main.js",
   "type": "module",

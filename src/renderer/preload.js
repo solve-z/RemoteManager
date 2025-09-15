@@ -15,19 +15,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   detectProcesses: () => ipcRenderer.invoke('detect-processes'),
 
-
-
   /**
    * 윈도우 포커스 요청
    * @param {Object} focusData - 포커스 데이터 (id, useHandle, processName, windowTitle)
    * @returns {Promise<Object>} 포커스 결과
    */
-  focusWindow: (focusData) => ipcRenderer.invoke('focus-window', focusData),
+  focusWindow: focusData => ipcRenderer.invoke('focus-window', focusData),
 
-  requestProcessDelete: (processId) => ipcRenderer.invoke('request-process-delete', processId),
+  requestProcessDelete: processId =>
+    ipcRenderer.invoke('request-process-delete', processId),
 
-  onDeleteRequest: (callback) => {
-    ipcRenderer.on('request-delete-process', (event, processId) => callback(processId));
+  onDeleteRequest: callback => {
+    ipcRenderer.on('request-delete-process', (event, processId) =>
+      callback(processId)
+    );
   },
 
   /**
@@ -35,7 +36,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {number} processId - ezHelp 프로세스 ID
    * @returns {Promise<Object>} 컨트롤바 표시 결과
    */
-  showEzHelpControlBar: (processId) => ipcRenderer.invoke('show-ezhelp-control-bar', processId),
+  showEzHelpControlBar: processId =>
+    ipcRenderer.invoke('show-ezhelp-control-bar', processId),
 
   /**
    * 애플리케이션 정보 가져오기
@@ -72,7 +74,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {number} opacity - 투명도 (0.1 ~ 1.0)
    * @returns {Promise<Object>} 미니창 상태
    */
-  setMiniOpacity: (opacity) => ipcRenderer.invoke('set-mini-opacity', opacity),
+  setMiniOpacity: opacity => ipcRenderer.invoke('set-mini-opacity', opacity),
 
   /**
    * 미니창 상태 조회
@@ -91,7 +93,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {Object} data - 전송할 데이터
    * @returns {Promise<Object>} 전송 결과
    */
-  sendDataToMini: (data) => ipcRenderer.invoke('send-data-to-mini', data),
+  sendDataToMini: data => ipcRenderer.invoke('send-data-to-mini', data),
 
   /**
    * 메인창 데이터 요청 (미니창에서 사용)
@@ -103,7 +105,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 메인창 데이터 업데이트 수신 (미니창에서 사용)
    * @param {Function} callback - 데이터 수신 콜백
    */
-  onMainDataUpdate: (callback) => {
+  onMainDataUpdate: callback => {
     ipcRenderer.on('main-data-update', (event, data) => callback(data));
   },
 
@@ -111,7 +113,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 메인창 데이터 요청 수신 (메인창에서 사용)
    * @param {Function} callback - 데이터 요청 콜백
    */
-  onDataRequest: (callback) => {
+  onDataRequest: callback => {
     ipcRenderer.on('request-current-data', () => callback());
   },
 
@@ -119,7 +121,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 메인창 데이터 응답 전송 (메인창에서 사용)
    * @param {Object} data - 응답할 데이터
    */
-  sendMainDataResponse: (data) => {
+  sendMainDataResponse: data => {
     ipcRenderer.send('main-data-response', data);
   },
 
@@ -128,13 +130,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {Object} actionData - 선택적 액션 데이터
    * @returns {Promise<Object>} 새로고침 요청 결과
    */
-  requestMainRefresh: (actionData) => ipcRenderer.invoke('request-main-refresh', actionData),
+  requestMainRefresh: actionData =>
+    ipcRenderer.invoke('request-main-refresh', actionData),
 
   /**
    * 미니창 새로고침 요청 수신 (메인창에서 사용)
    * @param {Function} callback - 새로고침 요청 콜백
    */
-  onRefreshRequest: (callback) => {
+  onRefreshRequest: callback => {
     ipcRenderer.on('request-refresh-from-mini', () => callback());
   },
 
@@ -143,21 +146,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {number} opacity - 투명도 (0.1 ~ 1.0)
    * @returns {Promise<Object>} 투명도 설정 결과
    */
-  setWindowOpacity: (opacity) => ipcRenderer.invoke('set-mini-opacity', opacity),
+  setWindowOpacity: opacity => ipcRenderer.invoke('set-mini-opacity', opacity),
 
   /**
    * 미니창에 충돌 알림 전송 (메인창에서 사용)
    * @param {Object} conflictInfo - 충돌 정보
    * @returns {Promise<Object>} 알림 전송 결과
    */
-  notifyMiniWindowConflict: (conflictInfo) => ipcRenderer.invoke('notify-mini-window-conflict', conflictInfo),
+  notifyMiniWindowConflict: conflictInfo =>
+    ipcRenderer.invoke('notify-mini-window-conflict', conflictInfo),
 
   /**
    * 충돌 감지 알림 수신 (미니창에서 사용)
    * @param {Function} callback - 충돌 알림 수신 콜백
    */
-  onConflictDetected: (callback) => {
-    ipcRenderer.on('conflict-detected', (event, conflictInfo) => callback(conflictInfo));
+  onConflictDetected: callback => {
+    ipcRenderer.on('conflict-detected', (event, conflictInfo) =>
+      callback(conflictInfo)
+    );
   },
 
   /**
@@ -170,15 +176,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 그룹 액션 요청 수신 (메인창에서 사용)
    * @param {Function} callback - 그룹 액션 요청 콜백
    */
-  onGroupActionRequest: (callback) => {
-    ipcRenderer.on('request-group-action-from-mini', (event, actionData) => callback(actionData));
+  onGroupActionRequest: callback => {
+    ipcRenderer.on('request-group-action-from-mini', (event, actionData) =>
+      callback(actionData)
+    );
   },
 
   /**
    * 그룹 액션 응답 전송 (메인창에서 사용)
    * @param {Object} result - 그룹 액션 결과
    */
-  sendGroupActionResponse: (result) => {
+  sendGroupActionResponse: result => {
     ipcRenderer.send('group-action-response', result);
   },
 
@@ -186,22 +194,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 프로세스 액션 요청 수신 (메인창에서 사용)
    * @param {Function} callback - 프로세스 액션 요청 콜백
    */
-  onProcessActionRequest: (callback) => {
-    ipcRenderer.on('request-process-action-from-mini', (event, actionData) => callback(actionData));
+  onProcessActionRequest: callback => {
+    ipcRenderer.on('request-process-action-from-mini', (event, actionData) =>
+      callback(actionData)
+    );
   },
 
   /**
    * 프로세스 액션 응답 전송 (메인창에서 사용)
    * @param {Object} result - 프로세스 액션 결과
    */
-  sendProcessActionResponse: (result) => {
+  sendProcessActionResponse: result => {
     ipcRenderer.send('process-action-response', result);
   },
 
   /**
    * 버전 정보
    */
-  version: '2.1.0',
+  version: '2.2.0',
 
   /**
    * 플랫폼 정보

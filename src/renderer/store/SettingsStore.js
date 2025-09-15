@@ -30,14 +30,14 @@ export class SettingsStore {
         width: 280, // 기본 사이드바 폭 (픽셀)
         navHeight: 300, // 기본 네비게이션 영역 높이 (픽셀)
       },
-      
+
       // 자동 새로고침 설정
       autoRefresh: {
         enabled: true,
         interval: 5000, // 5초
         showNotifications: true,
       },
-      
+
       // 프로세스 설정
       process: {
         autoCleanup: true,
@@ -45,7 +45,7 @@ export class SettingsStore {
         showDisconnected: true,
         disconnectedDisplayTime: 60000, // 1분
       },
-      
+
       // 알림 설정
       notifications: {
         enabled: true,
@@ -55,7 +55,7 @@ export class SettingsStore {
         autoHideDelay: 3000, // 3초
         position: 'top-right',
       },
-      
+
       // 그룹 설정
       groups: {
         autoAssign: false,
@@ -63,28 +63,28 @@ export class SettingsStore {
         showEmptyGroups: true,
         defaultColor: '#3b82f6',
       },
-      
+
       // 카테고리 설정
       categories: {
         showLabels: true,
         showColors: true,
         defaultCategory: null,
       },
-      
+
       // 성능 설정
       performance: {
         virtualScrolling: true,
         maxVisibleItems: 100,
         lazyLoading: true,
       },
-      
+
       // 보안 설정
       security: {
         confirmProcessTermination: true,
         confirmGroupDeletion: true,
         confirmDataClear: true,
       },
-      
+
       // 키보드 단축키
       shortcuts: {
         refresh: 'F5',
@@ -92,7 +92,7 @@ export class SettingsStore {
         toggleAutoRefresh: 'Ctrl+R',
         focusSearch: 'Ctrl+F',
       },
-      
+
       // 내보내기/가져오기 설정
       export: {
         includeGroups: true,
@@ -167,7 +167,7 @@ export class SettingsStore {
     }
 
     this.save();
-    
+
     // 모든 변경사항 알림
     changes.forEach(({ key, value, oldValue }) => {
       this.notifyListeners(key, value, oldValue);
@@ -216,7 +216,7 @@ export class SettingsStore {
     if (lastKey in current) {
       const oldValue = current[lastKey];
       delete current[lastKey];
-      
+
       this.save();
       this.notifyListeners(key, undefined, oldValue);
       return true;
@@ -287,9 +287,12 @@ export class SettingsStore {
       const data = localStorage.getItem('remotemanager_settings_v4');
       if (data) {
         const loadedSettings = JSON.parse(data);
-        
+
         // 기본값과 병합 (새로운 설정이 추가된 경우 대비)
-        this.settings = this.mergeSettings(this.defaultSettings, loadedSettings);
+        this.settings = this.mergeSettings(
+          this.defaultSettings,
+          loadedSettings
+        );
       } else {
         // 기본 설정 사용
         this.settings = JSON.parse(JSON.stringify(this.defaultSettings));
@@ -305,7 +308,10 @@ export class SettingsStore {
    */
   save() {
     try {
-      localStorage.setItem('remotemanager_settings_v4', JSON.stringify(this.settings));
+      localStorage.setItem(
+        'remotemanager_settings_v4',
+        JSON.stringify(this.settings)
+      );
     } catch (error) {
       console.error('설정 저장 실패:', error);
     }
@@ -322,7 +328,11 @@ export class SettingsStore {
 
     function merge(target, source) {
       for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (
+          source[key] &&
+          typeof source[key] === 'object' &&
+          !Array.isArray(source[key])
+        ) {
           if (!target[key] || typeof target[key] !== 'object') {
             target[key] = {};
           }
@@ -343,7 +353,7 @@ export class SettingsStore {
    */
   exportData() {
     return {
-      version: '2.1.0',
+      version: '2.2.0',
       timestamp: new Date().toISOString(),
       settings: this.getAll(),
     };
