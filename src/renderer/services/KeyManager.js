@@ -265,7 +265,7 @@ export class KeyManager {
   }
 
   /**
-   * 윈도우 타이틀에서 IP 주소 추출 (ezHelp용)
+   * 윈도우 타이틀에서 IP 주소 추출 (ezHelp용 - 내부 IP)
    * @param {Object} process - 프로세스 정보
    * @returns {string|null} IP 주소
    */
@@ -275,6 +275,18 @@ export class KeyManager {
     const match = windowTitle.match(/원격지 IP : ([\d.]+)/);
     return match ? match[1] : null;
   }
+
+  /**
+   * 윈도우 타이틀에서 외부 IP 주소 추출 (ezHelp용 - 괄호 안의 IP)
+   * @param {Object} process - 프로세스 정보
+   * @returns {string|null} 외부 IP 주소
+   */
+  static extractExternalIpAddress(process) {
+    const windowTitle = process.windowTitle || process.MainWindowTitle || '';
+    const match = windowTitle.match(/원격지 IP : [\d.]+\(([\d.]+)\)/);
+    return match ? match[1] : null;
+  }
+
   /**
    * 윈도우 타이틀에서 상담원 ID 추출 (ezHelp용)
    * @param {Object} process - 프로세스 정보
@@ -324,6 +336,7 @@ export class KeyManager {
       computerName: computerName,
       multipleId: multipleId,
       ipAddress: type === 'ezhelp' ? this.extractIpAddress(rawProcess) : null,
+      externalIpAddress: type === 'ezhelp' ? this.extractExternalIpAddress(rawProcess) : null,
       counselorId: type === 'ezhelp' ? this.extractCounselorId(rawProcess) : null,
     };
   }

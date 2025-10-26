@@ -146,9 +146,12 @@ export const REGEX_PATTERNS = {
   // TeamViewer 원격 세션 감지
   TEAMVIEWER_REMOTE: /^(.+) - TeamViewer$/i,
   
-  // IP 주소 추출
+  // IP 주소 추출 (내부 IP)
   IP_ADDRESS: /원격지 IP : ([\d.]+)/i,
-  
+
+  // 외부 IP 주소 추출 (괄호 안의 IP)
+  EXTERNAL_IP_ADDRESS: /원격지 IP : [\d.]+\(([\d.]+)\)/i,
+
   // 상담원 번호 추출
   COUNSELOR_ID: /상담원\((\d+)\)/i,
   

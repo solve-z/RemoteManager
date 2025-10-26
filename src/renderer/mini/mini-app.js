@@ -49,7 +49,6 @@ class MiniApp {
 
       this.isInitialized = true;
       console.log('✅ MiniApp 초기화 완료');
-
     } catch (error) {
       console.error('❌ MiniApp 초기화 실패:', error);
       this.showError('미니창 초기화에 실패했습니다.');
@@ -71,36 +70,36 @@ class MiniApp {
     this.processManager = new MiniProcessManager(this);
 
     // TreeView 이벤트 리스너
-    this.treeView.on('process-selected', (processId) => {
+    this.treeView.on('process-selected', processId => {
       this.handleProcessSelection(processId);
     });
 
-    this.treeView.on('process-focus', (processId) => {
+    this.treeView.on('process-focus', processId => {
       this.handleProcessFocus(processId);
     });
 
-    this.treeView.on('process-copy', (processId) => {
+    this.treeView.on('process-copy', processId => {
       this.handleProcessCopy(processId);
     });
 
-    this.treeView.on('process-delete', (processId) => {
+    this.treeView.on('process-delete', processId => {
       this.handleProcessDelete(processId);
     });
 
     // 그룹 관리 이벤트 리스너
-    this.treeView.on('group-edit', (group) => {
+    this.treeView.on('group-edit', group => {
       this.groupManager.showEditGroupDialog(group);
     });
 
-    this.treeView.on('group-delete', (group) => {
+    this.treeView.on('group-delete', group => {
       this.groupManager.showDeleteGroupDialog(group);
     });
 
-    this.treeView.on('process-group-change', async (data) => {
+    this.treeView.on('process-group-change', async data => {
       await this.handleProcessGroupChange(data);
     });
 
-    this.treeView.on('process-edit', (process) => {
+    this.treeView.on('process-edit', process => {
       this.handleProcessEdit(process);
     });
 
@@ -145,7 +144,7 @@ class MiniApp {
     const opacitySlider = document.getElementById('opacity-slider');
     const opacityValue = document.getElementById('opacity-value');
 
-    opacitySlider?.addEventListener('input', (e) => {
+    opacitySlider?.addEventListener('input', e => {
       const opacity = parseInt(e.target.value) / 100;
       this.setOpacity(opacity);
       opacityValue.textContent = `${e.target.value}%`;
@@ -155,7 +154,7 @@ class MiniApp {
     this.setupContextMenu();
 
     // 키보드 단축키
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       this.handleKeyboardShortcuts(e);
     });
 
@@ -170,17 +169,19 @@ class MiniApp {
     const contextMenu = document.getElementById('mini-context-menu');
 
     // 우클릭으로 컨텍스트 메뉴 표시
-    document.addEventListener('contextmenu', (e) => {
+    document.addEventListener('contextmenu', e => {
       e.preventDefault();
       this.showContextMenu(e.clientX, e.clientY);
     });
 
     // 클릭으로 컨텍스트 메뉴 숨김 및 빈 화면 클릭 시 선택 해제
-    document.addEventListener('click', (event) => {
+    document.addEventListener('click', event => {
       this.hideContextMenu();
 
       // 빈 화면 클릭 시 프로세스 선택 해제
-      const processContainer = event.target.closest('.process-item, .process-node, .group-header, .mini-button, .mini-panel, .mini-context-menu');
+      const processContainer = event.target.closest(
+        '.process-item, .process-node, .group-header, .mini-button, .mini-panel, .mini-context-menu'
+      );
       if (!processContainer && this.selectedProcessId) {
         this.treeView?.selectProcess(null);
       }
@@ -199,13 +200,17 @@ class MiniApp {
       }
     });
 
-    document.getElementById('context-expand-all')?.addEventListener('click', () => {
-      this.treeView?.expandAll();
-    });
+    document
+      .getElementById('context-expand-all')
+      ?.addEventListener('click', () => {
+        this.treeView?.expandAll();
+      });
 
-    document.getElementById('context-collapse-all')?.addEventListener('click', () => {
-      this.treeView?.collapseAll();
-    });
+    document
+      .getElementById('context-collapse-all')
+      ?.addEventListener('click', () => {
+        this.treeView?.collapseAll();
+      });
   }
 
   /**
@@ -214,7 +219,7 @@ class MiniApp {
   setupMainProcessCommunication() {
     // 메인창으로부터 프로세스 데이터 수신
     if (window.electronAPI && window.electronAPI.onMainDataUpdate) {
-      window.electronAPI.onMainDataUpdate((data) => {
+      window.electronAPI.onMainDataUpdate(data => {
         console.log('📦 메인창으로부터 데이터 수신:', data);
         this.handleMainDataUpdate(data);
       });
@@ -225,13 +230,12 @@ class MiniApp {
 
     // 충돌 알림 리스너 (간단하게)
     if (window.electronAPI && window.electronAPI.onConflictDetected) {
-      window.electronAPI.onConflictDetected((conflictData) => {
+      window.electronAPI.onConflictDetected(conflictData => {
         console.log('충돌 알림 수신:', conflictData);
         this.handleConflictAlert(conflictData);
       });
     }
   }
-
 
   // 3. 기존 충돌 알림 핸들러를 ConflictNotification 사용으로 변경
   handleConflictAlert(conflictData) {
@@ -297,17 +301,18 @@ class MiniApp {
         return;
       }
 
-
       console.log('🔄 메인창 데이터 처리 중:', {
         processCount: data.processes.length,
-        groupCount: data.groups?.length || 0
+        groupCount: data.groups?.length || 0,
       });
 
       // 그룹 정보를 먼저 저장
       this.mainGroups = data.groups || [];
 
       // 메인창의 프로세스 데이터를 미니창 형식으로 변환 (최신 그룹 정보 반영)
-      const transformedProcesses = data.processes.map(process => this.transformMainProcessData(process));
+      const transformedProcesses = data.processes.map(process =>
+        this.transformMainProcessData(process)
+      );
 
       await this.updateProcessData(transformedProcesses);
       this.updateStatusBar(transformedProcesses);
@@ -317,7 +322,6 @@ class MiniApp {
         const groupedProcesses = this.groupProcesses(transformedProcesses);
         await this.treeView.updateData(groupedProcesses);
       }
-
     } catch (error) {
       console.error('메인창 데이터 처리 실패:', error);
     }
@@ -344,7 +348,7 @@ class MiniApp {
       multipleId: mainProcess.multipleId,
       category: mainProcess.category || 'uncategorized',
       groupId: mainProcess.groupId,
-      groupName: this.getGroupNameById(mainProcess.groupId)
+      groupName: this.getGroupNameById(mainProcess.groupId),
     };
   }
 
@@ -409,8 +413,8 @@ class MiniApp {
       {
         id: 'group_1',
         name: '접속자(일반모드)',
-        color: '#3b82f6'
-      }
+        color: '#3b82f6',
+      },
     ];
 
     const testProcesses = [
@@ -426,7 +430,7 @@ class MiniApp {
         title: 'ezHelp - PC-01',
         category: 'xray',
         groupId: 'group_1',
-        groupName: '접속자(일반모드)'
+        groupName: '접속자(일반모드)',
       },
       {
         id: 'test_2',
@@ -439,7 +443,7 @@ class MiniApp {
         multipleId: 2,
         category: 'other-server',
         groupId: 'group_1',
-        groupName: '접속자(일반모드)'
+        groupName: '접속자(일반모드)',
       },
       {
         id: 'test_3',
@@ -454,7 +458,7 @@ class MiniApp {
         multipleId: 3,
         category: 'new-server',
         groupId: 'group_1',
-        groupName: '접속자(일반모드)'
+        groupName: '접속자(일반모드)',
       },
       {
         id: 'test_4',
@@ -466,8 +470,8 @@ class MiniApp {
         title: 'WORK-STATION - TeamViewer',
         category: 'old-server',
         groupId: null,
-        groupName: null
-      }
+        groupName: null,
+      },
     ];
 
     await this.updateProcessData(testProcesses);
@@ -505,7 +509,7 @@ class MiniApp {
           name: group.name,
           id: group.id,
           color: group.color,
-          processes: []
+          processes: [],
         });
       });
     }
@@ -516,7 +520,7 @@ class MiniApp {
         name: '그룹없음',
         id: 'ungrouped',
         color: null,
-        processes: []
+        processes: [],
       });
     }
 
@@ -531,7 +535,7 @@ class MiniApp {
           name: groupName,
           id: groupId,
           color: this.getGroupColorById(groupId),
-          processes: []
+          processes: [],
         });
       }
 
@@ -574,7 +578,7 @@ class MiniApp {
       // 정렬을 위한 시간 필드들 추가
       createdAt: process.createdAt,
       firstDetected: process.firstDetected,
-      lastUpdated: process.lastUpdated
+      lastUpdated: process.lastUpdated,
     };
   }
 
@@ -599,7 +603,11 @@ class MiniApp {
       const focusData = {
         id: process.windowHandle || process.pid,
         useHandle: !!process.windowHandle,
-        processType: process.type?.toLowerCase()
+        processName: process.processName,
+        windowTitle: process.windowTitle,
+        processType: process.type?.toLowerCase(),
+        ipAddress: process.ipAddress,
+        externalIpAddress: process.externalIpAddress,
       };
 
       const result = await window.electronAPI.focusWindow(focusData);
@@ -638,12 +646,11 @@ class MiniApp {
     }
   }
 
-
   /**
    * 복사할 텍스트 형식 생성
    */
   formatCopyText(process) {
-    console.log(process, "test")
+    console.log(process, 'test');
     if (process.type === 'ezhelp' && process.ip && process.computerName) {
       return `${process.ip}[${process.computerName.toLowerCase()}]`;
     } else if (process.type === 'teamviewer' && process.computerName) {
@@ -664,7 +671,7 @@ class MiniApp {
       const processInfo = this.treeView?.getProcessById(processId);
 
       const result = await window.electronAPI.requestProcessDelete(processId);
-      console.log(result, "result")
+      console.log(result, 'result');
 
       if (result.success) {
         // 삭제 성공 시 순서 정보에서도 제거
@@ -707,10 +714,16 @@ class MiniApp {
       // 그룹 변경 시 순서 정보 정리
       if (this.treeView && data.fromGroupId !== data.toGroupId) {
         // 1. 기존 그룹의 순서 정보에서 해당 프로세스 제거
-        this.treeView.removeProcessFromCustomOrder(data.processId, data.fromGroupId);
+        this.treeView.removeProcessFromCustomOrder(
+          data.processId,
+          data.fromGroupId
+        );
 
         // 2. 대상 그룹의 순서 정보에서도 해당 프로세스 제거 (기본 정렬로 배치되도록)
-        this.treeView.removeProcessFromTargetGroupOrder(data.processId, data.toGroupId);
+        this.treeView.removeProcessFromTargetGroupOrder(
+          data.processId,
+          data.toGroupId
+        );
       }
 
       const result = await this.groupManager.changeProcessGroup(
@@ -754,8 +767,6 @@ class MiniApp {
       console.error('ProcessManager가 초기화되지 않았습니다.');
     }
   }
-
-
 
   /**
    * 투명도 설정
@@ -834,7 +845,6 @@ class MiniApp {
             const helpPanel = document.getElementById('help-panel');
             if (opacityPanel) opacityPanel.style.display = 'none';
             if (helpPanel) helpPanel.style.display = 'none';
-
           } else {
             // 펼치기 상태 UI
             toggleBtn?.classList.remove('collapsed');
@@ -860,11 +870,11 @@ class MiniApp {
   handleKeyboardShortcuts(event) {
     // 입력 필드에 포커스가 있는 경우 단축키 비활성화
     const activeElement = document.activeElement;
-    const isInputFocused = activeElement && (
-      activeElement.tagName === 'INPUT' ||
-      activeElement.tagName === 'TEXTAREA' ||
-      activeElement.contentEditable === 'true'
-    );
+    const isInputFocused =
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.contentEditable === 'true');
 
     // 입력 필드 포커스 시에는 ESC와 Enter만 처리
     if (isInputFocused) {
@@ -878,7 +888,7 @@ class MiniApp {
     }
 
     // Ctrl+Q: 미니창 접기/펼치기 (선택사항 - 더블클릭이 기본)
-    if (event.ctrlKey && event.key === 'q') {
+    if (event.ctrlKey && (event.key === 'q' || event.key === 'Q')) {
       event.preventDefault();
       this.toggleCollapse();
       return;
@@ -904,7 +914,6 @@ class MiniApp {
       return;
     }
 
-
     // F5 또는 Ctrl+R: 새로고침
     if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
       event.preventDefault();
@@ -926,14 +935,12 @@ class MiniApp {
       return;
     }
 
-
     // Space: 선택된 프로세스 포커스
     if (event.key === ' ' && this.selectedProcessId) {
       event.preventDefault();
       this.handleProcessFocus(this.selectedProcessId);
       return;
     }
-
 
     // Ctrl+C: 선택된 프로세스 정보 복사
     if (event.ctrlKey && event.key === 'c' && this.selectedProcessId) {
@@ -943,28 +950,50 @@ class MiniApp {
     }
 
     // ArrowUp: 이전 프로세스 선택
-    if (event.key === 'ArrowUp' && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    if (
+      event.key === 'ArrowUp' &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       this.selectPreviousProcess();
       return;
     }
 
     // ArrowDown: 다음 프로세스 선택
-    if (event.key === 'ArrowDown' && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    if (
+      event.key === 'ArrowDown' &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       this.selectNextProcess();
       return;
     }
 
     // Ctrl+ArrowUp: 선택된 프로세스 위로 이동
-    if (event.key === 'ArrowUp' && this.selectedProcessId && event.ctrlKey && !event.shiftKey && !event.altKey) {
+    if (
+      event.key === 'ArrowUp' &&
+      this.selectedProcessId &&
+      event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       this.treeView?.handleProcessMoveUp(this.selectedProcessId);
       return;
     }
 
     // Ctrl+ArrowDown: 선택된 프로세스 아래로 이동
-    if (event.key === 'ArrowDown' && this.selectedProcessId && event.ctrlKey && !event.shiftKey && !event.altKey) {
+    if (
+      event.key === 'ArrowDown' &&
+      this.selectedProcessId &&
+      event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       this.treeView?.handleProcessMoveDown(this.selectedProcessId);
       return;
@@ -977,7 +1006,6 @@ class MiniApp {
       return;
     }
   }
-
 
   /**
    * 모든 표시된 프로세스 목록 반환
@@ -1009,7 +1037,9 @@ class MiniApp {
     }
 
     // 현재 선택된 프로세스의 인덱스 찾기
-    const currentIndex = allProcesses.findIndex(p => p.id === this.selectedProcessId);
+    const currentIndex = allProcesses.findIndex(
+      p => p.id === this.selectedProcessId
+    );
     if (currentIndex === -1) {
       // 현재 선택된 프로세스가 목록에 없으면 첫 번째 프로세스 선택
       this.treeView.selectProcess(allProcesses[0].id);
@@ -1017,7 +1047,8 @@ class MiniApp {
     }
 
     // 이전 프로세스 선택 (첫 번째면 마지막으로 순환)
-    const prevIndex = currentIndex === 0 ? allProcesses.length - 1 : currentIndex - 1;
+    const prevIndex =
+      currentIndex === 0 ? allProcesses.length - 1 : currentIndex - 1;
     this.treeView.selectProcess(allProcesses[prevIndex].id);
   }
 
@@ -1035,7 +1066,9 @@ class MiniApp {
     }
 
     // 현재 선택된 프로세스의 인덱스 찾기
-    const currentIndex = allProcesses.findIndex(p => p.id === this.selectedProcessId);
+    const currentIndex = allProcesses.findIndex(
+      p => p.id === this.selectedProcessId
+    );
     if (currentIndex === -1) {
       // 현재 선택된 프로세스가 목록에 없으면 첫 번째 프로세스 선택
       this.treeView.selectProcess(allProcesses[0].id);
@@ -1043,7 +1076,8 @@ class MiniApp {
     }
 
     // 다음 프로세스 선택 (마지막이면 첫 번째로 순환)
-    const nextIndex = currentIndex === allProcesses.length - 1 ? 0 : currentIndex + 1;
+    const nextIndex =
+      currentIndex === allProcesses.length - 1 ? 0 : currentIndex + 1;
     this.treeView.selectProcess(allProcesses[nextIndex].id);
   }
 
@@ -1108,7 +1142,9 @@ class MiniApp {
     const lastUpdate = document.getElementById('mini-last-update');
 
     if (statusText) {
-      const connectedCount = processes.filter(p => p.status === 'connected').length;
+      const connectedCount = processes.filter(
+        p => p.status === 'connected'
+      ).length;
       statusText.textContent = `연결된 원격지: ${connectedCount}개`;
     }
 
@@ -1145,7 +1181,10 @@ class MiniApp {
    */
   saveCollapseState() {
     try {
-      localStorage.setItem('mini-window-collapsed', JSON.stringify(this.isCollapsed));
+      localStorage.setItem(
+        'mini-window-collapsed',
+        JSON.stringify(this.isCollapsed)
+      );
     } catch (error) {
       console.error('접기/펼치기 상태 저장 실패:', error);
     }
@@ -1209,7 +1248,6 @@ class MiniApp {
       this.processManager = null;
     }
   }
-
 }
 
 /**
@@ -1225,10 +1263,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // 에러 처리
-window.addEventListener('error', (event) => {
+window.addEventListener('error', event => {
   console.error('전역 에러:', event.error);
 });
 
-window.addEventListener('unhandledrejection', (event) => {
+window.addEventListener('unhandledrejection', event => {
   console.error('처리되지 않은 Promise 거부:', event.reason);
 });

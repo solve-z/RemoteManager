@@ -67,17 +67,23 @@ function createMainWindow() {
   const rendererPath = join(__dirname, '../renderer/index.html');
   mainWindow.loadFile(rendererPath);
 
-  // 개발 모드에서는 DevTools 자동 열기
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
-
   // 윈도우가 준비되면 표시
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
 
     if (isDev) {
       console.log('🚀 RemoteManager 개발 모드로 시작됨');
+    }
+  });
+
+  // F12 키로 개발자도구 토글
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+      } else {
+        mainWindow.webContents.openDevTools();
+      }
     }
   });
 
@@ -120,19 +126,35 @@ function registerIpcHandlers() {
   // 윈도우 포커스 요청
   ipcMain.handle('focus-window', async (event, focusData) => {
     try {
+      console.log('📨 IPC 포커스 요청 받음:', focusData);
+
       let result;
 
       if (focusData.useHandle && focusData.id) {
-        // WindowHandle로 포커스 (processType 전달)
-        result = await WindowManager.focusWindowByHandle(focusData.id, focusData.processType);
+        console.log('🔧 WindowHandle 기반 포커스 시도');
+        // WindowHandle로 포커스 (IP 정보 전달)
+        result = await WindowManager.focusWindowByHandle(
+          focusData.id,
+          focusData.processType,
+          focusData.ipAddress,
+          focusData.externalIpAddress
+        );
       } else {
-        // PID로 포커스 (processType 전달)
-        result = await WindowManager.focusWindow(focusData.id, focusData.processType);
+        console.log('🔧 PID 기반 포커스 시도');
+        // PID로 포커스 (IP 정보 전달)
+        result = await WindowManager.focusWindow(
+          focusData.id,
+          focusData.processType,
+          focusData.ipAddress,
+          focusData.externalIpAddress
+        );
       }
 
-      return { success: result, data: result };
+      console.log('✅ 포커스 결과:', result);
+      // result가 boolean이므로 직접 success에 할당
+      return { success: result === true, data: result };
     } catch (error) {
-      console.error('윈도우 포커스 오류:', error);
+      console.error('❌ 윈도우 포커스 오류:', error);
       return { success: false, error: error.message };
     }
   });

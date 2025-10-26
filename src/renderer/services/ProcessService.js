@@ -179,13 +179,21 @@ export class ProcessService {
       const targetId = process.windowHandle || process.pid;
       const useHandle = !!process.windowHandle;
 
-      const result = await window.electronAPI.focusWindow({
+      const focusData = {
         id: targetId,
         useHandle: useHandle,
         processName: process.processName,
         windowTitle: process.windowTitle,
-        processType: process.type // ezHelp 컨트롤바 처리를 위한 프로세스 타입 전달
-      });
+        processType: process.type, // ezHelp 컨트롤바 처리를 위한 프로세스 타입 전달
+        ipAddress: process.ipAddress, // 내부 IP
+        externalIpAddress: process.externalIpAddress // 외부 IP
+      };
+
+      console.log('🎯 포커스 요청 데이터:', focusData);
+
+      const result = await window.electronAPI.focusWindow(focusData);
+
+      console.log('✅ 포커스 결과 받음:', result);
 
       if (result.success) {
         this.notificationService?.showSuccess(
@@ -193,10 +201,15 @@ export class ProcessService {
         );
         return true;
       } else {
+        console.warn('⚠️ 포커스 실패 - result:', result);
         throw new Error(result.error || '윈도우 포커스 실패');
       }
     } catch (error) {
-      console.error('프로세스 포커스 실패:', error);
+      console.error('❌ 프로세스 포커스 실패:', error);
+      console.error('❌ 오류 상세:', {
+        message: error.message,
+        stack: error.stack
+      });
       this.notificationService?.showError('윈도우 포커스 실패', error.message);
       return false;
     }

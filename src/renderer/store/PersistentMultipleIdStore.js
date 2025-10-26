@@ -217,7 +217,7 @@ export class PersistentMultipleIdStore {
   save() {
     try {
       const data = {
-        version: '2.2.0',
+        version: '2.3.0',
         handleToMultipleIdMap: Array.from(this.handleToMultipleIdMap.entries()),
         stableKeyHandleMap: Array.from(this.stableKeyHandleMap.entries()),
         handleTimestamps: Array.from(this.handleTimestamps.entries()),

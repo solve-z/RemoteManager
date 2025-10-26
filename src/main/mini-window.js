@@ -87,6 +87,17 @@ export class MiniWindowManager {
       this.miniWindow.webContents.openDevTools();
     }
 
+    // F12 키로 DevTools 토글 (항상 사용 가능)
+    this.miniWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12' && input.type === 'keyDown') {
+        if (this.miniWindow.webContents.isDevToolsOpened()) {
+          this.miniWindow.webContents.closeDevTools();
+        } else {
+          this.miniWindow.webContents.openDevTools();
+        }
+      }
+    });
+
     return this.miniWindow;
   }
 
