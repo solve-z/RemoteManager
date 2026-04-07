@@ -1,5 +1,5 @@
 /**
- * RemoteManager v2.0 - 렌더러 프로세스 메인 엔트리포인트
+ * RemoteManager - 렌더러 프로세스 메인 엔트리포인트
  * 모듈화된 아키텍처의 시작점
  */
 
@@ -53,7 +53,9 @@ class RemoteManagerApp {
       console.log('✅ RemoteManager 초기화 완료');
     } catch (error) {
       console.error('❌ 애플리케이션 초기화 실패:', error);
-      this.services.notification?.showError('애플리케이션 초기화에 실패했습니다.');
+      this.services.notification?.showError(
+        '애플리케이션 초기화에 실패했습니다.'
+      );
     }
   }
 
@@ -122,13 +124,10 @@ class RemoteManagerApp {
     );
 
     // StatusBar 컴포넌트
-    this.components.statusBar = new StatusBar(
-      this.stores.process
-    );
-
+    this.components.statusBar = new StatusBar(this.stores.process);
 
     // 스토어 변경 시 컴포넌트 업데이트
-    this.stores.process.subscribe((processes) => {
+    this.stores.process.subscribe(processes => {
       this.components.processList.render(processes);
       this.components.statusBar.update(processes);
       // 프로세스 변경 시 사이드바도 업데이트 (그룹 개수 동기화)
@@ -138,7 +137,7 @@ class RemoteManagerApp {
       this.sendDataToMiniWindow();
     });
 
-    this.stores.group.subscribe((groups) => {
+    this.stores.group.subscribe(groups => {
       this.components.sidebar.updateGroups(groups);
       this.components.processList.updateGroupOptions(groups);
     });
@@ -168,17 +167,17 @@ class RemoteManagerApp {
 
     // 필터 및 정렬 옵션
     const sortSelect = document.getElementById('sort-select');
-    sortSelect?.addEventListener('change', (e) => {
+    sortSelect?.addEventListener('change', e => {
       this.components.processList.setSortOption(e.target.value);
     });
 
     const groupFilter = document.getElementById('group-filter');
-    groupFilter?.addEventListener('change', (e) => {
+    groupFilter?.addEventListener('change', e => {
       this.components.processList.setGroupFilter(e.target.value);
     });
 
     const categoryFilter = document.getElementById('category-filter');
-    categoryFilter?.addEventListener('change', (e) => {
+    categoryFilter?.addEventListener('change', e => {
       this.components.processList.setCategoryFilter(e.target.value);
     });
 
@@ -189,7 +188,7 @@ class RemoteManagerApp {
     const filtersContainer = document.getElementById('filters-container');
 
     // 타입 필터
-    typeFilter?.addEventListener('change', (e) => {
+    typeFilter?.addEventListener('change', e => {
       this.components.processList.setTypeFilter(e.target.value);
     });
 
@@ -210,7 +209,7 @@ class RemoteManagerApp {
     });
 
     // 키보드 단축키
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       this.handleKeyboardShortcuts(e);
     });
 
@@ -230,7 +229,7 @@ class RemoteManagerApp {
     });
 
     // 그룹 선택 이벤트 (사이드바에서 그룹 클릭 시)
-    window.addEventListener('group-selected', (e) => {
+    window.addEventListener('group-selected', e => {
       const { groupId } = e.detail;
       this.components.processList.setGroupFilter(groupId);
       // 그룹 필터 드롭다운도 업데이트
@@ -261,19 +260,19 @@ class RemoteManagerApp {
     });
 
     // 그룹 생성 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
-    window.addEventListener('group-created', (e) => {
+    window.addEventListener('group-created', e => {
       this.updateGroupFilterOptions();
       this.sendDataToMiniWindow();
     });
 
-    // 그룹 수정 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화  
-    window.addEventListener('group-updated', (e) => {
+    // 그룹 수정 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
+    window.addEventListener('group-updated', e => {
       this.updateGroupFilterOptions();
       this.sendDataToMiniWindow();
     });
 
     // 그룹 삭제 이벤트 - 필터 드롭다운 업데이트 및 미니창 동기화
-    window.addEventListener('group-deleted', (e) => {
+    window.addEventListener('group-deleted', e => {
       this.updateGroupFilterOptions();
       // 삭제된 그룹이 현재 선택된 필터였다면 초기화
       const groupFilterSelect = document.getElementById('group-filter');
@@ -285,10 +284,9 @@ class RemoteManagerApp {
     });
 
     // 프로세스 라벨 변경 이벤트 - 미니창 동기화
-    window.addEventListener('process-label-updated', (e) => {
+    window.addEventListener('process-label-updated', e => {
       this.sendDataToMiniWindow();
     });
-
 
     // 윈도우 리사이즈
     window.addEventListener('resize', () => {
@@ -309,7 +307,7 @@ class RemoteManagerApp {
 
     // 미니창에서 삭제 요청 수신
     if (window.electronAPI?.onDeleteRequest) {
-      window.electronAPI.onDeleteRequest((processId) => {
+      window.electronAPI.onDeleteRequest(processId => {
         this.services.process.removeDisconnectedProcess(processId);
       });
     }
@@ -324,7 +322,7 @@ class RemoteManagerApp {
 
     // 미니창에서 그룹 액션 요청했을 때 처리
     if (window.electronAPI && window.electronAPI.onGroupActionRequest) {
-      window.electronAPI.onGroupActionRequest((actionData) => {
+      window.electronAPI.onGroupActionRequest(actionData => {
         console.log('🎯 미니창에서 그룹 액션 요청 받음:', actionData);
         this.handleGroupActionFromMini(actionData);
       });
@@ -332,7 +330,7 @@ class RemoteManagerApp {
 
     // 미니창에서 프로세스 액션 요청했을 때 처리
     if (window.electronAPI && window.electronAPI.onProcessActionRequest) {
-      window.electronAPI.onProcessActionRequest((actionData) => {
+      window.electronAPI.onProcessActionRequest(actionData => {
         console.log('🎯 미니창에서 프로세스 액션 요청 받음:', actionData);
         this.handleProcessActionFromMini(actionData);
       });
@@ -346,8 +344,8 @@ class RemoteManagerApp {
   }
 
   /**
-     * 새로고침 처리 (미니창 요청용)
-     */
+   * 새로고침 처리 (미니창 요청용)
+   */
   handleRefresh() {
     console.log('🔄 미니창 요청으로 새로고침 실행');
     // 기존 새로고침 로직 호출
@@ -383,7 +381,7 @@ class RemoteManagerApp {
           console.log('✏️ 미니창에서 그룹 수정 요청:', data);
           const updateSuccess = this.services.group.updateGroup(data.id, {
             name: data.name,
-            color: data.color
+            color: data.color,
           });
           result = { success: updateSuccess };
           break;
@@ -426,7 +424,6 @@ class RemoteManagerApp {
       } else {
         console.error('❌ sendGroupActionResponse API를 찾을 수 없습니다.');
       }
-
     } catch (error) {
       console.error('미니창 그룹 액션 처리 실패:', error);
       const errorResult = { success: false, error: error.message };
@@ -435,7 +432,9 @@ class RemoteManagerApp {
         console.log('📤 메인창에서 그룹 액션 에러 응답 전송:', errorResult);
         window.electronAPI.sendGroupActionResponse(errorResult);
       } else {
-        console.error('❌ sendGroupActionResponse API를 찾을 수 없습니다. (에러 케이스)');
+        console.error(
+          '❌ sendGroupActionResponse API를 찾을 수 없습니다. (에러 케이스)'
+        );
       }
     }
   }
@@ -478,7 +477,6 @@ class RemoteManagerApp {
       } else {
         console.error('❌ sendProcessActionResponse API를 찾을 수 없습니다.');
       }
-
     } catch (error) {
       console.error('미니창 프로세스 액션 처리 실패:', error);
       const errorResult = { success: false, error: error.message };
@@ -487,7 +485,9 @@ class RemoteManagerApp {
         console.log('📤 메인창에서 프로세스 액션 에러 응답 전송:', errorResult);
         window.electronAPI.sendProcessActionResponse(errorResult);
       } else {
-        console.error('❌ sendProcessActionResponse API를 찾을 수 없습니다. (에러 케이스)');
+        console.error(
+          '❌ sendProcessActionResponse API를 찾을 수 없습니다. (에러 케이스)'
+        );
       }
     }
   }
@@ -514,10 +514,13 @@ class RemoteManagerApp {
     this.setSidebarWidth(savedWidth);
 
     // 마우스 다운 이벤트
-    resizer.addEventListener('mousedown', (e) => {
+    resizer.addEventListener('mousedown', e => {
       isResizing = true;
       startX = e.clientX;
-      startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+      startWidth = parseInt(
+        document.defaultView.getComputedStyle(sidebar).width,
+        10
+      );
 
       // 리사이징 중임을 표시
       document.body.classList.add('resizing');
@@ -530,7 +533,7 @@ class RemoteManagerApp {
     });
 
     // 마우스 이동 이벤트
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('mousemove', e => {
       if (!isResizing) return;
 
       const newWidth = startWidth + e.clientX - startX;
@@ -557,7 +560,10 @@ class RemoteManagerApp {
         document.body.style.userSelect = '';
 
         // 현재 사이드바 크기 저장
-        const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+        const currentWidth = parseInt(
+          document.defaultView.getComputedStyle(sidebar).width,
+          10
+        );
         this.stores.settings.set('sidebar.width', currentWidth);
 
         // 리사이즈 이벤트 발생 (다른 컴포넌트들이 필요시 반응)
@@ -613,10 +619,13 @@ class RemoteManagerApp {
     this.setNavHeight(savedNavHeight);
 
     // 마우스 다운 이벤트
-    resizer.addEventListener('mousedown', (e) => {
+    resizer.addEventListener('mousedown', e => {
       isResizing = true;
       startY = e.clientY;
-      startNavHeight = parseInt(document.defaultView.getComputedStyle(navSection).height, 10);
+      startNavHeight = parseInt(
+        document.defaultView.getComputedStyle(navSection).height,
+        10
+      );
 
       // 세로 리사이징 중임을 표시
       document.body.classList.add('vertical-resizing');
@@ -629,7 +638,7 @@ class RemoteManagerApp {
     });
 
     // 마우스 이동 이벤트
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('mousemove', e => {
       if (!isResizing) return;
 
       const deltaY = e.clientY - startY;
@@ -647,7 +656,7 @@ class RemoteManagerApp {
     });
 
     // 마우스 업 이벤트
-    document.addEventListener('mouseup', (e) => {
+    document.addEventListener('mouseup', e => {
       if (isResizing) {
         isResizing = false;
 
@@ -657,7 +666,10 @@ class RemoteManagerApp {
         document.body.style.userSelect = '';
 
         // 현재 네비게이션 높이 저장
-        const currentNavHeight = parseInt(document.defaultView.getComputedStyle(navSection).height, 10);
+        const currentNavHeight = parseInt(
+          document.defaultView.getComputedStyle(navSection).height,
+          10
+        );
         this.stores.settings.set('sidebar.navHeight', currentNavHeight);
 
         // 리사이즈 이벤트 발생
@@ -728,14 +740,17 @@ class RemoteManagerApp {
     try {
       const loadingState = document.getElementById('loading-state');
       const emptyState = document.getElementById('empty-state');
-      const processListContainer = document.getElementById('process-list-container');
+      const processListContainer = document.getElementById(
+        'process-list-container'
+      );
       const refreshBtn = document.getElementById('refresh-btn');
       const refreshBtnIcon = refreshBtn?.querySelector('.btn-icon');
 
       // 새로고침 버튼에 스피너 표시
       if (refreshBtn && refreshBtnIcon) {
         refreshBtn.disabled = true;
-        refreshBtnIcon.innerHTML = '<span class="refresh-icon spinning"></span>';
+        refreshBtnIcon.innerHTML =
+          '<span class="refresh-icon spinning"></span>';
       }
 
       // 기존 프로세스가 있는 경우 목록을 유지
@@ -769,7 +784,6 @@ class RemoteManagerApp {
         refreshBtn.disabled = false;
         refreshBtnIcon.innerHTML = '<span class="refresh-icon normal"></span>';
       }
-
     } catch (error) {
       console.error('프로세스 새로고침 실패:', error);
       const loadingState = document.getElementById('loading-state');
@@ -812,7 +826,7 @@ class RemoteManagerApp {
         return;
       }
       this.refreshProcesses();
-    }, 5000); // 5초 간격
+    }, 2000); // 5초 간격
 
     // UI 업데이트
     const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
@@ -820,7 +834,8 @@ class RemoteManagerApp {
       autoRefreshToggle.classList.add('active');
       const btnIcon = autoRefreshToggle.querySelector('.btn-icon');
       const btnText = autoRefreshToggle.querySelector('.btn-text');
-      if (btnIcon) btnIcon.innerHTML = '<span class="auto-refresh-icon pause"></span>';
+      if (btnIcon)
+        btnIcon.innerHTML = '<span class="auto-refresh-icon pause"></span>';
       if (btnText) btnText.textContent = '자동 새로고침 중지';
     }
 
@@ -845,7 +860,8 @@ class RemoteManagerApp {
       autoRefreshToggle.classList.remove('active');
       const btnIcon = autoRefreshToggle.querySelector('.btn-icon');
       const btnText = autoRefreshToggle.querySelector('.btn-text');
-      if (btnIcon) btnIcon.innerHTML = '<span class="auto-refresh-icon play"></span>';
+      if (btnIcon)
+        btnIcon.innerHTML = '<span class="auto-refresh-icon play"></span>';
       if (btnText) btnText.textContent = '자동 새로고침 시작';
     }
 
@@ -878,13 +894,19 @@ class RemoteManagerApp {
    * 다중 연결 정보 초기화
    */
   resetMultipleIds() {
-    if (confirm('다중 연결 정보를 모두 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 현재 프로그램에서 관리 중인 모든 #2, #3... 등의 다중 세션 정보가 삭제됩니다.\n\n초기화 후 프로그램이 자동으로 재시작됩니다.')) {
+    if (
+      confirm(
+        '다중 연결 정보를 모두 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 현재 프로그램에서 관리 중인 모든 #2, #3... 등의 다중 세션 정보가 삭제됩니다.\n\n초기화 후 프로그램이 자동으로 재시작됩니다.'
+      )
+    ) {
       try {
         // PersistentMultipleIdStore 초기화
         this.stores.process.multipleIdStore.clear();
 
         // 알림 표시
-        this.services.notification.showSuccess('다중 연결 정보가 초기화되었습니다. 프로그램을 재시작합니다.');
+        this.services.notification.showSuccess(
+          '다중 연결 정보가 초기화되었습니다. 프로그램을 재시작합니다.'
+        );
 
         console.log('✅ 다중 연결 정보 초기화 완료 - 재시작 요청');
 
@@ -897,7 +919,6 @@ class RemoteManagerApp {
             window.location.reload();
           }
         }, 2000);
-
       } catch (error) {
         console.error('❌ 다중 연결 정보 초기화 실패:', error);
         this.services.notification.showError('초기화 실패', error.message);
@@ -935,7 +956,11 @@ class RemoteManagerApp {
     }
 
     // Ctrl+Shift+F: 필터 토글 (대소문자 구분 없음)
-    if (event.ctrlKey && event.shiftKey && (event.key === 'F' || event.key === 'f')) {
+    if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      (event.key === 'F' || event.key === 'f')
+    ) {
       event.preventDefault();
       this.toggleFilters();
     }
@@ -1027,7 +1052,9 @@ class RemoteManagerApp {
       }
     } catch (error) {
       console.error('미니창 토글 처리 실패:', error);
-      this.services.notification?.showError('미니창 토글 중 오류가 발생했습니다.');
+      this.services.notification?.showError(
+        '미니창 토글 중 오류가 발생했습니다.'
+      );
     }
   }
 
@@ -1072,11 +1099,12 @@ class RemoteManagerApp {
 
       // 프로세스에 표시용 정보를 미리 계산해서 추가
       const processesWithDisplay = processes.map(process => {
-        const displayText = process.customLabel || KeyManager.getDisplayKey(process);
+        const displayText =
+          process.customLabel || KeyManager.getDisplayKey(process);
 
         return {
           ...process,
-          displayText: displayText
+          displayText: displayText,
         };
       });
 
@@ -1084,7 +1112,7 @@ class RemoteManagerApp {
       const data = {
         processes: processesWithDisplay,
         groups: groups,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       const result = await window.electronAPI.sendDataToMini(data);
@@ -1111,11 +1139,14 @@ class RemoteManagerApp {
       const data = {
         processes: processes,
         groups: groups,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       window.electronAPI.sendMainDataResponse(data);
-      console.log('미니창에 메인 데이터 응답 전송:', { processCount: processes.length, groupCount: groups.length });
+      console.log('미니창에 메인 데이터 응답 전송:', {
+        processCount: processes.length,
+        groupCount: groups.length,
+      });
     } catch (error) {
       console.error('메인 데이터 응답 전송 중 오류:', error);
     }
@@ -1153,10 +1184,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // 에러 처리
-window.addEventListener('error', (event) => {
+window.addEventListener('error', event => {
   console.error('전역 에러:', event.error);
 });
 
-window.addEventListener('unhandledrejection', (event) => {
+window.addEventListener('unhandledrejection', event => {
   console.error('처리되지 않은 Promise 거부:', event.reason);
 });

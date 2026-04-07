@@ -9,7 +9,7 @@
 export const PROCESS_TYPES = {
   EZHELP: 'ezhelp',
   TEAMVIEWER: 'teamviewer',
-  UNKNOWN: 'unknown'
+  UNKNOWN: 'unknown',
 };
 
 /**
@@ -18,7 +18,7 @@ export const PROCESS_TYPES = {
 export const PROCESS_STATUS = {
   CONNECTED: 'connected',
   DISCONNECTED: 'disconnected',
-  RECONNECTED: 'reconnected'
+  RECONNECTED: 'reconnected',
 };
 
 /**
@@ -30,29 +30,29 @@ export const CATEGORIES = {
     name: '엑스레이',
     color: '#e3f2fd',
     borderColor: '#2196f3',
-    textColor: '#0d47a1'
+    textColor: '#0d47a1',
   },
   OTHER_SERVER: {
     id: 'other-server',
     name: '타서버',
     color: '#fff3e0',
     borderColor: '#ff9800',
-    textColor: '#e65100'
+    textColor: '#e65100',
   },
   NEW_SERVER: {
     id: 'new-server',
     name: '새서버',
     color: '#f3e5f5',
     borderColor: '#9c27b0',
-    textColor: '#4a148c'
+    textColor: '#4a148c',
   },
   OLD_SERVER: {
     id: 'old-server',
     name: '구서버',
     color: '#fce4ec',
     borderColor: '#e91e63',
-    textColor: '#880e4f'
-  }
+    textColor: '#880e4f',
+  },
 };
 
 /**
@@ -70,7 +70,7 @@ export const SORT_OPTIONS = {
   GROUP: 'group',
   CATEGORY: 'category',
   STATUS: 'status',
-  CREATED_AT: 'createdAt'
+  CREATED_AT: 'createdAt',
 };
 
 /**
@@ -79,7 +79,7 @@ export const SORT_OPTIONS = {
 export const FILTER_OPTIONS = {
   ALL: '',
   UNGROUPED: 'ungrouped',
-  UNCATEGORIZED: 'uncategorized'
+  UNCATEGORIZED: 'uncategorized',
 };
 
 /**
@@ -89,7 +89,7 @@ export const NOTIFICATION_TYPES = {
   SUCCESS: 'success',
   ERROR: 'error',
   WARNING: 'warning',
-  INFO: 'info'
+  INFO: 'info',
 };
 
 /**
@@ -99,20 +99,20 @@ export const NOTIFICATION_POSITIONS = {
   TOP_RIGHT: 'top-right',
   TOP_LEFT: 'top-left',
   BOTTOM_RIGHT: 'bottom-right',
-  BOTTOM_LEFT: 'bottom-left'
+  BOTTOM_LEFT: 'bottom-left',
 };
 
 /**
  * 기본 설정값
  */
 export const DEFAULT_SETTINGS = {
-  AUTO_REFRESH_INTERVAL: 5000, // 5초
+  AUTO_REFRESH_INTERVAL: 2000, // 2초
   NOTIFICATION_AUTO_HIDE_DELAY: 3000, // 3초
   MAX_NOTIFICATIONS: 5,
   CLEANUP_DELAY: 300000, // 5분
   DISCONNECTED_DISPLAY_TIME: 60000, // 1분
   SIDEBAR_WIDTH: 280,
-  SIDEBAR_COLLAPSED_WIDTH: 70
+  SIDEBAR_COLLAPSED_WIDTH: 70,
 };
 
 /**
@@ -123,7 +123,7 @@ export const STORAGE_KEYS = {
   SETTINGS: 'remotemanager_settings_v4',
   CUSTOM_LABELS: 'remotemanager_labels_v4',
   CATEGORIES: 'remotemanager_categories_v4',
-  UI_STATE: 'remotemanager_ui_state_v4'
+  UI_STATE: 'remotemanager_ui_state_v4',
 };
 
 /**
@@ -133,7 +133,7 @@ export const IPC_CHANNELS = {
   DETECT_PROCESSES: 'detect-processes',
   FOCUS_WINDOW: 'focus-window',
   GET_APP_INFO: 'get-app-info',
-  TERMINATE_PROCESS: 'terminate-process'
+  TERMINATE_PROCESS: 'terminate-process',
 };
 
 /**
@@ -142,10 +142,10 @@ export const IPC_CHANNELS = {
 export const REGEX_PATTERNS = {
   // ezHelp 원격 세션 감지
   EZHELP_REMOTE: /ezHelp - ([^(]+).*원격지 IP : ([\d.]+)/i,
-  
+
   // TeamViewer 원격 세션 감지
   TEAMVIEWER_REMOTE: /^(.+) - TeamViewer$/i,
-  
+
   // IP 주소 추출 (내부 IP)
   IP_ADDRESS: /원격지 IP : ([\d.]+)/i,
 
@@ -154,12 +154,12 @@ export const REGEX_PATTERNS = {
 
   // 상담원 번호 추출
   COUNSELOR_ID: /상담원\((\d+)\)/i,
-  
+
   // 컴퓨터명 추출 (ezHelp)
   COMPUTER_NAME_EZHELP: /ezHelp - ([^(]+)/i,
-  
+
   // 컴퓨터명 추출 (TeamViewer)
-  COMPUTER_NAME_TEAMVIEWER: /^(.+) - TeamViewer$/i
+  COMPUTER_NAME_TEAMVIEWER: /^(.+) - TeamViewer$/i,
 };
 
 /**
@@ -171,7 +171,7 @@ export const KEYBOARD_SHORTCUTS = {
   TOGGLE_AUTO_REFRESH: 'Ctrl+R',
   FOCUS_SEARCH: 'Ctrl+F',
   ESCAPE: 'Escape',
-  ENTER: 'Enter'
+  ENTER: 'Enter',
 };
 
 /**
@@ -182,7 +182,7 @@ export const ANIMATION_DURATION = {
   NORMAL: 200,
   SLOW: 300,
   NOTIFICATION: 300,
-  SIDEBAR: 300
+  SIDEBAR: 300,
 };
 
 /**
@@ -192,7 +192,7 @@ export const BREAKPOINTS = {
   MOBILE: 480,
   TABLET: 768,
   DESKTOP: 1024,
-  LARGE_DESKTOP: 1200
+  LARGE_DESKTOP: 1200,
 };
 
 /**
@@ -206,7 +206,7 @@ export const COLORS = {
   WARNING: '#f59e0b',
   ERROR: '#ef4444',
   INFO: '#3b82f6',
-  
+
   // 그레이 스케일
   GRAY_50: '#f9fafb',
   GRAY_100: '#f3f4f6',
@@ -217,7 +217,7 @@ export const COLORS = {
   GRAY_600: '#4b5563',
   GRAY_700: '#374151',
   GRAY_800: '#1f2937',
-  GRAY_900: '#111827'
+  GRAY_900: '#111827',
 };
 
 /**
@@ -229,7 +229,7 @@ export const STATUS_ICONS = {
   [PROCESS_STATUS.RECONNECTED]: '🟡',
   MINIMIZED: '🔽',
   HIDDEN: '👁️‍🗨️',
-  UNKNOWN: '⚪'
+  UNKNOWN: '⚪',
 };
 
 /**
@@ -238,7 +238,7 @@ export const STATUS_ICONS = {
 export const STATUS_TEXT = {
   [PROCESS_STATUS.CONNECTED]: '연결됨',
   [PROCESS_STATUS.DISCONNECTED]: '연결 끊김',
-  [PROCESS_STATUS.RECONNECTED]: '재연결됨'
+  [PROCESS_STATUS.RECONNECTED]: '재연결됨',
 };
 
 /**
@@ -255,7 +255,7 @@ export const ERROR_MESSAGES = {
   PROCESS_NOT_FOUND: '프로세스를 찾을 수 없습니다.',
   GROUP_NOT_FOUND: '그룹을 찾을 수 없습니다.',
   SETTINGS_LOAD_FAILED: '설정 로드에 실패했습니다.',
-  SETTINGS_SAVE_FAILED: '설정 저장에 실패했습니다.'
+  SETTINGS_SAVE_FAILED: '설정 저장에 실패했습니다.',
 };
 
 /**
@@ -270,7 +270,7 @@ export const SUCCESS_MESSAGES = {
   PROCESS_ASSIGNED: '프로세스가 그룹에 할당되었습니다.',
   LABEL_UPDATED: '라벨이 변경되었습니다.',
   CATEGORY_UPDATED: '카테고리가 변경되었습니다.',
-  SETTINGS_SAVED: '설정이 저장되었습니다.'
+  SETTINGS_SAVED: '설정이 저장되었습니다.',
 };
 
 /**
@@ -312,5 +312,5 @@ export default {
   IS_DEVELOPMENT,
   IS_WINDOWS,
   IS_MAC,
-  IS_LINUX
+  IS_LINUX,
 };

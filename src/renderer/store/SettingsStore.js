@@ -34,7 +34,7 @@ export class SettingsStore {
       // 자동 새로고침 설정
       autoRefresh: {
         enabled: true,
-        interval: 5000, // 5초
+        interval: 2000, // 5초
         showNotifications: true,
       },
 

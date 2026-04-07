@@ -11,7 +11,7 @@ import WindowManager from './window-manager.js';
 import { miniWindowManager } from './mini-window.js';
 
 const __filename = fileURLToPath(import.meta.url); // 현재 모듈의 파일 경로를 file:/// 형식으로 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main\main.js'
-const __dirname = dirname(__filename);  // 위치한 디렉터리 경로를 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main'
+const __dirname = dirname(__filename); // 위치한 디렉터리 경로를 반환 👉 'C:\Users\dltkd\Desktop\RemoteManager\src\main'
 
 /**
  * 메인 윈도우 인스턴스
@@ -24,7 +24,7 @@ let mainWindow = null;
  * @type {boolean}
  */
 
-/** process는 Node.js에서 자동으로 제공되는 전역 객체 , process.argv는 Node.js 애플리케이션 실행 시 명령줄에서 전달된 인자들을 배열로 담음 
+/** process는 Node.js에서 자동으로 제공되는 전역 객체 , process.argv는 Node.js 애플리케이션 실행 시 명령줄에서 전달된 인자들을 배열로 담음
  * 터미널에서 node app.js hello --dev 실행 👉 hello, --dev 가 사용자 인자로 포함
  * 결국 실행시 --dev를 넣는지 파악하는 용도
  * */
@@ -54,13 +54,13 @@ function createMainWindow() {
       nodeIntegration: false,
       contextIsolation: true,
 
-      // 화면(UI)과 메인 프로세스(이 파일) 사이의 안전한 다리 역할 , 
-      // 보안상의 이유로 화면 쪽에서 직접적으로 시스템 기능을 호출할 수 없게 막혀있는데, 
+      // 화면(UI)과 메인 프로세스(이 파일) 사이의 안전한 다리 역할 ,
+      // 보안상의 이유로 화면 쪽에서 직접적으로 시스템 기능을 호출할 수 없게 막혀있는데,
       // preload 스크립트를 통해 허용된 기능만 사용할 수 있도록 통로를 열어주는 것이죠.
       preload: join(__dirname, '../renderer/preload.js'),
     },
     show: false, // 준비될 때까지 숨김
-    title: 'RemoteManager v2.0',
+    title: 'RemoteManager v3.0.0',
   });
 
   // 렌더러 프로세스 로드
@@ -97,11 +97,11 @@ function createMainWindow() {
   });
 }
 
-/** 
+/**
  * IPC 핸들러 등록 : IPC(Inter-Process Communication)는 프로세스 간 통신
  * preload.js가 다리 역할, 이 함수는 그 다리를 통해 어떤 요청들이 오고 갈 수 있는지 정의
  * 만약 화면(UI) 쪽에서 '요청이름'이라는 메시지를 보내면, 내가 이 함수를 실행해서 처리하고 결과를 돌려줄게" 라는 약속
- * 
+ *
  */
 
 // 1. 화면(UI) 에서는 window.electronAPI.detectProcesses()를 호출합니다. ex ) const result = await window.electronAPI.detectProcesses();
@@ -109,7 +109,6 @@ function createMainWindow() {
 // 3. 프리로드 스크립트는 ipcRenderer.invoke('detect-processes')를 통해 메인 프로세스에 신호를 보냅니다.
 // 4. 메인 프로세스의 ipcMain.handle('detect-processes', ...)가 신호를 받고, 프로세스 감지 작업을 수행한 뒤 결과를 반환합니다.
 // 5. 결과는 다시 프리로드 스크립트를 거쳐 **화면(UI)**으로 전달됩니다.
-
 
 function registerIpcHandlers() {
   // 프로세스 감지 요청
@@ -158,7 +157,6 @@ function registerIpcHandlers() {
       return { success: false, error: error.message };
     }
   });
-
 
   ipcMain.handle('request-process-delete', (event, processId) => {
     try {
@@ -257,12 +255,12 @@ function registerIpcHandlers() {
   ipcMain.handle('toggle-mini-collapse', () => {
     try {
       miniWindowManager.toggleCollapse();
-      return { 
-        success: true, 
+      return {
+        success: true,
         data: {
           ...miniWindowManager.getStatus(),
-          ...miniWindowManager.getCollapseStatus()
-        }
+          ...miniWindowManager.getCollapseStatus(),
+        },
       };
     } catch (error) {
       console.error('미니창 접기/펼치기 오류:', error);
@@ -290,7 +288,7 @@ function registerIpcHandlers() {
     try {
       // 메인창에 데이터 요청
       if (mainWindow && !mainWindow.isDestroyed()) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           mainWindow.webContents.send('request-current-data');
 
           // 응답 대기 (5초 타임아웃)
@@ -321,9 +319,12 @@ function registerIpcHandlers() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         if (actionData && actionData.type === 'group-management') {
           // 그룹 관리 액션인 경우
-          return new Promise((resolve) => {
+          return new Promise(resolve => {
             console.log('🎯 미니창에서 그룹 관리 액션 요청:', actionData);
-            mainWindow.webContents.send('request-group-action-from-mini', actionData);
+            mainWindow.webContents.send(
+              'request-group-action-from-mini',
+              actionData
+            );
 
             // 응답 대기 (5초 타임아웃)
             const timeout = setTimeout(() => {
@@ -341,9 +342,12 @@ function registerIpcHandlers() {
           });
         } else if (actionData && actionData.type === 'process-management') {
           // 프로세스 관리 액션인 경우
-          return new Promise((resolve) => {
+          return new Promise(resolve => {
             console.log('🎯 미니창에서 프로세스 관리 액션 요청:', actionData);
-            mainWindow.webContents.send('request-process-action-from-mini', actionData);
+            mainWindow.webContents.send(
+              'request-process-action-from-mini',
+              actionData
+            );
 
             // 응답 대기 (5초 타임아웃)
             const timeout = setTimeout(() => {
@@ -353,7 +357,10 @@ function registerIpcHandlers() {
             // 한번만 응답 받기
             const responseHandler = (event, result) => {
               clearTimeout(timeout);
-              ipcMain.removeListener('process-action-response', responseHandler);
+              ipcMain.removeListener(
+                'process-action-response',
+                responseHandler
+              );
               resolve(result);
             };
 
@@ -362,7 +369,10 @@ function registerIpcHandlers() {
         } else {
           // 기존 새로고침 요청
           mainWindow.webContents.send('request-refresh-from-mini');
-          return { success: true, message: '메인창에 새로고침 요청을 전송했습니다.' };
+          return {
+            success: true,
+            message: '메인창에 새로고침 요청을 전송했습니다.',
+          };
         }
       }
       return { success: false, error: '메인창을 찾을 수 없습니다.' };
@@ -399,14 +409,14 @@ function registerIpcHandlers() {
         mainWindow.show();
         mainWindow.focus();
         mainWindow.setAlwaysOnTop(true);
-        
+
         // 잠시 후 always on top 해제
         setTimeout(() => {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.setAlwaysOnTop(false);
           }
         }, 1000);
-        
+
         console.log('🔄 메인창으로 전환 완료');
         return { success: true };
       }
@@ -437,7 +447,7 @@ app.on('window-all-closed', () => {
  * 보안을 위한 새 윈도우 생성 방지
  */
 app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (navigationEvent) => {
+  contents.on('new-window', navigationEvent => {
     navigationEvent.preventDefault();
   });
 });
@@ -450,7 +460,7 @@ app.on('gpu-process-crashed', (event, killed) => {
 });
 
 // 처리되지 않은 예외 처리
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   console.error('처리되지 않은 예외:', error);
 });
 

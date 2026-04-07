@@ -60,10 +60,12 @@ const GetClassNameW = user32.func('__stdcall', 'GetClassNameW', 'int', [
   'void*',
   'int',
 ]);
+
 const GetWindowLongW = user32.func('__stdcall', 'GetWindowLongW', 'int32', [
   HWND,
   'int',
 ]);
+
 const SetWindowLongW = user32.func('__stdcall', 'SetWindowLongW', 'int32', [
   HWND,
   'int',
@@ -134,38 +136,55 @@ function showEzHelpControlBar(processId) {
   console.log(`[디버그] ShowEzHelpControlBar 시작 - PID: ${processId}`);
 
   const callback = koffi.register((hwnd, lParam) => {
-    const pidArray = new Uint32Array(1);
-    GetWindowThreadProcessId(hwnd, pidArray);
+    try {
+      const pidArray = new Uint32Array(1);
+      GetWindowThreadProcessId(hwnd, pidArray);
 
-    if (pidArray[0] === processId) {
-      // char16_t 배열을 담을 수 있는 512바이트 버퍼 (256자)
-      const classNameBuf = Buffer.alloc(512);
-      GetClassNameW(hwnd, classNameBuf, 256);
+      if (pidArray[0] === processId) {
+        // char16_t 배열을 담을 수 있는 512바이트 버퍼 (최대 256자)
+        const classNameBuf = Buffer.alloc(512);
 
-      // 버퍼를 utf16le 문자열로 디코딩하고 널(Null) 문자 제거
-      const classNameStr = classNameBuf.toString('utf16le').replace(/\0+$/, '');
+        // ★ 개선 포인트 1: GetClassNameW의 반환값(실제 문자열 길이)을 받아옵니다.
+        const len = GetClassNameW(hwnd, classNameBuf, 256);
 
-      if (classNameStr === 'HiRemoteMenuBar') {
-        controlBarCount++;
-        console.log(`[디버그] HiRemoteMenuBar 발견 #${controlBarCount}`);
+        if (len > 0) {
+          // ★ 개선 포인트 2: 정규식으로 널(Null)을 지우는 대신, 실제 길이(len * 2 bytes)만큼만 딱 잘라서 읽습니다. 훨씬 안전합니다!
+          const classNameStr = classNameBuf.toString('utf16le', 0, len * 2);
 
-        const currentStyle = GetWindowLongW(hwnd, GWL_STYLE);
-        if ((currentStyle & WS_VISIBLE) === 0) {
-          SetWindowLongW(hwnd, GWL_STYLE, currentStyle | WS_VISIBLE);
-          console.log('[성공] ezHelp 컨트롤바 WS_VISIBLE 활성화');
-        } else {
-          console.log('[정보] 컨트롤바는 이미 WS_VISIBLE 상태입니다.');
+          if (classNameStr === 'HiRemoteMenuBar') {
+            controlBarCount++;
+            console.log(`[디버그] HiRemoteMenuBar 발견 #${controlBarCount}`);
+
+            // 스타일 읽기
+            const currentStyle = GetWindowLongW(hwnd, GWL_STYLE);
+
+            // WS_VISIBLE 비트가 꺼져있는지 확인
+            if ((currentStyle & WS_VISIBLE) === 0) {
+              // 비트 연산(OR)으로 WS_VISIBLE 켜기
+              SetWindowLongW(hwnd, GWL_STYLE, currentStyle | WS_VISIBLE);
+              console.log('[성공] ezHelp 컨트롤바 WS_VISIBLE 강제 활성화');
+            } else {
+              console.log(
+                '[정보] 컨트롤바는 이미 보여지는(WS_VISIBLE) 상태입니다.'
+              );
+            }
+
+            // ★ 개선 포인트 3: 확실한 0(False) 반환으로 탐색 즉시 중단
+            return false;
+          }
         }
-        return false; // 찾았으므로 즉시 탐색 종료
       }
+    } catch (e) {
+      console.error('[오류] ezHelp 컨트롤바 탐색 중 에러:', e);
     }
-    return true; // 계속 탐색
+
+    // 계속 탐색 (True)
+    return true;
   }, koffi.pointer(EnumWindowsProc));
 
   EnumWindows(callback, null);
-  koffi.unregister(callback);
+  koffi.unregister(callback); // 메모리 누수 방지 완료
 }
-
 /**
  * HWND(핸들)를 기반으로 창을 포커스하는 공통 로직
  */
@@ -319,11 +338,19 @@ class WindowManager {
       const hwnd = getMainWindowHandle(processId);
       if (!hwnd) return { exists: false };
 
+      // ★ Koffi 포인터에서 실제 10진수 메모리 주소(숫자)를 안전하게 추출
+      let numericHandle = 0;
+      try {
+        numericHandle = Number(koffi.address(hwnd));
+      } catch (e) {
+        numericHandle = 0;
+      }
+
       return {
         exists: true,
         isMinimized: IsIconic(hwnd),
         isVisible: IsWindowVisible(hwnd),
-        handle: hwnd.toString(),
+        handle: numericHandle.toString(), // ★ 이제 완벽하게 "123456" 형태로 반환됨
       };
     } catch (error) {
       console.error('창 상태 확인 실패:', error);

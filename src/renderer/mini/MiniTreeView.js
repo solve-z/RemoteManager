@@ -128,6 +128,8 @@ export class MiniTreeView extends EventEmitter {
       this.toggleGroup(groupId);
       return;
     }
+    // 프로세스도 아니고 그룹 헤더도 아닌 '빈 영역'을 클릭했을 때
+    this.clearSelection();
   }
 
   /**
@@ -583,6 +585,23 @@ export class MiniTreeView extends EventEmitter {
   }
 
   /**
+   * 프로세스 선택 완전히 해제 (빈 공간 클릭 시)
+   */
+  clearSelection() {
+    if (this.selectedProcessId !== null) {
+      const prevSelected = this.container.querySelector(
+        '.process-node.selected'
+      );
+      if (prevSelected) {
+        prevSelected.classList.remove('selected');
+      }
+      this.selectedProcessId = null; // 내부 상태를 완벽히 비움
+      this.emit('process-selected', null); // (선택) 부모 컴포넌트에도 알림
+      console.log('🧹 빈 영역 클릭: 모든 선택 해제 완료');
+    }
+  }
+
+  /**
    * 프로세스 포커스 처리
    */
   handleProcessFocus(processId) {
@@ -938,10 +957,9 @@ export class MiniTreeView extends EventEmitter {
       this.expandedGroups = new Set(state.expandedGroups);
     }
 
-    if (state.selectedProcessId) {
+    if (state.selectedProcessId !== undefined) {
       this.selectedProcessId = state.selectedProcessId;
     }
-
     this.render();
   }
 
