@@ -95,5 +95,8 @@
     "extraMetadata": {
       "main": "src/main/main.js"
     }
+  },
+  "dependencies": {
+    "koffi": "^2.15.5"
   }
 }
