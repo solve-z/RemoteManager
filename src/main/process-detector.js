@@ -1,140 +1,154 @@
 /**
- * ProcessDetector - Windows 프로세스 감지 모듈 (최종 수정 완료)
- * - 역할: PowerShell을 통해 실행 중인 모든 잠재적 원격 창 정보를 "날것 그대로" 수집.
+ * ProcessDetector - Windows 프로세스 감지 모듈 (Koffi 초고속 최적화 및 버그 픽스)
+ * - 역할: Win32 API를 직접 호출하여 실행 중인 모든 창 정보를 즉시 수집
  * - 중복 제거: 자바스크립트 단에서 "WindowHandle"을 유일한 기준으로 삼아 중복을 제거.
- * - 실제 환경과 테스트 환경 모두에서 다중 세션을 완벽하게 지원.
  */
 
-import { spawn } from 'child_process';
+import koffi from 'koffi';
+
+// ============================================================================
+// 1. Koffi를 이용한 Win32 API 및 타입 정의
+// ============================================================================
+const user32 = koffi.load('user32.dll');
+const kernel32 = koffi.load('kernel32.dll');
+
+// Win32 API 타입 매핑 (BOOL은 C언어에서 4바이트 int이므로 int로 설정)
+const HWND = 'void*';
+const DWORD = 'uint32';
+const HANDLE = 'void*';
+
+const DetectorEnumProc = koffi.proto(
+  'int __stdcall DetectorEnumProc(void* hwnd, void* lParam)'
+);
+const EnumWindows = user32.func('__stdcall', 'EnumWindows', 'int', [
+  koffi.pointer(DetectorEnumProc),
+  'void*',
+]);
+const GetWindowThreadProcessId = user32.func(
+  '__stdcall',
+  'GetWindowThreadProcessId',
+  DWORD,
+  [HWND, 'uint32*']
+);
+const GetWindowTextW = user32.func('__stdcall', 'GetWindowTextW', 'int', [
+  HWND,
+  'void*',
+  'int',
+]);
+const IsIconic = user32.func('__stdcall', 'IsIconic', 'int', [HWND]);
+const IsWindowVisible = user32.func('__stdcall', 'IsWindowVisible', 'int', [
+  HWND,
+]);
+
+const OpenProcess = kernel32.func('__stdcall', 'OpenProcess', HANDLE, [
+  DWORD,
+  'int',
+  DWORD,
+]);
+const CloseHandle = kernel32.func('__stdcall', 'CloseHandle', 'int', [HANDLE]);
+const QueryFullProcessImageNameW = kernel32.func(
+  '__stdcall',
+  'QueryFullProcessImageNameW',
+  'int',
+  [HANDLE, DWORD, 'void*', 'uint32*']
+);
 
 class ProcessDetector {
-  /**
-   * 원격 프로세스 감지 (EnumWindows API 기반)
-   * @returns {Promise<Array>} 원시 프로세스 정보 배열
-   */
   static async detectRemoteProcesses() {
-    return new Promise((resolve, reject) => {
-      // ★★★ 핵심 수정: PowerShell의 자체 중복 제거 로직을 제거하여 모든 창을 일단 다 가져옵니다.
-      const powerShellScript = `
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        
-        # 1. Get-Process로 기본 정보 수집
-        $standardProcesses = Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | 
-            ForEach-Object {
-                @{
-                    ProcessName = $_.ProcessName; MainWindowTitle = $_.MainWindowTitle; Id = $_.Id;
-                    WindowHandle = [int64]$_.MainWindowHandle; IsMinimized = $false; IsVisible = $true
-                }
-            }
-        
-        # 2. EnumWindows API로 모든 창 정보 수집 (최소화, 숨김 창 포함)
-        Add-Type @"
-        using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
-        public class WindowEnumerator {
-            [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
-            [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
-            [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
-            [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-            [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-            public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-            public static List<WindowInfo> GetAllWindows() {
-                var windows = new List<WindowInfo>();
-                EnumWindows((hWnd, lParam) => {
-                    try {
-                        uint processId; GetWindowThreadProcessId(hWnd, out processId);
-                        var title = new StringBuilder(256); GetWindowText(hWnd, title, title.Capacity);
-                        windows.Add(new WindowInfo {
-                            Handle = hWnd, ProcessId = processId, Title = title.ToString(),
-                            IsMinimized = IsIconic(hWnd), IsVisible = IsWindowVisible(hWnd)
-                        });
-                    } catch { }
-                    return true;
-                }, IntPtr.Zero);
-                return windows;
-            }
-        }
-        public class WindowInfo {
-            public IntPtr Handle { get; set; } public uint ProcessId { get; set; } public string Title { get; set; }
-            public bool IsMinimized { get; set; } public bool IsVisible { get; set; }
-        }
-"@
-        $allWindows = [WindowEnumerator]::GetAllWindows()
-        $enhancedProcesses = @()
-        foreach ($window in $allWindows) {
-            if ($window.Title -ne "") {
-                try {
-                    $process = Get-Process -Id $window.ProcessId -ErrorAction SilentlyContinue
-                    if ($process) {
-                        $enhancedProcesses += @{
-                            ProcessName = $process.ProcessName; MainWindowTitle = $window.Title; Id = $process.Id;
-                            WindowHandle = [int64]$window.Handle; IsMinimized = $window.IsMinimized; IsVisible = $window.IsVisible
-                        }
-                    }
-                } catch {}
-            }
-        }
-        
-        # 3. 두 목록을 합쳐서 JSON으로 변환
-        $allProcesses = $standardProcesses + $enhancedProcesses
-        $allProcesses | ConvertTo-Json
-      `;
+    return new Promise(resolve => {
+      const rawProcesses = [];
 
-      try {
-        const child = spawn('powershell.exe', ['-Command', powerShellScript]);
-        let output = '';
-        child.stdout.on('data', (data) => { output += data.toString('utf8'); });
-        child.stderr.on('data', (data) => { console.error(`PowerShell Error: ${data.toString('utf8')}`); });
+      const callback = koffi.register((hwnd, lParam) => {
+        try {
+          const titleBuf = Buffer.alloc(1024);
+          const titleLen = GetWindowTextW(hwnd, titleBuf, 512);
 
-        child.on('close', (code) => {
-          if (code === 0) {
+          // 제목이 있는 유효한 창만 대상
+          if (titleLen > 0) {
+            const title = titleBuf.toString('utf16le').substring(0, titleLen);
+
+            const pidArray = new Uint32Array(1);
+            GetWindowThreadProcessId(hwnd, pidArray);
+            const pid = pidArray[0];
+
+            // Win32 BOOL(int) 반환값을 자바스크립트 Boolean으로 변환 (0이 아니면 true)
+            const isMinimized = IsIconic(hwnd) !== 0;
+            const isVisible = IsWindowVisible(hwnd) !== 0;
+
+            let processName = 'Unknown';
             try {
-              if (!output.trim()) return resolve([]);
+              // 0x1000 = PROCESS_QUERY_LIMITED_INFORMATION
+              const hProcess = OpenProcess(0x1000, 0, pid);
+              if (hProcess) {
+                const exeBuf = Buffer.alloc(1024);
+                const sizeArray = new Uint32Array([512]);
 
-              const processes = JSON.parse(output);
-              const rawProcesses = Array.isArray(processes) ? processes : [processes];
-
-              // ★★★ 여기가 최종 관문: WindowHandle을 기준으로 중복을 제거합니다.
-              const uniqueProcesses = this.removeDuplicatesByHandle(rawProcesses);
-              resolve(uniqueProcesses);
-            } catch (parseError) {
-              console.error('JSON 파싱 오류:', parseError, 'Raw output:', output);
-              resolve([]);
+                if (
+                  QueryFullProcessImageNameW(hProcess, 0, exeBuf, sizeArray) !==
+                  0
+                ) {
+                  const exePath = exeBuf
+                    .toString('utf16le')
+                    .substring(0, sizeArray[0]);
+                  processName = exePath
+                    .split('\\')
+                    .pop()
+                    .replace(/\.exe$/i, '');
+                }
+                CloseHandle(hProcess);
+              }
+            } catch (e) {
+              // 권한이 없는 시스템 프로세스 등의 에러는 앱이 뻗지 않게 무시하고 Unknown 유지
             }
-          } else {
-            reject(new Error(`프로세스 감지 중 오류 발생 (코드: ${code})`));
+
+            // ★ 핵심 버그 픽스: 포인터(객체)를 안전하게 숫자로 변환
+            let numericHandle = 0;
+            try {
+              // Koffi 외부 포인터 주소를 실제 10진수 숫자로 추출
+              numericHandle = Number(koffi.address(hwnd));
+            } catch (e) {
+              numericHandle = Number(hwnd) || 0;
+            }
+
+            rawProcesses.push({
+              ProcessName: processName,
+              MainWindowTitle: title,
+              Id: pid,
+              WindowHandle: numericHandle,
+              IsMinimized: isMinimized,
+              IsVisible: isVisible,
+            });
           }
-        });
-      } catch (error) {
-        reject(error);
-      }
+        } catch (error) {
+          console.error('[오류] 개별 창 정보 파싱 중 에러:', error);
+        }
+
+        return 1; // 1(True)을 반환해야 다음 창을 계속 탐색함
+      }, koffi.pointer(DetectorEnumProc));
+
+      // EnumWindows 실행 (동기 호출)
+      EnumWindows(callback, null);
+
+      koffi.unregister(callback);
+
+      const uniqueProcesses = this.removeDuplicatesByHandle(rawProcesses);
+      resolve(uniqueProcesses);
     });
   }
 
-  /**
-   * WindowHandle을 유일한 기준으로 삼아 중복된 프로세스 정보를 제거합니다.
-   * - PowerShell에서 가져온 두 목록(Standard, Enhanced)을 병합하고 정리하는 역할을 합니다.
-   * @param {Array} processes - 잠재적으로 중복된 프로세스 정보 배열
-   * @returns {Array} WindowHandle이 고유한 프로세스 정보 배열
-   */
   static removeDuplicatesByHandle(processes) {
     const handleMap = new Map();
 
-    // 배열을 순회하며 WindowHandle을 키로 사용하여 Map에 저장합니다.
-    // 동일한 WindowHandle이 있으면 나중에 들어온 정보로 덮어씌워집니다.
-    // (보통 더 상세한 정보인 Enhanced 정보가 남게 됩니다)
     for (const process of processes) {
-      if (process && process.WindowHandle) { // 유효한 핸들이 있는 경우에만
+      // WindowHandle이 0이거나 NaN 등 유효하지 않은 경우 무시
+      if (process && process.WindowHandle) {
         handleMap.set(process.WindowHandle, process);
       }
     }
 
-    // Map의 값들만 추출하여 배열로 반환합니다.
     return Array.from(handleMap.values());
   }
 
-  // 참고: Chrome 테스트를 계속 사용하려면 이 함수는 KeyManager.js로 옮기는 것이 좋습니다.
-  // 이 파일에 남겨두려면, KeyManager.js의 generateUniqueWindowHandleForChrome 코드를 여기에 복사해야 합니다.
-  // 지금은 기능에 직접적인 영향이 없으므로 일단 그대로 둡니다.
   static generateUniqueWindowHandleForChrome(windowTitle, originalHandle) {
     if (!this.chromeWindowHandleCache) {
       this.chromeWindowHandleCache = new Map();
@@ -147,11 +161,12 @@ class ProcessDetector {
     let nameHash = 0;
     for (let i = 0; i < computerName.length; i++) {
       const char = computerName.charCodeAt(i);
-      nameHash = ((nameHash << 5) - nameHash) + char;
+      nameHash = (nameHash << 5) - nameHash + char;
       nameHash = nameHash & nameHash;
     }
     const sequenceNumber = this.chromeWindowHandleCache.size + 1;
-    const uniqueHandle = Math.abs(nameHash) + Math.abs(originalHandle) + (sequenceNumber * 10000);
+    const uniqueHandle =
+      Math.abs(nameHash) + Math.abs(originalHandle) + sequenceNumber * 10000;
     this.chromeWindowHandleCache.set(cacheKey, uniqueHandle);
     return uniqueHandle;
   }
