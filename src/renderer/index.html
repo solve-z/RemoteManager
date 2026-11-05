@@ -46,6 +46,12 @@
                 <span class="nav-text">그룹없음</span>
               </a>
             </li>
+            <li class="nav-item">
+              <a href="#" id="nav-logs" class="nav-link">
+                <span class="nav-icon">📜</span>
+                <span class="nav-text">접속 로그</span>
+              </a>
+            </li>
           </ul>
         </nav>
 
@@ -117,6 +123,33 @@
                 <span class="btn-icon">🔧</span>
                 <span class="btn-text">미니창</span>
               </button>
+              <!-- 미니창 위치 및 프리셋 관리 -->
+              <div class="mini-pos-dropdown-wrapper" style="position: relative; display: inline-block;">
+                <button
+                  id="main-mini-preset-toggle"
+                  class="btn btn-secondary"
+                  title="미니창 위치 초기화 및 프리셋 관리"
+                >
+                  <span class="btn-icon">📐</span>
+                  <span class="btn-text">위치/프리셋</span>
+                </button>
+                <div id="main-mini-preset-panel" class="main-mini-preset-panel" style="display: none;">
+                  <div class="preset-panel-header">
+                    <span>📐 미니창 위치 & 크기 프리셋</span>
+                  </div>
+                  <button id="main-preset-reset-btn" class="preset-panel-btn reset-btn">
+                    <span>🔄 기본 위치 초기화 (336px 1열)</span>
+                  </button>
+                  <div class="preset-panel-divider"></div>
+                  <!-- 프리셋 목록 컨테이너 -->
+                  <div id="preset-list-container" class="preset-list-container">
+                    <!-- JS에서 동적으로 렌더링 -->
+                  </div>
+                  <button id="preset-add-btn" class="preset-panel-btn add-btn">
+                    <span>➕ 새 프리셋 추가</span>
+                  </button>
+                </div>
+              </div>
               <button id="refresh-btn" class="btn btn-secondary">
                 <span class="btn-icon"
                   ><span class="refresh-icon normal"></span
@@ -225,6 +258,42 @@
             <div class="empty-icon">📱</div>
             <h3>원격 프로세스가 없습니다</h3>
             <p>ezHelp 또는 TeamViewer로 원격 연결을 시작해보세요.</p>
+          </div>
+
+          <!-- 접속 로그 뷰 -->
+          <div id="logs-view-container" class="logs-view-container" style="display: none;">
+            <div class="logs-header-bar">
+              <div class="logs-header-left">
+                <span class="logs-badge">최근 30일 접속 이력 자동 보관</span>
+                <span id="logs-count-info" class="logs-count">총 0건</span>
+              </div>
+              <div class="logs-header-right">
+                <input type="text" id="logs-search-input" class="form-input" placeholder="컴퓨터명 / 라벨 / IP 검색..." style="width: 220px; height: 32px; font-size: 12px; margin-right: 8px;">
+                <button id="logs-refresh-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">새로고침</button>
+                <button id="logs-clear-btn" class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;">기록 비우기</button>
+              </div>
+            </div>
+            <div class="logs-table-wrapper">
+              <table class="logs-table">
+                <thead>
+                  <tr>
+                    <th>접속 시작 시간</th>
+                    <th>프로그램</th>
+                    <th>컴퓨터명 / 라벨</th>
+                    <th>IP 주소</th>
+                    <th>종료 시간</th>
+                    <th>접속 유지 시간</th>
+                    <th>PID</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                  <!-- 동적 로드 -->
+                </tbody>
+              </table>
+              <div id="logs-empty" class="logs-empty" style="display: none;">
+                <p>기록된 원격 접속 로그가 없습니다.</p>
+              </div>
+            </div>
           </div>
         </div>
       </main>

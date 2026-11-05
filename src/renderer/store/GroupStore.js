@@ -25,12 +25,14 @@ export class GroupStore {
       throw new Error(`그룹명 '${name}'이 이미 존재합니다.`);
     }
 
+    const maxOrder = Math.max(-1, ...Array.from(this.groups.values()).map(g => g.order ?? 0));
     const group = {
       id: this.generateGroupId(),
       name: name.trim(),
       processIds: [],
       createdAt: new Date(),
       color: this.getRandomColor(),
+      order: maxOrder + 1,
     };
 
     this.groups.set(group.id, group);
@@ -212,13 +214,52 @@ export class GroupStore {
   }
 
   /**
-   * 모든 그룹 가져오기
+   * 모든 그룹 가져오기 (order 기준 정렬, 없으면 createdAt 기준)
    * @returns {Array} 그룹 배열
    */
   getAllGroups() {
-    return Array.from(this.groups.values()).sort(
-      (a, b) => a.createdAt - b.createdAt
-    );
+    return Array.from(this.groups.values()).sort((a, b) => {
+      const orderA = typeof a.order === 'number' ? a.order : 0;
+      const orderB = typeof b.order === 'number' ? b.order : 0;
+      if (orderA !== orderB) return orderA - orderB;
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
+  }
+
+  /**
+   * 그룹 순서 변경 (위/아래 이동)
+   * @param {string} groupId - 이동할 그룹 ID
+   * @param {'up'|'down'} direction - 이동 방향
+   * @returns {boolean} 성공 여부
+   */
+  moveGroup(groupId, direction) {
+    const groups = this.getAllGroups();
+    const currentIndex = groups.findIndex(g => g.id === groupId);
+    if (currentIndex === -1) return false;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= groups.length) return false;
+
+    // 배열 내에서 위치 이동
+    const [movedGroup] = groups.splice(currentIndex, 1);
+    groups.splice(targetIndex, 0, movedGroup);
+
+    // 새 순서로 order 0부터 재할당
+    groups.forEach((g, idx) => {
+      g.order = idx;
+    });
+
+    // Map 자체도 정렬된 순서대로 재구성
+    this.groups.clear();
+    groups.forEach(g => {
+      this.groups.set(g.id, g);
+    });
+
+    this.save();
+    this.notifyListeners();
+    return true;
   }
 
   /**

@@ -175,9 +175,16 @@
 .titlebar-left {
   display: flex;
   align-items: center;
-  flex: 1; /* 드래그 영역을 위해 공간 확보 */
-  cursor: move; /* 드래그 가능 */
-  -webkit-app-region: drag; /* 드래그 영역 */
+  flex-shrink: 0;
+  -webkit-app-region: no-drag !important;
+  z-index: 10;
+}
+
+.titlebar-drag-spacer {
+  flex: 1;
+  height: 100%;
+  cursor: move;
+  -webkit-app-region: drag !important;
 }
 
 .mini-logo {
@@ -202,6 +209,118 @@
   -webkit-app-region: no-drag;
 }
 
+.titlebar-refresh-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn.auto-refresh-btn {
+  width: auto;
+  padding: 0 4px;
+  height: 20px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.titlebar-btn.auto-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.titlebar-btn.auto-refresh-btn.active {
+  background: none;
+  color: #ffffff;
+  border: none;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.titlebar-btn.small-sub-btn {
+  width: auto;
+  padding: 0 4px;
+  height: 18px;
+  font-size: 9px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.mini-dropdown-panel {
+  background: #1e1e2d;
+  color: #fff;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-section-title {
+  font-weight: 600;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.panel-action-btn {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #f8fafc;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.panel-action-btn:hover {
+  background: #475569;
+}
+
+.preset-row {
+  display: flex;
+  gap: 5px;
+}
+
+.preset-row .half-btn {
+  flex: 1;
+}
+
+.preset-row .small-btn {
+  width: 44px;
+  text-align: center;
+  background: #2563eb;
+  border-color: #3b82f6;
+}
+
+.preset-row .small-btn:hover {
+  background: #1d4ed8;
+}
+
+.auto-refresh-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.auto-refresh-options .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .titlebar-btn {
   display: flex;
   align-items: center;
@@ -215,6 +334,42 @@
   border-radius: 2px;
   font-size: 12px;
   transition: background-color 0.2s;
+  -webkit-app-region: no-drag !important;
+}
+
+#mini-refresh-btn {
+  -webkit-app-region: no-drag !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  padding: 2px 4px;
+  width: 26px;
+  height: 22px;
+  user-select: none;
+}
+
+#mini-refresh-btn * {
+  -webkit-app-region: no-drag !important;
+  pointer-events: none !important;
+}
+
+#mini-refresh-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.05);
+}
+
+#mini-refresh-btn:active {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  transform: scale(0.95);
+}
+
+#mini-refresh-btn.spinning .refresh-icon {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .titlebar-btn:hover {
@@ -409,6 +564,9 @@
 }
 
 .group-children {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 4px;
   border-left: 1px solid #e5e7eb;
   border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
@@ -417,10 +575,11 @@
   border-bottom-right-radius: 4px;
   background: #fafbfc;
   margin-bottom: 4px;
-  margin-left: 8px; /* 트리 구조 들여쓰기 */
+  margin-left: 6px; /* 트리 구조 들여쓰기 */
   overflow: hidden;
   position: relative;
-  padding: 2px 0; /* 상하 여백 추가 */
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 /* 빈 그룹 영역 숨기기 - 프로세스가 없을 때 */
@@ -678,15 +837,18 @@
 .process-node {
   display: flex;
   align-items: center;
-  padding: 3px 8px 3px 8px; /* 왼쪽 패딩 증가로 화살표 공간 확보 */
-  margin: 1px 0;
-  border-radius: 0 3px 3px 0; /* 왼쪽은 직각, 오른쪽은 둥글게 */
+  padding: 4px 8px;
+  margin: 0;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 10px;
   position: relative;
-  border-left: 3px solid transparent; /* 기본적으로 투명한 테두리 */
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid transparent;
+  background: #ffffff;
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .process-node:hover {
@@ -789,6 +951,29 @@
 .process-status.connected {
   background: #4caf50;
   color: white;
+}
+
+.process-status.warning {
+  background: #f59e0b;
+  color: white;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
+  margin-right: 6px;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+  animation: pulse-warning 1.5s infinite;
+}
+
+@keyframes pulse-warning {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.process-node.focus-failed {
+  border: 1px solid #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.12) !important;
 }
 
 .process-status.disconnected {

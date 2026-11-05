@@ -116,6 +116,7 @@ class MiniApp {
     const helpBtn = document.getElementById('mini-help-btn');
     const createGroupBtn = document.getElementById('mini-create-group-btn');
     const toggleBtn = document.getElementById('mini-toggle-btn');
+    const refreshBtn = document.getElementById('mini-refresh-btn');
 
     closeBtn?.addEventListener('click', () => {
       this.closeWindow();
@@ -136,6 +137,12 @@ class MiniApp {
 
     toggleBtn?.addEventListener('click', () => {
       this.toggleCollapse();
+    });
+
+    refreshBtn?.addEventListener('click', async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      await this.handleManualRefresh();
     });
 
     // 더블클릭 기능 제거 - 버튼만 사용
@@ -233,6 +240,19 @@ class MiniApp {
       window.electronAPI.onConflictDetected(conflictData => {
         console.log('충돌 알림 수신:', conflictData);
         this.handleConflictAlert(conflictData);
+      });
+    }
+
+    // 메인창과 자동 새로고침 동기화
+    if (window.electronAPI && window.electronAPI.onAutoRefreshSync) {
+      window.electronAPI.onAutoRefreshSync(syncData => {
+        console.log('⚡ 자동 새로고침 동기화 수신:', syncData);
+        if (typeof syncData.interval === 'number') {
+          this.setAutoRefreshInterval(syncData.interval, false);
+        }
+        if (typeof syncData.enabled === 'boolean') {
+          this.toggleAutoRefresh(syncData.enabled, false);
+        }
       });
     }
   }
@@ -502,24 +522,34 @@ class MiniApp {
   groupProcesses(processes) {
     const groups = new Map();
 
-    // 먼저 모든 그룹을 추가 (프로세스가 없어도 표시)
-    if (this.mainGroups && this.mainGroups.length > 0) {
-      this.mainGroups.forEach(group => {
-        groups.set(group.name, {
-          name: group.name,
-          id: group.id,
-          color: group.color,
-          processes: [],
-        });
-      });
-    }
+    // 메인 그룹들을 order 순으로 확실하게 정렬
+    const sortedMainGroups = [...(this.mainGroups || [])].sort((a, b) => {
+      const orderA = typeof a.order === 'number' ? a.order : 0;
+      const orderB = typeof b.order === 'number' ? b.order : 0;
+      if (orderA !== orderB) return orderA - orderB;
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
 
-    // "그룹없음" 그룹을 항상 추가 (프로세스가 없어도 표시)
+    // 먼저 모든 그룹을 추가 (프로세스가 없어도 표시)
+    sortedMainGroups.forEach(group => {
+      groups.set(group.name, {
+        name: group.name,
+        id: group.id,
+        color: group.color,
+        order: typeof group.order === 'number' ? group.order : 0,
+        processes: [],
+      });
+    });
+
+    // "그룹없음" 그룹을 항상 추가 (프로세스가 없어도 표시, 순서는 맨 아래)
     if (!groups.has('그룹없음')) {
       groups.set('그룹없음', {
         name: '그룹없음',
         id: 'ungrouped',
         color: null,
+        order: 999999,
         processes: [],
       });
     }
@@ -598,7 +628,12 @@ class MiniApp {
       if (!window.electronAPI) return;
 
       const process = await this.getProcessById(processId);
-      if (!process) return;
+      if (!process) {
+        console.warn('⚠️ 프로세스를 찾을 수 없음:', processId);
+        this.treeView?.markProcessWarning(processId, '프로세스가 없거나 끊김');
+        this.showNotification('원격 프로세스를 찾을 수 없습니다. (연결 끊김)', 'warning');
+        return;
+      }
 
       const focusData = {
         id: process.windowHandle || process.pid,
@@ -611,15 +646,18 @@ class MiniApp {
       };
 
       const result = await window.electronAPI.focusWindow(focusData);
-      if (result.success) {
+      if (result && result.success) {
         console.log('포커스 성공:', processId);
+        this.treeView?.clearProcessWarning(processId);
         this.showNotification('원격창이 포커스되었습니다.', 'success');
       } else {
-        console.error('포커스 실패:', result.error);
-        this.showNotification('포커스에 실패했습니다.', 'error');
+        console.error('포커스 실패:', result?.error);
+        this.treeView?.markProcessWarning(processId, '창을 찾을 수 없음/포커스 실패');
+        this.showNotification('창을 찾을 수 없거나 포커스에 실패했습니다. (주황색 점등)', 'warning');
       }
     } catch (error) {
       console.error('포커스 처리 실패:', error);
+      this.treeView?.markProcessWarning(processId, '포커스 오류');
       this.showNotification('포커스 처리 중 오류가 발생했습니다.', 'error');
     }
   }
@@ -790,6 +828,48 @@ class MiniApp {
   }
 
   /**
+   * 마지막 새로고침 시각 갱신
+   */
+  updateLastRefreshTime() {
+    const lastUpdate = document.getElementById('mini-last-update');
+    if (lastUpdate) {
+      lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+  }
+
+  /**
+   * 수동 새로고침 처리 (지금 새로고침)
+   */
+  async handleManualRefresh() {
+    const refreshBtn = document.getElementById('mini-refresh-btn');
+    if (refreshBtn) refreshBtn.classList.add('spinning');
+    try {
+      await this.executeRefreshCycle();
+      this.showNotification('새로고침 완료', 'success');
+    } catch (e) {
+      this.showNotification('새로고침 실패: ' + e.message, 'error');
+    } finally {
+      if (refreshBtn) refreshBtn.classList.remove('spinning');
+    }
+  }
+
+  /**
+   * 1회 새로고침 사이클 실행 및 하단 시각 실시간 갱신
+   */
+  async executeRefreshCycle() {
+    try {
+      if (window.electronAPI && window.electronAPI.requestMainRefresh) {
+        await window.electronAPI.requestMainRefresh();
+      }
+      await this.requestMainData();
+    } catch (e) {
+      console.warn('새로고침 사이클 오류:', e);
+    } finally {
+      this.updateLastRefreshTime();
+    }
+  }
+
+  /**
    * 투명도 패널 토글
    */
   toggleOpacityPanel() {
@@ -915,9 +995,9 @@ class MiniApp {
     }
 
     // F5 또는 Ctrl+R: 새로고침
-    if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
+    if (event.key === 'F5' || (event.ctrlKey && (event.key === 'r' || event.key === 'R'))) {
       event.preventDefault();
-      this.refreshProcesses();
+      this.handleManualRefresh();
       return;
     }
 

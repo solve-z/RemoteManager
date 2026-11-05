@@ -637,7 +637,7 @@ export class GroupManager {
       return;
     }
     
-    groups.forEach(group => {
+    groups.forEach((group, index) => {
       const stats = this.groupService.getGroupStatistics(group.id);
       const item = document.createElement('div');
       item.className = 'advanced-group-item';
@@ -652,6 +652,12 @@ export class GroupManager {
           </div>
         </div>
         <div class="group-item-actions">
+          <button class="btn-icon-small btn-secondary" title="위로 이동" data-action="move-up" ${index === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+            ▲
+          </button>
+          <button class="btn-icon-small btn-secondary" title="아래로 이동" data-action="move-down" ${index === groups.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+            ▼
+          </button>
           <button class="btn-icon-small btn-secondary" title="수정" data-action="edit">
             ✏️
           </button>
@@ -674,6 +680,14 @@ export class GroupManager {
           const action = btn.dataset.action;
           
           switch (action) {
+            case 'move-up':
+              this.groupService.moveGroup(group.id, 'up');
+              this.loadGroupsTab();
+              break;
+            case 'move-down':
+              this.groupService.moveGroup(group.id, 'down');
+              this.loadGroupsTab();
+              break;
             case 'edit':
               this.hideAdvancedDialog();
               this.showEditDialog(group);

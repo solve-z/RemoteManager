@@ -14,6 +14,7 @@ import { ProcessList } from './components/ProcessList.js';
 import { Sidebar } from './components/Sidebar.js';
 import { StatusBar } from './components/StatusBar.js';
 import { GroupManager } from './components/GroupManager.js';
+import { LogService } from './services/LogService.js';
 
 /**
  * RemoteManager 애플리케이션 클래스
@@ -86,6 +87,7 @@ class RemoteManagerApp {
       this.stores.process,
       this.services.notification
     );
+    this.services.log = new LogService();
   }
 
   /**
@@ -152,6 +154,239 @@ class RemoteManagerApp {
     miniWindowToggle?.addEventListener('click', () => {
       this.toggleMiniWindow();
     });
+
+    // 미니창 위치/프리셋 드롭다운 패널 토글 및 이벤트
+    const presetToggleBtn = document.getElementById('main-mini-preset-toggle');
+    const presetPanel = document.getElementById('main-mini-preset-panel');
+    const presetListContainer = document.getElementById('preset-list-container');
+    const presetAddBtn = document.getElementById('preset-add-btn');
+
+    presetToggleBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      const isVisible = presetPanel.style.display !== 'none';
+      presetPanel.style.display = isVisible ? 'none' : 'flex';
+      if (!isVisible) renderPresetList();
+    });
+
+    document.addEventListener('click', e => {
+      if (presetPanel && !presetPanel.contains(e.target) && e.target !== presetToggleBtn) {
+        presetPanel.style.display = 'none';
+      }
+    });
+
+    // 프리셋 데이터 로드 및 마이그레이션
+    const getPresetsData = () => {
+      try {
+        const raw = localStorage.getItem('mini_window_presets_v2');
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.warn('프리셋 로드 실패:', e);
+      }
+      // 구 버전 마이그레이션
+      let old1 = null, old2 = null;
+      try {
+        const r1 = localStorage.getItem('mini_window_preset_1');
+        if (r1) old1 = JSON.parse(r1);
+        const r2 = localStorage.getItem('mini_window_preset_2');
+        if (r2) old2 = JSON.parse(r2);
+      } catch (e) {}
+
+      const defaultPresets = [
+        { id: 'preset_1', name: '프리셋 1 (1열 기본)', bounds: old1 },
+        { id: 'preset_2', name: '프리셋 2 (2열 와이드)', bounds: old2 },
+        { id: 'preset_3', name: '프리셋 3', bounds: null },
+        { id: 'preset_4', name: '프리셋 4', bounds: null },
+      ];
+      localStorage.setItem('mini_window_presets_v2', JSON.stringify(defaultPresets));
+      return defaultPresets;
+    };
+
+    const savePresetsData = presets => {
+      localStorage.setItem('mini_window_presets_v2', JSON.stringify(presets));
+      renderPresetList();
+    };
+
+    // 프리셋 목록 렌더링
+    const renderPresetList = () => {
+      if (!presetListContainer) return;
+      const presets = getPresetsData();
+      presetListContainer.innerHTML = '';
+
+      presets.forEach((preset, index) => {
+        const card = document.createElement('div');
+        card.className = 'preset-card';
+        card.dataset.id = preset.id;
+
+        const boundsText = preset.bounds
+          ? `${preset.bounds.width}×${preset.bounds.height}`
+          : '미저장';
+        const hasBounds = !!preset.bounds;
+        const canDelete = presets.length > 2; // 최소 2개는 유지
+
+        card.innerHTML = `
+          <div class="preset-header-row">
+            <div class="preset-name-area">
+              <span class="preset-name-label" title="클릭하여 이름 수정">${preset.name}</span>
+              <input type="text" class="preset-name-input" value="${preset.name}" style="display: none;" maxlength="30" />
+              <button class="preset-rename-btn" title="이름 수정">✏️</button>
+            </div>
+            <div class="preset-status-tag ${hasBounds ? 'has-bounds' : ''}" title="${hasBounds ? `X: ${preset.bounds.x}, Y: ${preset.bounds.y}` : '위치가 저장되지 않음'}">
+              ${boundsText}
+            </div>
+          </div>
+          <div class="preset-actions-row">
+            <button class="preset-action-btn load-btn" ${!hasBounds ? 'disabled' : ''} title="${hasBounds ? '이 위치로 미니창 이동' : '저장된 위치가 없습니다'}">불러오기</button>
+            <button class="preset-action-btn save-btn" title="현재 미니창 크기/위치를 이 프리셋에 저장">현재 위치 저장</button>
+            ${canDelete ? `<button class="preset-action-btn delete-btn" title="프리셋 삭제">🗑️</button>` : ''}
+          </div>
+        `;
+
+        // 1. 이름 수정 처리
+        const label = card.querySelector('.preset-name-label');
+        const input = card.querySelector('.preset-name-input');
+        const renameBtn = card.querySelector('.preset-rename-btn');
+
+        const startRename = () => {
+          label.style.display = 'none';
+          renameBtn.style.display = 'none';
+          input.style.display = 'inline-block';
+          input.focus();
+          input.select();
+        };
+
+        const finishRename = () => {
+          const newName = input.value.trim() || preset.name;
+          label.textContent = newName;
+          input.style.display = 'none';
+          label.style.display = 'inline';
+          renameBtn.style.display = 'inline';
+
+          if (newName !== preset.name) {
+            preset.name = newName;
+            const updated = getPresetsData().map(p => p.id === preset.id ? { ...p, name: newName } : p);
+            savePresetsData(updated);
+            this.services.notification?.showSuccess(`프리셋 이름이 '${newName}'(으)로 변경되었습니다.`);
+          }
+        };
+
+        renameBtn?.addEventListener('click', e => {
+          e.stopPropagation();
+          startRename();
+        });
+        label?.addEventListener('click', e => {
+          e.stopPropagation();
+          startRename();
+        });
+        input?.addEventListener('blur', finishRename);
+        input?.addEventListener('keydown', e => {
+          if (e.key === 'Enter') finishRename();
+          if (e.key === 'Escape') {
+            input.value = preset.name;
+            input.style.display = 'none';
+            label.style.display = 'inline';
+            renameBtn.style.display = 'inline';
+          }
+        });
+
+        // 2. 현재 위치 저장
+        card.querySelector('.save-btn')?.addEventListener('click', async e => {
+          e.stopPropagation();
+          try {
+            const boundsResult = await window.electronAPI.getMiniBounds();
+            if (!boundsResult?.success || !boundsResult?.data) {
+              this.services.notification?.showWarning('미니창이 열려있지 않습니다. 먼저 미니창을 열어주세요.');
+              return;
+            }
+            const updated = getPresetsData().map(p =>
+              p.id === preset.id ? { ...p, bounds: boundsResult.data } : p
+            );
+            savePresetsData(updated);
+            this.services.notification?.showSuccess(
+              `'${preset.name}'에 현재 미니창 위치(${boundsResult.data.width}×${boundsResult.data.height})가 저장되었습니다.`
+            );
+          } catch (err) {
+            this.services.notification?.showError('저장 실패', err.message);
+          }
+        });
+
+        // 3. 불러오기
+        card.querySelector('.load-btn')?.addEventListener('click', async e => {
+          e.stopPropagation();
+          if (!preset.bounds) {
+            this.services.notification?.showWarning('저장된 위치가 없습니다. 먼저 저장을 눌러주세요.');
+            return;
+          }
+          try {
+            const getStatus = window.electronAPI.getMiniStatus || window.electronAPI.getMiniWindowStatus;
+            const showWindow = window.electronAPI.showMiniWindow || window.electronAPI.openMiniWindow;
+            const status = getStatus ? await getStatus() : null;
+            if (!status?.data?.exists || !status?.data?.visible) {
+              if (showWindow) await showWindow();
+            }
+            const setResult = await window.electronAPI.setMiniBounds(preset.bounds);
+            if (setResult && setResult.success) {
+              this.services.notification?.showSuccess(`'${preset.name}' 위치로 미니창을 이동했습니다.`);
+              if (presetPanel) presetPanel.style.display = 'none';
+            } else {
+              this.services.notification?.showError('이동 실패', setResult?.error || '알 수 없는 오류');
+            }
+          } catch (err) {
+            this.services.notification?.showError('불러오기 오류', err.message);
+          }
+        });
+
+        // 4. 삭제
+        card.querySelector('.delete-btn')?.addEventListener('click', e => {
+          e.stopPropagation();
+          if (confirm(`'${preset.name}' 프리셋을 삭제하시겠습니까?`)) {
+            const updated = getPresetsData().filter(p => p.id !== preset.id);
+            savePresetsData(updated);
+            this.services.notification?.showSuccess(`'${preset.name}' 프리셋이 삭제되었습니다.`);
+          }
+        });
+
+        presetListContainer.appendChild(card);
+      });
+    };
+
+    // 프리셋 추가 버튼
+    presetAddBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      const presets = getPresetsData();
+      const newIndex = presets.length + 1;
+      const newPreset = {
+        id: 'preset_' + Date.now(),
+        name: `프리셋 ${newIndex}`,
+        bounds: null
+      };
+      presets.push(newPreset);
+      savePresetsData(presets);
+      this.services.notification?.showSuccess(`새 프리셋 '프리셋 ${newIndex}'이 추가되었습니다.`);
+    });
+
+    // 1. 미니창 위치 초기화 (기본 336px)
+    document.getElementById('main-preset-reset-btn')?.addEventListener('click', async () => {
+      try {
+        const getStatus = window.electronAPI.getMiniStatus || window.electronAPI.getMiniWindowStatus;
+        const showWindow = window.electronAPI.showMiniWindow || window.electronAPI.openMiniWindow;
+        const status = getStatus ? await getStatus() : null;
+        if (!status?.data?.exists || !status?.data?.visible) {
+          if (showWindow) await showWindow();
+        }
+        const result = await window.electronAPI.resetMiniPosition();
+        if (result && result.success) {
+          this.services.notification?.showSuccess('미니창 위치가 기본값(336px 1열)으로 초기화되었습니다.');
+          if (presetPanel) presetPanel.style.display = 'none';
+        } else {
+          this.services.notification?.showError('위치 초기화 실패', result?.error || '알 수 없는 오류');
+        }
+      } catch (err) {
+        this.services.notification?.showError('오류', err.message);
+      }
+    });
+
+    // 초기 렌더링 호출
+    renderPresetList();
 
     // 새로고침 버튼
     const refreshBtn = document.getElementById('refresh-btn');
@@ -336,20 +571,77 @@ class RemoteManagerApp {
       });
     }
 
+    // 미니창과 자동 새로고침 상태 동기화
+    if (window.electronAPI && window.electronAPI.onAutoRefreshSync) {
+      window.electronAPI.onAutoRefreshSync(({ enabled, interval }) => {
+        console.log('⚡ 미니창으로부터 자동 새로고침 동기화 수신:', { enabled, interval });
+        if (enabled) {
+          this.startAutoRefresh(interval || 5000, false);
+        } else {
+          this.stopAutoRefresh(false);
+        }
+      });
+    }
+
     // 사이드바 리사이저 기능
     this.setupSidebarResizer();
 
     // 네비게이션-그룹 세로 리사이저 기능
     this.setupNavGroupsResizer();
+
+    // 사이드바 네비게이션 탭 전환 이벤트
+    window.addEventListener('navigation', e => {
+      const navId = e.detail?.navigationId;
+      const logsView = document.getElementById('logs-view-container');
+      const processContainer = document.getElementById('process-list-container');
+      const filtersHeader = document.querySelector('.filters-header');
+      const emptyState = document.getElementById('empty-state');
+      const loadingState = document.getElementById('loading-state');
+
+      if (navId === 'nav-logs') {
+        if (logsView) logsView.style.display = 'flex';
+        if (processContainer) processContainer.style.display = 'none';
+        if (filtersHeader) filtersHeader.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
+        this.renderLogsView();
+      } else {
+        if (logsView) logsView.style.display = 'none';
+        if (filtersHeader) filtersHeader.style.display = 'flex';
+        const processes = this.stores.process.getAllProcesses();
+        if (processes.length > 0) {
+          if (processContainer) processContainer.style.display = 'block';
+          if (emptyState) emptyState.style.display = 'none';
+        } else {
+          if (processContainer) processContainer.style.display = 'none';
+          if (emptyState) emptyState.style.display = 'flex';
+        }
+      }
+    });
+
+    // 로그 뷰 검색 및 삭제 이벤트
+    document.getElementById('logs-search-input')?.addEventListener('input', () => {
+      this.renderLogsView();
+    });
+    document.getElementById('logs-refresh-btn')?.addEventListener('click', () => {
+      this.renderLogsView();
+      this.services.notification?.showSuccess('로그 목록이 새로고침되었습니다.');
+    });
+    document.getElementById('logs-clear-btn')?.addEventListener('click', () => {
+      if (confirm('접속 기록을 모두 삭제하시겠습니까?')) {
+        this.services.log.clearAllLogs();
+        this.renderLogsView();
+        this.services.notification?.showSuccess('접속 기록이 모두 삭제되었습니다.');
+      }
+    });
   }
 
   /**
    * 새로고침 처리 (미니창 요청용)
    */
-  handleRefresh() {
+  async handleRefresh() {
     console.log('🔄 미니창 요청으로 새로고침 실행');
-    // 기존 새로고침 로직 호출
-    this.refreshProcesses();
+    await this.refreshProcesses();
   }
 
   /**
@@ -384,6 +676,12 @@ class RemoteManagerApp {
             color: data.color,
           });
           result = { success: updateSuccess };
+          break;
+
+        case 'move':
+          console.log('↕️ 미니창에서 그룹 순서 변경 요청:', data);
+          const moveSuccess = this.services.group.moveGroup(data.id, data.direction);
+          result = { success: moveSuccess };
           break;
 
         case 'change-process-group':
@@ -784,6 +1082,16 @@ class RemoteManagerApp {
         refreshBtn.disabled = false;
         refreshBtnIcon.innerHTML = '<span class="refresh-icon normal"></span>';
       }
+
+      // 원격 프로세스 접속/종료 이력 로그 기록
+      this.services.log?.trackProcessChanges(processes);
+      const logsView = document.getElementById('logs-view-container');
+      if (logsView && logsView.style.display !== 'none') {
+        this.renderLogsView();
+      }
+
+      // 새로고침 후 미니창에 최신 프로세스/그룹 데이터 동기화
+      this.sendDataToMiniWindow();
     } catch (error) {
       console.error('프로세스 새로고침 실패:', error);
       const loadingState = document.getElementById('loading-state');
@@ -804,21 +1112,22 @@ class RemoteManagerApp {
    */
   toggleAutoRefresh() {
     if (this.isAutoRefreshEnabled) {
-      this.stopAutoRefresh();
+      this.stopAutoRefresh(true);
     } else {
-      this.startAutoRefresh();
+      this.startAutoRefresh(5000, true);
     }
   }
 
   /**
    * 자동 새로고침 시작
    */
-  startAutoRefresh() {
+  startAutoRefresh(intervalMs = 5000, shouldSync = true) {
     if (this.autoRefreshInterval) {
       clearInterval(this.autoRefreshInterval);
     }
 
     this.isAutoRefreshEnabled = true;
+    this.refreshIntervalMs = intervalMs;
     this.autoRefreshInterval = setInterval(() => {
       // 충돌 다이얼로그가 열려있으면 새로고침 건너뛰기
       if (this.isConflictDialogOpen) {
@@ -826,7 +1135,7 @@ class RemoteManagerApp {
         return;
       }
       this.refreshProcesses();
-    }, 2000); // 5초 간격
+    }, this.refreshIntervalMs);
 
     // UI 업데이트
     const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
@@ -836,16 +1145,23 @@ class RemoteManagerApp {
       const btnText = autoRefreshToggle.querySelector('.btn-text');
       if (btnIcon)
         btnIcon.innerHTML = '<span class="auto-refresh-icon pause"></span>';
-      if (btnText) btnText.textContent = '자동 새로고침 중지';
+      if (btnText) btnText.textContent = `자동 새로고침 중지 (${this.refreshIntervalMs / 1000}초)`;
     }
 
-    console.log('🔄 자동 새로고침 시작 (5초 간격)');
+    console.log(`🔄 자동 새로고침 시작 (${this.refreshIntervalMs / 1000}초 간격)`);
+
+    if (shouldSync && window.electronAPI && window.electronAPI.syncAutoRefresh) {
+      window.electronAPI.syncAutoRefresh({
+        enabled: true,
+        interval: this.refreshIntervalMs,
+      });
+    }
   }
 
   /**
    * 자동 새로고침 중지
    */
-  stopAutoRefresh() {
+  stopAutoRefresh(shouldSync = true) {
     if (this.autoRefreshInterval) {
       clearInterval(this.autoRefreshInterval);
       this.autoRefreshInterval = null;
@@ -866,6 +1182,13 @@ class RemoteManagerApp {
     }
 
     console.log('⏸️ 자동 새로고침 중지');
+
+    if (shouldSync && window.electronAPI && window.electronAPI.syncAutoRefresh) {
+      window.electronAPI.syncAutoRefresh({
+        enabled: false,
+        interval: this.refreshIntervalMs || 5000,
+      });
+    }
   }
 
   /**
@@ -1150,6 +1473,58 @@ class RemoteManagerApp {
     } catch (error) {
       console.error('메인 데이터 응답 전송 중 오류:', error);
     }
+  }
+
+  /**
+   * 접속 로그 뷰 렌더링
+   */
+  renderLogsView() {
+    const tableBody = document.getElementById('logs-table-body');
+    const emptyEl = document.getElementById('logs-empty');
+    const countInfo = document.getElementById('logs-count-info');
+    const searchInput = document.getElementById('logs-search-input');
+
+    if (!tableBody || !this.services.log) return;
+
+    const query = searchInput ? searchInput.value.trim() : '';
+    const logs = this.services.log.getLogs({ search: query });
+
+    if (countInfo) {
+      countInfo.textContent = `총 ${logs.length}건`;
+    }
+
+    if (logs.length === 0) {
+      tableBody.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    tableBody.innerHTML = logs.map(log => {
+      const startDate = new Date(log.startTime).toLocaleString('ko-KR');
+      const endDate = log.endTime
+        ? new Date(log.endTime).toLocaleString('ko-KR')
+        : '<span class="log-active-status">연결 중</span>';
+      const duration = log.endTime
+        ? log.durationText
+        : '<span class="log-active-status">측정 중...</span>';
+      const displayName = log.customLabel
+        ? `${log.computerName} (${log.customLabel})`
+        : log.computerName;
+
+      return `
+        <tr>
+          <td>${startDate}</td>
+          <td><span class="badge ${log.processType?.toLowerCase()}">${log.processType}</span></td>
+          <td><strong>${displayName}</strong></td>
+          <td><code>${log.ipAddress}</code></td>
+          <td>${endDate}</td>
+          <td>${duration}</td>
+          <td><small>${log.pid || '-'}</small></td>
+        </tr>
+      `;
+    }).join('');
   }
 
   /**

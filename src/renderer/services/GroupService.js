@@ -506,6 +506,27 @@ export class GroupService {
   }
 
   /**
+   * 그룹 순서 변경
+   * @param {string} groupId - 그룹 ID
+   * @param {'up'|'down'} direction - 이동 방향
+   * @returns {boolean} 성공 여부
+   */
+  moveGroup(groupId, direction) {
+    try {
+      const success = this.groupStore.moveGroup(groupId, direction);
+      if (success) {
+        window.dispatchEvent(
+          new CustomEvent('group-updated', { detail: { groupId } })
+        );
+      }
+      return success;
+    } catch (error) {
+      console.error('그룹 순서 변경 실패:', error);
+      return false;
+    }
+  }
+
+  /**
    * 전체 그룹 통계
    * @returns {Object} 전체 통계 정보
    */

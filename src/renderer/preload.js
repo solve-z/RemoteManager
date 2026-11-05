@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @returns {Promise<Object>} 미니창 상태
    */
   showMiniWindow: () => ipcRenderer.invoke('show-mini-window'),
+  openMiniWindow: () => ipcRenderer.invoke('show-mini-window'),
 
   /**
    * 미니창 숨김
@@ -81,6 +82,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @returns {Promise<Object>} 미니창 상태
    */
   getMiniStatus: () => ipcRenderer.invoke('get-mini-status'),
+  getMiniWindowStatus: () => ipcRenderer.invoke('get-mini-status'),
 
   /**
    * 미니창 접기/펼치기 토글
@@ -139,6 +141,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   onRefreshRequest: callback => {
     ipcRenderer.on('request-refresh-from-mini', () => callback());
+  },
+
+  /**
+   * 미니창 위치 초기화
+   */
+  resetMiniPosition: () => ipcRenderer.invoke('reset-mini-position'),
+
+  /**
+   * 미니창 위치/크기 조회
+   */
+  getMiniBounds: () => ipcRenderer.invoke('get-mini-bounds'),
+
+  /**
+   * 미니창 위치/크기 설정
+   */
+  setMiniBounds: bounds => ipcRenderer.invoke('set-mini-bounds', bounds),
+
+  /**
+   * 자동 새로고침 상태 동기화 요청
+   */
+  syncAutoRefresh: data => ipcRenderer.invoke('sync-auto-refresh', data),
+
+  /**
+   * 자동 새로고침 상태 동기화 수신
+   */
+  onAutoRefreshSync: callback => {
+    ipcRenderer.on('auto-refresh-sync', (event, data) => callback(data));
   },
 
   /**

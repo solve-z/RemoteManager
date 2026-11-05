@@ -3,7 +3,7 @@
  * AlwaysOnTop, 투명도, 트리 구조 리스트를 위한 별도 창
  */
 
-import { BrowserWindow, Menu } from 'electron';
+import { BrowserWindow, Menu, screen } from 'electron';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -34,7 +34,7 @@ export class MiniWindowManager {
     }
 
     this.miniWindow = new BrowserWindow({
-      width: 350,
+      width: 336,
       height: 500,
       minWidth: 280, // 원래 최소 너비로 복원
       minHeight: 39, // 최소 높이를 39px로 설정
@@ -61,6 +61,21 @@ export class MiniWindowManager {
       title: 'RemoteManager Mini',
       
       // 부모 창 설정하지 않음 (독립적인 창)
+    });
+
+    // Windows에서 최상단 레이어 확실히 고정 ('screen-saver' 레벨 및 모든 워크스페이스)
+    this.miniWindow.setAlwaysOnTop(true, 'screen-saver');
+    try {
+      this.miniWindow.setVisibleOnAllWorkspaces(true);
+    } catch (e) {
+      // 무시
+    }
+
+    // 포커스를 잃더라도 최상단 고정 유지 보정
+    this.miniWindow.on('blur', () => {
+      if (this.miniWindow && !this.miniWindow.isDestroyed()) {
+        this.miniWindow.setAlwaysOnTop(true, 'screen-saver');
+      }
     });
 
     // 미니창 HTML 로드
@@ -108,8 +123,68 @@ export class MiniWindowManager {
     if (this.miniWindow) {
       this.miniWindow.show();
       this.miniWindow.focus();
+      this.miniWindow.setAlwaysOnTop(true, 'screen-saver');
       this.isVisible = true;
     }
+  }
+
+  /**
+   * 미니창 위치 및 크기 초기화 (주 모니터 기준 우측 상단, 너비 336px)
+   */
+  resetPosition() {
+    if (!this.miniWindow) return { success: false, error: '미니창이 없습니다.' };
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { workArea } = primaryDisplay;
+      const width = 336;
+      const height = 500;
+      const x = Math.round(workArea.x + workArea.width - width - 20);
+      const y = Math.round(workArea.y + 40);
+
+      this.miniWindow.setBounds({ x, y, width, height });
+      this.miniWindow.setAlwaysOnTop(true, 'screen-saver');
+      return { success: true, bounds: { x, y, width, height } };
+    } catch (error) {
+      console.error('미니창 위치 초기화 실패:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 미니창 위치/크기 설정 (프리셋 불러오기용)
+   */
+  setBounds(bounds) {
+    if (!this.miniWindow || !bounds) return { success: false, error: '설정할 위치 정보가 없습니다.' };
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { workArea } = primaryDisplay;
+      
+      let width = bounds.width || 336;
+      let height = bounds.height || 500;
+      let x = typeof bounds.x === 'number' ? bounds.x : Math.round(workArea.x + workArea.width - width - 20);
+      let y = typeof bounds.y === 'number' ? bounds.y : Math.round(workArea.y + 40);
+
+      // 주 모니터 영역 내에 안전하게 배치
+      if (x < workArea.x) x = workArea.x;
+      if (x + width > workArea.x + workArea.width) x = workArea.x + workArea.width - width;
+      if (y < workArea.y) y = workArea.y;
+      if (y + height > workArea.y + workArea.height) y = workArea.y + workArea.height - height;
+
+      this.miniWindow.setBounds({ x, y, width, height });
+      this.miniWindow.setAlwaysOnTop(true, 'screen-saver');
+      return { success: true, bounds: { x, y, width, height } };
+    } catch (error) {
+      console.error('미니창 위치 설정 실패:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 현재 미니창 위치/크기 반환 (프리셋 저장용)
+   */
+  getBounds() {
+    if (!this.miniWindow) return null;
+    return this.miniWindow.getBounds();
   }
 
   /**

@@ -268,6 +268,58 @@ function registerIpcHandlers() {
     }
   });
 
+  // 미니창 위치 초기화
+  ipcMain.handle('reset-mini-position', () => {
+    try {
+      const result = miniWindowManager.resetPosition();
+      return result;
+    } catch (error) {
+      console.error('미니창 위치 초기화 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창 현재 위치/크기 조회
+  ipcMain.handle('get-mini-bounds', () => {
+    try {
+      const bounds = miniWindowManager.getBounds();
+      return { success: !!bounds, data: bounds };
+    } catch (error) {
+      console.error('미니창 위치 조회 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 미니창 위치/크기 설정 (프리셋 적용)
+  ipcMain.handle('set-mini-bounds', (event, bounds) => {
+    try {
+      const result = miniWindowManager.setBounds(bounds);
+      return result;
+    } catch (error) {
+      console.error('미니창 위치 설정 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // 자동 새로고침 상태 동기화 (메인창 <-> 미니창)
+  ipcMain.handle('sync-auto-refresh', (event, { enabled, interval }) => {
+    try {
+      // 메인창에 전달 (요청자가 미니창인 경우)
+      if (mainWindow && !mainWindow.isDestroyed() && event.sender !== mainWindow.webContents) {
+        mainWindow.webContents.send('auto-refresh-sync', { enabled, interval });
+      }
+      // 미니창에 전달 (요청자가 메인창인 경우)
+      const miniWindow = miniWindowManager.miniWindow;
+      if (miniWindow && !miniWindow.isDestroyed() && event.sender !== miniWindow.webContents) {
+        miniWindow.webContents.send('auto-refresh-sync', { enabled, interval });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('자동 새로고침 동기화 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
   // 미니창에 데이터 전송
   ipcMain.handle('send-data-to-mini', (event, data) => {
     try {
@@ -286,24 +338,22 @@ function registerIpcHandlers() {
   // 미니창에서 메인창으로 데이터 요청
   ipcMain.handle('request-main-data', () => {
     try {
-      // 메인창에 데이터 요청
       if (mainWindow && !mainWindow.isDestroyed()) {
         return new Promise(resolve => {
-          mainWindow.webContents.send('request-current-data');
-
-          // 응답 대기 (5초 타임아웃)
-          const timeout = setTimeout(() => {
-            resolve({ success: false, error: '데이터 요청 타임아웃' });
-          }, 5000);
-
-          // 한번만 응답 받기 - on + removeAllListeners 사용
+          let timeout = null;
           const responseHandler = (event, data) => {
-            clearTimeout(timeout);
+            if (timeout) clearTimeout(timeout);
             ipcMain.removeListener('main-data-response', responseHandler);
             resolve({ success: true, data: data });
           };
 
+          timeout = setTimeout(() => {
+            ipcMain.removeListener('main-data-response', responseHandler);
+            resolve({ success: false, error: '데이터 요청 타임아웃' });
+          }, 8000);
+
           ipcMain.on('main-data-response', responseHandler);
+          mainWindow.webContents.send('request-current-data');
         });
       }
       return { success: false, error: '메인창을 찾을 수 없습니다.' };
@@ -321,42 +371,32 @@ function registerIpcHandlers() {
           // 그룹 관리 액션인 경우
           return new Promise(resolve => {
             console.log('🎯 미니창에서 그룹 관리 액션 요청:', actionData);
-            mainWindow.webContents.send(
-              'request-group-action-from-mini',
-              actionData
-            );
-
-            // 응답 대기 (5초 타임아웃)
-            const timeout = setTimeout(() => {
-              resolve({ success: false, error: '그룹 액션 요청 타임아웃' });
-            }, 5000);
-
-            // 한번만 응답 받기
+            let timeout = null;
             const responseHandler = (event, result) => {
-              clearTimeout(timeout);
+              if (timeout) clearTimeout(timeout);
               ipcMain.removeListener('group-action-response', responseHandler);
               resolve(result);
             };
 
+            timeout = setTimeout(() => {
+              ipcMain.removeListener('group-action-response', responseHandler);
+              console.warn('⚠️ 그룹 액션 요청 타임아웃');
+              resolve({ success: false, error: '그룹 액션 요청 타임아웃' });
+            }, 8000);
+
             ipcMain.on('group-action-response', responseHandler);
+            mainWindow.webContents.send(
+              'request-group-action-from-mini',
+              actionData
+            );
           });
         } else if (actionData && actionData.type === 'process-management') {
           // 프로세스 관리 액션인 경우
           return new Promise(resolve => {
             console.log('🎯 미니창에서 프로세스 관리 액션 요청:', actionData);
-            mainWindow.webContents.send(
-              'request-process-action-from-mini',
-              actionData
-            );
-
-            // 응답 대기 (5초 타임아웃)
-            const timeout = setTimeout(() => {
-              resolve({ success: false, error: '프로세스 액션 요청 타임아웃' });
-            }, 5000);
-
-            // 한번만 응답 받기
+            let timeout = null;
             const responseHandler = (event, result) => {
-              clearTimeout(timeout);
+              if (timeout) clearTimeout(timeout);
               ipcMain.removeListener(
                 'process-action-response',
                 responseHandler
@@ -364,7 +404,20 @@ function registerIpcHandlers() {
               resolve(result);
             };
 
+            timeout = setTimeout(() => {
+              ipcMain.removeListener(
+                'process-action-response',
+                responseHandler
+              );
+              console.warn('⚠️ 프로세스 액션 요청 타임아웃');
+              resolve({ success: false, error: '프로세스 액션 요청 타임아웃' });
+            }, 8000);
+
             ipcMain.on('process-action-response', responseHandler);
+            mainWindow.webContents.send(
+              'request-process-action-from-mini',
+              actionData
+            );
           });
         } else {
           // 기존 새로고침 요청

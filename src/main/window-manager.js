@@ -33,6 +33,7 @@ const ShowWindow = user32.func('__stdcall', 'ShowWindow', 'bool', [
 const BringWindowToTop = user32.func('__stdcall', 'BringWindowToTop', 'bool', [
   HWND,
 ]);
+const IsWindow = user32.func('__stdcall', 'IsWindow', 'bool', [HWND]);
 const IsIconic = user32.func('__stdcall', 'IsIconic', 'bool', [HWND]);
 const IsWindowVisible = user32.func('__stdcall', 'IsWindowVisible', 'bool', [
   HWND,
@@ -72,6 +73,18 @@ const SetWindowLongW = user32.func('__stdcall', 'SetWindowLongW', 'int32', [
   'int32',
 ]);
 
+const SwitchToThisWindow = user32.func('__stdcall', 'SwitchToThisWindow', 'void', [
+  HWND,
+  'bool',
+]);
+
+const keybd_event = user32.func('__stdcall', 'keybd_event', 'void', [
+  'uint8',
+  'uint8',
+  'uint32',
+  'size_t',
+]);
+
 // Kernel32 함수 정의
 const GetCurrentThreadId = kernel32.func(
   '__stdcall',
@@ -93,6 +106,8 @@ const EnumWindows = user32.func('__stdcall', 'EnumWindows', 'bool', [
 const SW_RESTORE = 9;
 const GWL_STYLE = -16;
 const WS_VISIBLE = 0x10000000;
+const VK_MENU = 0x12; // Alt 키
+const KEYEVENTF_KEYUP = 0x0002;
 
 // 유틸리티 함수: 비동기 지연
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -199,6 +214,7 @@ async function focusHwnd(hwnd, processId, isEzHelp) {
   // 타겟 스레드 ID 가져오기
   const targetThreadIdArray = new Uint32Array(1);
   GetWindowThreadProcessId(hwnd, targetThreadIdArray);
+  const targetThreadId = targetThreadIdArray[0];
 
   // 현재 스레드 및 포그라운드 스레드 ID 가져오기
   const currentThreadId = GetCurrentThreadId();
@@ -210,16 +226,31 @@ async function focusHwnd(hwnd, processId, isEzHelp) {
     foregroundThreadId = fgThreadIdArray[0];
   }
 
-  // 스레드 연결 (포커스 권한 획득)
-  let attached = false;
+  // Windows 포그라운드 락 우회: 가상 Alt 키 더미 입력
+  try {
+    keybd_event(VK_MENU, 0, 0, 0);
+    keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+  } catch (e) {
+    console.warn('[경고] keybd_event 호출 실패:', e);
+  }
+
+  // 스레드 연결 (포그라운드 및 타겟 스레드)
+  let attachedFg = false;
+  let attachedTarget = false;
   if (foregroundThreadId !== 0 && foregroundThreadId !== currentThreadId) {
-    attached = AttachThreadInput(currentThreadId, foregroundThreadId, true);
-    console.log(`[디버그] AttachThreadInput 결과: ${attached}`);
+    attachedFg = AttachThreadInput(currentThreadId, foregroundThreadId, true);
+    console.log(`[디버그] AttachThreadInput(Foreground) 결과: ${attachedFg}`);
+  }
+  if (targetThreadId !== 0 && targetThreadId !== currentThreadId) {
+    attachedTarget = AttachThreadInput(currentThreadId, targetThreadId, true);
+    console.log(`[디버그] AttachThreadInput(Target) 결과: ${attachedTarget}`);
   }
 
   try {
+    // 최소화되어 있는 경우 확실히 복원
     if (wasMinimized) {
       ShowWindow(hwnd, SW_RESTORE);
+      await sleep(30);
     }
 
     BringWindowToTop(hwnd);
@@ -227,9 +258,19 @@ async function focusHwnd(hwnd, processId, isEzHelp) {
     let focusResult = SetForegroundWindow(hwnd);
     console.log(`[디버그] SetForegroundWindow 결과: ${focusResult}`);
 
+    // SwitchToThisWindow로 백그라운드/최소화 창 강제 활성화 지원
+    try {
+      SwitchToThisWindow(hwnd, true);
+    } catch (e) {
+      // SwitchToThisWindow 예외는 무시
+    }
+
     if (!focusResult) {
-      // 실패 시 C#의 Sleep(50)과 동일하게 약간 대기 후 재시도
+      // 실패 시 약간 대기 후 재시도
       await sleep(50);
+      if (wasMinimized) {
+        ShowWindow(hwnd, SW_RESTORE);
+      }
       focusResult = SetForegroundWindow(hwnd);
       console.log(`[디버그] SetForegroundWindow 재시도 결과: ${focusResult}`);
     }
@@ -243,8 +284,11 @@ async function focusHwnd(hwnd, processId, isEzHelp) {
     return true;
   } finally {
     // 연결했던 스레드 정리
-    if (attached) {
+    if (attachedFg) {
       AttachThreadInput(currentThreadId, foregroundThreadId, false);
+    }
+    if (attachedTarget) {
+      AttachThreadInput(currentThreadId, targetThreadId, false);
     }
   }
 }
@@ -309,6 +353,12 @@ class WindowManager {
       }
 
       if (!hwnd) return false;
+
+      // 윈도우가 유효한지(종료되지 않았는지) 검사
+      if (!IsWindow(hwnd)) {
+        console.warn('[경고] 대상 윈도우 핸들이 유효하지 않거나 이미 닫힌 창입니다.');
+        return false;
+      }
 
       // ezHelp 컨트롤바 처리를 위해 해당 핸들의 프로세스 ID 역추적
       const pidArray = new Uint32Array(1);

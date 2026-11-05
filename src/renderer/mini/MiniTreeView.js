@@ -160,6 +160,15 @@ export class MiniTreeView extends EventEmitter {
    * @param {Array} groups - 그룹별로 분류된 프로세스 데이터
    */
   async updateData(groups) {
+    // 그룹을 order 순서로 확실히 정렬 (단, '그룹없음'은 맨 아래)
+    groups.sort((a, b) => {
+      if (a.id === 'ungrouped' || a.name === '그룹없음') return 1;
+      if (b.id === 'ungrouped' || b.name === '그룹없음') return -1;
+      const orderA = typeof a.order === 'number' ? a.order : 0;
+      const orderB = typeof b.order === 'number' ? b.order : 0;
+      return orderA - orderB;
+    });
+
     // 현재 펼침 상태를 저장 (그룹 ID 기준)
     const previousExpandedState = new Set(this.expandedGroups);
 
@@ -1189,6 +1198,36 @@ export class MiniTreeView extends EventEmitter {
 
     if (cleaned) {
       this.saveCustomOrders();
+    }
+  }
+
+  /**
+   * 포커스 실패/경고 상태 시각화 (주황 불빛 점등)
+   */
+  markProcessWarning(processId, message = '창을 찾을 수 없음') {
+    const node = this.container.querySelector(`.process-node[data-process-id="${processId}"]`);
+    if (node) {
+      node.classList.add('focus-failed');
+      const statusEl = node.querySelector('.process-status');
+      if (statusEl) {
+        statusEl.className = 'process-status warning';
+        statusEl.title = message;
+      }
+    }
+  }
+
+  /**
+   * 포커스 성공 시 경고 상태 해제
+   */
+  clearProcessWarning(processId) {
+    const node = this.container.querySelector(`.process-node[data-process-id="${processId}"]`);
+    if (node) {
+      node.classList.remove('focus-failed');
+      const statusEl = node.querySelector('.process-status');
+      if (statusEl) {
+        statusEl.className = 'process-status connected';
+        statusEl.title = '';
+      }
     }
   }
 

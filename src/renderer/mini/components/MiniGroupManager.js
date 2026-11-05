@@ -326,6 +326,24 @@ export class MiniGroupManager {
   }
 
   /**
+   * 그룹 순서 변경
+   * @param {string} groupId - 그룹 ID
+   * @param {'up'|'down'} direction - 이동 방향
+   * @returns {Promise<Object>} 변경 결과
+   */
+  async moveGroup(groupId, direction) {
+    if (!window.electronAPI?.requestMainRefresh) {
+      return { success: false, error: 'IPC API를 사용할 수 없습니다.' };
+    }
+
+    return await window.electronAPI.requestMainRefresh({
+      type: 'group-management',
+      action: 'move',
+      data: { id: groupId, direction }
+    });
+  }
+
+  /**
    * 프로세스 그룹 변경
    * @param {string} processId - 프로세스 ID
    * @param {string} fromGroupId - 원본 그룹 ID
